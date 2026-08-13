@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Least privilege by default. Widen per-job only when a job genuinely needs it.
+permissions:
+  contents: read
+
+# A new push to the same PR cancels the superseded run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: lint / typecheck / test
+    runs-on: ubuntu-latest
+
+    # Secrets belong here, injected per-step or per-job, never committed and
+    # never echoed. Nothing secret exists in Sprint 0; when it does, it looks
+    # like this:
+    #   env:
+    #     DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      # `npm ci` (not `npm install`) — installs exactly the lockfile, and fails
+      # if package.json and the lockfile disagree.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
