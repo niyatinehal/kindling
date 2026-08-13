@@ -67,6 +67,37 @@ describe("hand-written constraints", () => {
     ).resolves.toBeDefined();
   });
 
+  it("frees the active-family slot once the membership is soft-deleted", async () => {
+    const user = await createUser("three@example.test");
+    const first = await prisma.family.create({
+      data: { name: "Original", createdByUserId: user.id },
+    });
+    const second = await prisma.family.create({
+      data: { name: "Replacement", createdByUserId: user.id },
+    });
+
+    const membership = await prisma.familyMembership.create({
+      data: { familyId: first.id, userId: user.id, role: "adult", joinedAt: new Date() },
+    });
+
+    await expect(
+      prisma.familyMembership.create({
+        data: { familyId: second.id, userId: user.id, role: "adult", joinedAt: new Date() },
+      }),
+    ).rejects.toThrow();
+
+    await prisma.familyMembership.update({
+      where: { id: membership.id },
+      data: { deletedAt: new Date() },
+    });
+
+    await expect(
+      prisma.familyMembership.create({
+        data: { familyId: second.id, userId: user.id, role: "adult", joinedAt: new Date() },
+      }),
+    ).resolves.toBeDefined();
+  });
+
   it("frees an email address once the row is soft-deleted", async () => {
     const user = await createUser("recycle@example.test");
 
