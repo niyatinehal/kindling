@@ -2,3 +2,6 @@ node_modules/
 dist/
 coverage/
 package-lock.json
+
+# Local tool state, not project source.
+.claude/
