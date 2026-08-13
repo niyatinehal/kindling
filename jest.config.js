@@ -8,9 +8,8 @@
  *
  * @type {import('jest').Config}
  */
-export default {
+const common = {
   testEnvironment: "node",
-  roots: ["<rootDir>/test"],
   extensionsToTreatAsEsm: [".ts"],
   transform: {
     "^.+\\.ts$": ["ts-jest", { useESM: true }],
@@ -19,4 +18,21 @@ export default {
     "^(\\.{1,2}/.*)\\.js$": "$1",
   },
   clearMocks: true,
+};
+
+export default {
+  projects: [
+    {
+      ...common,
+      displayName: "unit",
+      testMatch: ["<rootDir>/test/**/*.test.ts"],
+      testPathIgnorePatterns: ["<rootDir>/test/integration/"],
+    },
+    {
+      ...common,
+      displayName: "integration",
+      testMatch: ["<rootDir>/test/integration/**/*.test.ts"],
+      testTimeout: 30000,
+    },
+  ],
 };

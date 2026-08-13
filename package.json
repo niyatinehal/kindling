@@ -11,7 +11,9 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.build.json",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --selectProjects unit",
+    "test:integration": "NODE_OPTIONS=--experimental-vm-modules jest --selectProjects integration",
+    "test:all": "NODE_OPTIONS=--experimental-vm-modules jest",
     "start": "node dist/server.js",
     "typecheck": "prisma generate && tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
