@@ -19,6 +19,7 @@ without that file Node refuses to start (`node: .env: not found`) before any app
 git clone <repo-url>
 cd wellness_platform
 npm ci
+npx prisma generate        # generates the client into generated/prisma; npm ci doesn't do this
 cp .env.example .env       # required — dev fails immediately without it
 npx supabase start         # Postgres, Auth, Storage in Docker; first run pulls images
 npx prisma migrate deploy  # apply the schema
