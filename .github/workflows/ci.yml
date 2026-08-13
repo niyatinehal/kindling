@@ -41,6 +41,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # The generated client is gitignored, so its types must be built before
+      # anything type-checks.
+      - name: Generate Prisma client
+        run: npx prisma generate
+
       - name: Lint
         run: npm run lint
 
@@ -53,3 +58,72 @@ jobs:
 
       - name: Test
         run: npm test
+
+  integration:
+    name: integration tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: wellness_test
+        ports:
+          - 54329:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d wellness_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54329/wellness_test
+      DIRECT_URL: postgresql://postgres:postgres@127.0.0.1:54329/wellness_test
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54329/wellness_test
+      # A separate, always-empty database in the same service. prisma.config.ts
+      # reads this as datasource.shadowDatabaseUrl — Prisma 7 removed the
+      # `migrate diff --shadow-database-url` CLI flag, so this is the only way
+      # to configure it. It must never be DIRECT_URL: the schema engine resets
+      # the shadow database by replaying every migration onto it from scratch,
+      # which would destroy the fixtures the integration tests depend on.
+      SHADOW_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54329/shadow
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      # Creates the empty database that prisma.config.ts points
+      # SHADOW_DATABASE_URL at, in the same Postgres service.
+      - name: Create shadow database
+        run: |
+          PGPASSWORD=postgres psql -h 127.0.0.1 -p 54329 -U postgres -d wellness_test \
+            -c "CREATE DATABASE shadow;"
+
+      # Fails if schema.prisma was edited without a matching migration —
+      # invisible locally, breaks the next migrate deploy.
+      - name: Check for migration drift
+        run: |
+          npx prisma migrate diff \
+            --from-migrations prisma/migrations \
+            --to-schema prisma/schema.prisma \
+            --exit-code
+
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+
+      - name: Integration tests
+        run: npm run test:integration

@@ -1,8 +1,16 @@
 {
-  /* Emit config: src/ only, so dist/ mirrors src/ without a nested src/ folder. */
+  /* Emit config: src/ only. rootDir is intentionally left unset — the
+   * generated Prisma client lives outside src/ but is pulled into this
+   * program because src/db/prisma.ts imports it, so pinning rootDir to
+   * "src" makes tsc refuse to emit (TS6059). Leaving it unset lets tsc infer
+   * the common ancestor of every file actually in the program, which nests
+   * output one level deeper (dist/src/..., dist/generated/...). The
+   * Dockerfile promotes dist/src/* back to the expected dist/* layout, and
+   * uses this compiled dist/generated/* — schema.prisma's
+   * generatedFileExtension = "ts" means Prisma's own output has no runnable
+   * .js of its own; only this compile does. */
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "rootDir": "src",
     "outDir": "dist"
   },
   "include": ["src/**/*.ts"]
