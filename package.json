@@ -4,7 +4,7 @@
   "description": "Wellness platform service",
   "private": true,
   "type": "module",
-  "main": "dist/server.js",
+  "main": "dist/src/server.js",
   "engines": {
     "node": ">=22"
   },
@@ -14,7 +14,7 @@
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --selectProjects unit",
     "test:integration": "NODE_OPTIONS=--experimental-vm-modules jest --selectProjects integration --runInBand",
     "test:all": "NODE_OPTIONS=--experimental-vm-modules jest",
-    "start": "node dist/server.js",
+    "start": "node dist/src/server.js",
     "typecheck": "prisma generate && tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",

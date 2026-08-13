@@ -38,15 +38,14 @@ WORKDIR /app
 
 COPY --from=builder --chown=node:node /app/node_modules ./node_modules
 # tsc's rootDir is inferred (not pinned to src/) because src/db/prisma.ts
-# imports the generated Prisma client from outside src/; that nests emitted
-# output one level deeper than before: dist/src/* (not dist/*) mirrors the
-# previous dist/ layout that package.json's "main" and this image's CMD
-# expect, and dist/generated/* is the compiled client. The raw generated/
-# directory (schema.prisma sets generatedFileExtension = "ts") never
-# contains runnable .js on its own — only tsc's compile of it does, so the
-# compiled copy, not the raw one, is what the runtime stage needs.
-COPY --from=builder --chown=node:node /app/dist/src ./dist
-COPY --from=builder --chown=node:node /app/dist/generated ./generated
+# imports the generated Prisma client from outside src/, so the emitted tree
+# nests as dist/src/* and dist/generated/* under one outDir. Copied wholesale
+# and unpromoted so this layout matches package.json's "main"/"start"
+# exactly — dev (`npm start`) and prod (this image) agree on one path.
+# generated/'s raw output (schema.prisma sets generatedFileExtension = "ts")
+# has no runnable .js of its own; dist/generated is tsc's compiled copy,
+# which is what's needed here, and it rides along in this single COPY.
+COPY --from=builder --chown=node:node /app/dist ./dist
 COPY --chown=node:node package.json ./
 
 # `node` is an unprivileged user baked into the official image.
@@ -57,4 +56,4 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget -qO- "http://127.0.0.1:${PORT}/healthz" > /dev/null || exit 1
 
-CMD ["node", "dist/server.js"]
+CMD ["node", "dist/src/server.js"]
