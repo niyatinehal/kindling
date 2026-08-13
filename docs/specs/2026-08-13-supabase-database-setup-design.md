@@ -117,17 +117,59 @@ Prisma generates table DDL. Four migrations are hand-written, because Prisma's s
 
 **UUIDv7 is generated client-side** via Prisma's `uuid(7)` rather than as a database default, avoiding a dependency on a `pg_uuidv7` extension being present in Supabase's Postgres build. Consequence: raw SQL inserts must supply their own ids.
 
-**Two connection strings** — a Supabase-specific requirement that produces confusing failures when wrong:
+### Prisma 7 mechanics (verified against 7.9.1, 2026-08-13)
+
+Prisma 7 changed enough that the conventional Supabase-with-Prisma setup no longer applies. Verified empirically in a throwaway project, not assumed:
+
+| Prisma 6 pattern                                              | Prisma 7 reality                                                                                                                           |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `datasource { url = env("DATABASE_URL") }` in `schema.prisma` | The `datasource` block holds only `provider`. The URL lives in `prisma.config.ts` under `datasource.url`, and is used **by the CLI only**. |
+| `directUrl` for the pooled/direct split                       | **`directUrl` no longer exists.** The `Datasource` config type exposes only `url` and `shadowDatabaseUrl`.                                 |
+| `new PrismaClient()` reads the URL from the schema            | Type error: "Expected 1 arguments, but got 0". Prisma 7 connects through a **driver adapter**; the URL is passed at construction.          |
+| `generator client { provider = "prisma-client-js" }`          | `provider = "prisma-client"` with a required `output`. Emits **TypeScript source**, not a compiled client.                                 |
+| Seed configured in `package.json` `prisma.seed`               | Configured in `prisma.config.ts` as `migrations.seed` — a command string.                                                                  |
+
+Two consequences worth stating plainly:
+
+**1. The pooled/direct split falls out naturally, and is cleaner than `directUrl` was.** The CLI reads `prisma.config.ts`, so migrations get the direct connection; the runtime adapter is constructed with the pooled URL:
+
+```ts
+// prisma.config.ts — CLI only (migrate, db pull, seed)
+import "dotenv/config";
+import { defineConfig } from "prisma/config";
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  migrations: { path: "prisma/migrations", seed: "tsx prisma/seed.ts" },
+  datasource: { url: process.env["DIRECT_URL"] }, // :5432 direct
+});
+```
+
+```ts
+// src/db/prisma.ts — runtime
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "../../generated/prisma/client.js";
+
+const adapter = new PrismaPg({ connectionString: env.DATABASE_URL }); // :6543 pooled
+export const prisma = new PrismaClient({ adapter });
+```
+
+**2. The generator must be configured for `nodenext`, or the build breaks.** By default the generated client imports siblings with `.ts` extensions (`from "./enums.ts"`), which plain `tsc` under `module: "nodenext"` rejects without `allowImportingTsExtensions`. Setting `importFileExtension = "js"` fixes it — verified to type-check cleanly against this repo's exact compiler options:
 
 ```prisma
-datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")   // pooled, :6543, ?pgbouncer=true — runtime
-  directUrl = env("DIRECT_URL")     // direct, :5432 — migrations only
+generator client {
+  provider               = "prisma-client"
+  output                 = "../generated/prisma"
+  moduleFormat           = "esm"
+  generatedFileExtension = "ts"
+  importFileExtension    = "js"
+  runtime                = "nodejs"
 }
 ```
 
-Locally both point at `:54322`; the CLI stack has no pooler.
+New dependencies this implies: `@prisma/adapter-pg` and `pg` (runtime), `prisma`, `@prisma/client`, `dotenv` (dev). Locally `DATABASE_URL` and `DIRECT_URL` both point at `:54322`; the CLI stack has no pooler.
+
+`npx prisma init` also scaffolds `.agents/`, `.claude/skills/`, `.windsurf/`, and `skills-lock.json` into the project. Run it with **`--no-skills`** — the repo already has a `.claude/` directory and these are unrelated to the build.
 
 ---
 
@@ -146,9 +188,13 @@ Locally both point at `:54322`; the CLI stack has no pooler.
 ```
 prisma/schema.prisma            User, Family, FamilyMembership
 prisma/migrations/              generated DDL + 4 hand-written SQL migrations
+prisma.config.ts                CLI config: schema path, migrations path,
+                                seed command, DIRECT_URL for migrations
 prisma/seed.ts                  one demo family, two members; wired via
-                                package.json "prisma": { "seed": ... } so it
+                                prisma.config.ts `migrations.seed` so it
                                 runs as `npx prisma db seed`
+generated/prisma/**             generated TypeScript client — gitignored,
+                                and excluded from ESLint and Prettier
 src/config/env.ts               Zod-validated, parsed at boot
 src/db/prisma.ts                PrismaClient singleton + disconnect
 src/routes/health.ts            unchanged — liveness, no dependencies
@@ -230,13 +276,15 @@ This design changes three things in `2026-08-07-family-wellness-platform-databas
 
 ## 13. Risks and open questions
 
-| Risk                                                                                                                                          | Mitigation                                                                                                                                              |
-| --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Hand-written SQL in a Prisma migration is easy to lose during a `migrate reset` or a squash.                                                  | The constraint test (§9) fails loudly if any of it goes missing.                                                                                        |
-| `prisma migrate dev` against a Supabase-hosted database can attempt operations the role lacks rights for, on the `auth` schema in particular. | The FK migration touches only `public.users`; it references `auth.users` without altering it. Verify on the cloud project during the deployment sprint. |
-| Pooled vs direct connection misconfiguration produces errors that do not name the real cause.                                                 | Both URLs in `.env.example` with inline comments; `/readyz` exercises the pooled path at boot.                                                          |
-| Client-side UUIDv7 means raw SQL inserts can create rows with a different id strategy.                                                        | Seeds and migrations go through Prisma; any raw insert must supply an explicit v7 id.                                                                   |
-| Prisma's exact UUIDv7 and partial-index support varies by version.                                                                            | Verify against the installed Prisma version during implementation; fall back to `dbgenerated()` or a raw-SQL default if `uuid(7)` is unavailable.       |
+| Risk                                                                                                                                          | Mitigation                                                                                                                                                                                                             |
+| --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hand-written SQL in a Prisma migration is easy to lose during a `migrate reset` or a squash.                                                  | The constraint test (§9) fails loudly if any of it goes missing.                                                                                                                                                       |
+| `prisma migrate dev` against a Supabase-hosted database can attempt operations the role lacks rights for, on the `auth` schema in particular. | The FK migration touches only `public.users`; it references `auth.users` without altering it. Verify on the cloud project during the deployment sprint.                                                                |
+| Pooled vs direct connection misconfiguration produces errors that do not name the real cause.                                                 | Both URLs in `.env.example` with inline comments; `/readyz` exercises the pooled path at boot.                                                                                                                         |
+| Client-side UUIDv7 means raw SQL inserts can create rows with a different id strategy.                                                        | Seeds and migrations go through Prisma; any raw insert must supply an explicit v7 id.                                                                                                                                  |
+| Prisma's exact UUIDv7 and partial-index support varies by version.                                                                            | **Resolved 2026-08-13:** `@default(uuid(7))` validates on Prisma 7.9.1. Partial indexes remain DSL-unsupported, hence §5.                                                                                              |
+| The generated client is TypeScript source inside the repo, so it can be swept into typecheck, lint, and format.                               | Generated files carry `@ts-nocheck` and `eslint-disable`, but `generated/` is added to `.gitignore`, `.prettierignore`, and ESLint `ignores` so CI never lints or formats it. `prisma generate` runs before typecheck. |
+| `pg` becomes a new **runtime** dependency reaching the production image.                                                                      | The adapter requires it, so it is correctly a dependency rather than a devDependency. `npm prune --omit=dev` still excludes the Prisma CLI. Verify image size after the change.                                        |
 
 ---
 
