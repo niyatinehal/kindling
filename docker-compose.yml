@@ -8,9 +8,18 @@ services:
       NODE_ENV: production
       # The container always listens on 3000; remap on the host instead.
       PORT: 3000
-      # Unused in Sprint 0. Wired now so the topology is correct before it is
-      # load-bearing — Sprint 1 connects to this.
+      # Pooled connection, used by the app at runtime. Locally there is no
+      # pooler, so this matches DIRECT_URL below.
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@host.docker.internal:54322/postgres}
+      # Direct connection. The app itself never reads this, but
+      # src/config/env.ts requires it at boot (prisma/seed.ts does use it),
+      # so it must be forwarded here too or the container exits immediately.
+      DIRECT_URL: ${DIRECT_URL:-postgresql://postgres:postgres@host.docker.internal:54322/postgres}
+    extra_hosts:
+      # Linux's Docker Engine doesn't resolve host.docker.internal natively;
+      # this makes it resolve to the host gateway. Docker Desktop
+      # (macOS/Windows) already resolves it, so this is a harmless no-op there.
+      - "host.docker.internal:host-gateway"
     ports:
       - "${APP_PORT:-3000}:3000"
     restart: unless-stopped

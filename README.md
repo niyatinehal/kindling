@@ -54,29 +54,31 @@ reaches it at `host.docker.internal:54322`. Start Supabase first:
 npx supabase start
 ```
 
-**`docker compose up --build` does not currently work.** The compose file's `environment:` block
-only forwards `DATABASE_URL` into the container, not `DIRECT_URL` — and `src/config/env.ts`
-requires both at boot, so the app crashes immediately with
-`Invalid environment: DIRECT_URL: Invalid input: expected string, received undefined`. This is a
-gap in `docker-compose.yml` itself, out of scope for this change; use `docker build` /
-`docker run` instead, passing both variables explicitly:
+The compose file's `app` service adds `extra_hosts: ["host.docker.internal:host-gateway"]` so
+`host.docker.internal` resolves inside the container on Linux too (Docker Desktop on
+macOS/Windows already resolves it natively; the entry is a harmless no-op there).
+
+**If you already created `.env` for local dev (above), you must override `DATABASE_URL` and
+`DIRECT_URL` on the command line when you run Compose.** Docker Compose auto-loads `.env` from the
+project directory for variable substitution, and that file points both variables at
+`127.0.0.1:54322` for the host — which is loopback _inside the container_, not the host's
+Postgres, and `/readyz` reports `{"status":"not_ready","checks":{"database":"down"}}` if you skip
+this. Shell environment variables take precedence over `.env`, so setting them inline fixes it:
 
 ```bash
-docker build -t wellness-platform .
-docker run --rm -p 3000:3000 \
-  --add-host host.docker.internal:host-gateway \
-  -e DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:54322/postgres \
-  -e DIRECT_URL=postgresql://postgres:postgres@host.docker.internal:54322/postgres \
-  wellness-platform
+DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:54322/postgres \
+DIRECT_URL=postgresql://postgres:postgres@host.docker.internal:54322/postgres \
+docker compose up -d --build
 
 curl localhost:3000/healthz
 curl localhost:3000/readyz
 ```
 
-`--add-host host.docker.internal:host-gateway` is required on Linux — without it,
-`host.docker.internal` doesn't resolve inside the container and `/readyz` reports
-`{"status":"not_ready","checks":{"database":"down"}}`. Docker Desktop (macOS/Windows) resolves it
-natively and the flag is a harmless no-op there.
+(If no `.env` file exists yet, the same two variables default to those same
+`host.docker.internal` values inside `docker-compose.yml`, so the override above is optional —
+but since these steps come after creating `.env`, pass it explicitly.)
+
+Stop the container with `docker compose down`.
 
 ## Run the tests
 
