@@ -31,8 +31,7 @@ services:
       # Named volume, so data survives `docker compose down`.
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test:
-        ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wellness} -d ${POSTGRES_DB:-wellness}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wellness} -d ${POSTGRES_DB:-wellness}"]
       interval: 10s
       timeout: 5s
       retries: 5
