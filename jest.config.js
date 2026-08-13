@@ -33,6 +33,13 @@ export default {
       displayName: "integration",
       testMatch: ["<rootDir>/test/integration/**/*.test.ts"],
       testTimeout: 30000,
+      // Both integration files truncate every Domain A table in a global
+      // beforeAll, so two workers running concurrently delete each other's
+      // fixtures. Pinning this project to one worker serializes the files
+      // within `test:integration` and within `test:all` (which runs the
+      // `unit` and `integration` projects together) without slowing down
+      // `npm test`, which only ever selects the `unit` project.
+      maxWorkers: 1,
     },
   ],
 };

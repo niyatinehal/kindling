@@ -12,7 +12,7 @@
     "dev": "tsx watch --env-file=.env src/server.ts",
     "build": "tsc -p tsconfig.build.json",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --selectProjects unit",
-    "test:integration": "NODE_OPTIONS=--experimental-vm-modules jest --selectProjects integration --runInBand",
+    "test:integration": "NODE_OPTIONS=--experimental-vm-modules jest --selectProjects integration",
     "test:all": "NODE_OPTIONS=--experimental-vm-modules jest",
     "start": "node dist/src/server.js",
     "typecheck": "prisma generate && tsc --noEmit",
