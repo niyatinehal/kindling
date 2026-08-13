@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "@jest/globals";
 
+import { Prisma } from "../../generated/prisma/client.js";
 import { createPrismaClient, disconnect } from "../../src/db/prisma.js";
 
 const connectionString =
@@ -10,6 +11,29 @@ const prisma = createPrismaClient(connectionString);
 
 async function createUser(email: string) {
   return prisma.user.create({ data: { displayName: "Test", email } });
+}
+
+/**
+ * Bare `.rejects.toThrow()` passes on any thrown error, including a
+ * programming mistake elsewhere in the test that throws for an unrelated
+ * reason. Asserting the Prisma error code (P2002, unique constraint
+ * violation) and the specific field the underlying partial index guards
+ * keeps these tests honest about which invariant they exercise.
+ */
+async function expectUniqueConstraintViolation(
+  promise: Promise<unknown>,
+  field: string,
+): Promise<void> {
+  try {
+    await promise;
+  } catch (error) {
+    expect(error).toBeInstanceOf(Prisma.PrismaClientKnownRequestError);
+    const knownError = error as Prisma.PrismaClientKnownRequestError;
+    expect(knownError.code).toBe("P2002");
+    expect(knownError.message).toContain(`\`${field}\``);
+    return;
+  }
+  throw new Error("expected the promise to reject with a unique constraint violation");
 }
 
 beforeAll(async () => {
@@ -36,11 +60,12 @@ describe("hand-written constraints", () => {
       data: { familyId: family.id, userId: user.id, role: "admin", joinedAt: new Date() },
     });
 
-    await expect(
+    await expectUniqueConstraintViolation(
       prisma.familyMembership.create({
         data: { familyId: other.id, userId: user.id, role: "adult", joinedAt: new Date() },
       }),
-    ).rejects.toThrow();
+      "user_id",
+    );
   });
 
   it("allows a second membership once the first is not active", async () => {
@@ -80,11 +105,12 @@ describe("hand-written constraints", () => {
       data: { familyId: first.id, userId: user.id, role: "adult", joinedAt: new Date() },
     });
 
-    await expect(
+    await expectUniqueConstraintViolation(
       prisma.familyMembership.create({
         data: { familyId: second.id, userId: user.id, role: "adult", joinedAt: new Date() },
       }),
-    ).rejects.toThrow();
+      "user_id",
+    );
 
     await prisma.familyMembership.update({
       where: { id: membership.id },
@@ -101,7 +127,7 @@ describe("hand-written constraints", () => {
   it("frees an email address once the row is soft-deleted", async () => {
     const user = await createUser("recycle@example.test");
 
-    await expect(createUser("recycle@example.test")).rejects.toThrow();
+    await expectUniqueConstraintViolation(createUser("recycle@example.test"), "email");
 
     await prisma.user.update({ where: { id: user.id }, data: { deletedAt: new Date() } });
 
@@ -111,6 +137,14 @@ describe("hand-written constraints", () => {
   it("bumps updated_at on the database side", async () => {
     const user = await createUser("touch@example.test");
 
+    // Both reads must follow a raw `$executeRaw` update so this compares the
+    // database clock to itself. `updated_at` right after `create()` was
+    // written by Prisma's client-side `@updatedAt` (the app server's clock),
+    // while the trigger writes `now()` (the database server's clock) — those
+    // two clocks are not guaranteed to agree, so comparing one raw-updated
+    // timestamp to the other is the only way to isolate what the trigger
+    // itself does.
+    await prisma.$executeRaw`UPDATE users SET display_name = 'Raw One' WHERE id = ${user.id}::uuid`;
     const rowsBefore = await prisma.$queryRaw<{ updated_at: Date }[]>`
       SELECT updated_at FROM users WHERE id = ${user.id}::uuid
     `;
@@ -119,10 +153,7 @@ describe("hand-written constraints", () => {
       throw new Error("expected the user row to exist");
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 5));
-
-    await prisma.$executeRaw`UPDATE users SET display_name = 'Raw' WHERE id = ${user.id}::uuid`;
-
+    await prisma.$executeRaw`UPDATE users SET display_name = 'Raw Two' WHERE id = ${user.id}::uuid`;
     const rowsAfter = await prisma.$queryRaw<{ updated_at: Date }[]>`
       SELECT updated_at FROM users WHERE id = ${user.id}::uuid
     `;
