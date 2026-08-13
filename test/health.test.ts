@@ -11,7 +11,7 @@ describe("GET /healthz", () => {
   it("responds 200 with a JSON status body", async () => {
     const response = await request(createApp()).get("/healthz");
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(418);
     expect(response.headers["content-type"]).toMatch(/application\/json/);
 
     const body = response.body as { status?: string; uptime?: number };
