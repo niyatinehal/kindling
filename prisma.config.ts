@@ -11,6 +11,7 @@ export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
+    seed: "tsx prisma/seed.ts",
   },
   datasource: {
     ...(process.env["DIRECT_URL"] !== undefined && { url: process.env["DIRECT_URL"] }),

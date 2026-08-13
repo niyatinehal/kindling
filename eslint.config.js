@@ -32,7 +32,7 @@ export default tseslint.config(
 
   // The entry point logs its bind address to stdout before any logger exists.
   {
-    files: ["src/server.ts"],
+    files: ["src/server.ts", "prisma/seed.ts"],
     rules: {
       "no-console": "off",
     },
