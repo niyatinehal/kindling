@@ -44,6 +44,10 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # A formatter that only runs in the editor is a suggestion.
+      - name: Check formatting
+        run: npm run format:check
+
       - name: Type-check
         run: npm run typecheck
 

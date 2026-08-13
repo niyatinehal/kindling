@@ -80,7 +80,7 @@ curl localhost:3000/healthz
 | `npm run lint`         | ESLint, type-aware; fails on warnings              |
 | `npm run lint:fix`     | ESLint with `--fix`                                |
 | `npm run format`       | Prettier, writes changes                           |
-| `npm run format:check` | Prettier, check only (what CI would run)           |
+| `npm run format:check` | Prettier, check only — fails instead of rewriting  |
 
 ## Layout
 
@@ -104,5 +104,5 @@ only one the code reads today, and it falls back to `3000`.
 
 ## CI
 
-`.github/workflows/ci.yml` runs on every pull request to `main`: `npm ci` → lint → `tsc --noEmit`
-→ test. A lint error or failing test blocks the PR.
+`.github/workflows/ci.yml` runs on every pull request to `main`: `npm ci` → lint → format check →
+`tsc --noEmit` → test. A lint error, formatting drift, type error, or failing test blocks the PR.
