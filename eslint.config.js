@@ -6,7 +6,7 @@ export default tseslint.config(
   {
     // supabase/.temp/ holds generated runtime state (e.g. edge function
     // bundles) from `supabase start`; it is gitignored and not project source.
-    ignores: ["dist/**", "coverage/**", "supabase/.temp/**"],
+    ignores: ["dist/**", "coverage/**", "supabase/.temp/**", "generated/**"],
   },
 
   js.configs.recommended,

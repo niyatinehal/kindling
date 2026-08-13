@@ -1,0 +1,101 @@
+generator client {
+  provider               = "prisma-client"
+  output                 = "../generated/prisma"
+  moduleFormat           = "esm"
+  generatedFileExtension = "ts"
+  // Required: without this the client imports "./enums.ts" and tsc fails
+  // under module: "nodenext".
+  importFileExtension    = "js"
+  runtime                = "nodejs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Locale {
+  en
+  hi
+}
+
+enum UserStatus {
+  active
+  suspended
+  deleted
+}
+
+enum FamilyRole {
+  admin
+  adult
+  child
+  elderly
+}
+
+enum MembershipStatus {
+  active
+  left
+  removed
+}
+
+model User {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  /// Supabase auth.users.id. Nullable until Epic 2 introduces signup; the
+  /// foreign key is added by a hand-written migration because the auth schema
+  /// is deliberately not modelled here.
+  authUserId String? @unique @map("auth_user_id") @db.Uuid
+
+  email       String?    @map("email")
+  phone       String?    @map("phone")
+  displayName String     @map("display_name")
+  locale      Locale     @default(en)
+  status      UserStatus @default(active)
+  lastLoginAt DateTime?  @map("last_login_at")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  createdFamilies Family[]           @relation("FamilyCreatedBy")
+  memberships     FamilyMembership[]
+
+  @@map("users")
+}
+
+model Family {
+  id   String @id @default(uuid(7)) @db.Uuid
+  name String
+
+  createdByUserId String @map("created_by_user_id") @db.Uuid
+  createdBy       User   @relation("FamilyCreatedBy", fields: [createdByUserId], references: [id])
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  memberships FamilyMembership[]
+
+  @@map("families")
+}
+
+model FamilyMembership {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  familyId String @map("family_id") @db.Uuid
+  family   Family @relation(fields: [familyId], references: [id])
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id])
+
+  role     FamilyRole
+  status   MembershipStatus @default(active)
+  joinedAt DateTime         @map("joined_at")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@unique([familyId, userId])
+  @@index([familyId, role])
+  @@map("family_memberships")
+}

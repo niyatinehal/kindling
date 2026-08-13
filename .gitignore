@@ -25,3 +25,6 @@ npm-debug.log*
 
 # supabase local stack state
 supabase/.temp/
+
+# prisma generated client
+generated/

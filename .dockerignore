@@ -22,3 +22,5 @@ docker-compose.yml
 README.md
 *.log
 *.tsbuildinfo
+
+generated/
