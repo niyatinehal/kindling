@@ -5,8 +5,6 @@
     "lib": ["es2023"],
     "module": "nodenext",
     "moduleResolution": "nodenext",
-    "outDir": "dist",
-    "rootDir": "src",
     "sourceMap": true,
     "declaration": false,
 
@@ -29,6 +27,7 @@
 
     "types": ["node"]
   },
-  "include": ["src/**/*.ts"],
+  /* Type-checks and lints everything. `tsconfig.build.json` narrows this to src/ for emit. */
+  "include": ["src/**/*.ts", "test/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

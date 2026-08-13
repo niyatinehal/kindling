@@ -1,0 +1,9 @@
+{
+  /* Emit config: src/ only, so dist/ mirrors src/ without a nested src/ folder. */
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src/**/*.ts"]
+}
