@@ -1,18 +1,24 @@
 {
-  /* Emit config: src/ only. rootDir is intentionally left unset — the
-   * generated Prisma client lives outside src/ but is pulled into this
-   * program because src/db/prisma.ts imports it, so pinning rootDir to
-   * "src" makes tsc refuse to emit (TS6059). Leaving it unset lets tsc infer
-   * the common ancestor of every file actually in the program, which nests
-   * output one level deeper (dist/src/..., dist/generated/...). The
-   * Dockerfile copies this dist/ tree wholesale and unpromoted — dev
-   * (`npm start`) and prod (the runtime image) agree on the same
-   * dist/src/... layout — and uses this compiled dist/generated/* —
-   * schema.prisma's generatedFileExtension = "ts" means Prisma's own output
-   * has no runnable .js of its own; only this compile does. */
+  /* Emit config: src/ only. rootDir is pinned to "." (the repo root, one
+   * level above both src/ and generated/) rather than left for tsc to
+   * infer. The generated Prisma client lives outside src/ but is pulled
+   * into this program because src/db/prisma.ts imports
+   * ../../generated/prisma/client.js, so rootDir can't be "src" — tsc would
+   * refuse to emit a file outside it (TS6059). Inference happened to land
+   * on the repo root too, which is what produces the dist/src/...,
+   * dist/generated/... layout that `main`, `npm start`, and the Dockerfile
+   * CMD all hard-code — but that layout was only an accident of whichever
+   * files happened to be in the program. Move or remove the prisma.ts
+   * import and inference would silently collapse the tree to
+   * dist/server.js, breaking all three. Pinning "." makes the layout a
+   * deliberate contract instead: dist/src/... and dist/generated/... stay
+   * put even if the import graph changes, and a genuine attempt to shrink
+   * rootDir back to "src" now fails loudly with TS6059 instead of
+   * succeeding and quietly changing the output layout. */
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "outDir": "dist"
+    "outDir": "dist",
+    "rootDir": "."
   },
   "include": ["src/**/*.ts"]
 }
