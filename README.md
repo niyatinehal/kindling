@@ -1,13 +1,11 @@
 # Family Wellness Platform
 
-TypeScript + Express service backed by Postgres via Supabase and Prisma. The schema enforces
-Domain A's invariants (soft-deleted users, unique-while-live emails, one active membership per
-family member) at the database level, with `/healthz` and `/readyz` for liveness and readiness.
 [![CI](https://github.com/niyatinehal/wellness-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/niyatinehal/wellness-platform/actions/workflows/ci.yml)
 
-TypeScript + Express service skeleton. Sprint 0 deliberately contains **zero product logic** —
-the only route is a health check. The point is that the environment, linting, tests, container
-build, and CI are all in place before any feature depends on them.
+TypeScript + Express service backed by Postgres via Supabase and Prisma. Identity is provided by
+Supabase Auth and verified here; the schema enforces Domain A's invariants (soft-deleted users,
+unique-while-live emails, one active membership per family member) at the database level, with
+`/healthz` and `/readyz` for liveness and readiness.
 
 ## Prerequisites
 
