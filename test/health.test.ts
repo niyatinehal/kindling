@@ -3,15 +3,21 @@ import request from "supertest";
 
 import { createApp } from "../src/app.js";
 
+const deps = {
+  checkDatabase: () => Promise.resolve(),
+  prisma: {} as unknown as Parameters<typeof createApp>[0]["prisma"],
+  verify: () => Promise.resolve({ authUserId: "unused" }),
+};
+
 /**
  * Drives the app through `createApp()` rather than `server.ts`, so no port is
  * ever bound. That is the whole reason app/server are separate files.
  */
 describe("GET /healthz", () => {
   it("responds 200 with a JSON status body", async () => {
-    const response = await request(createApp({ checkDatabase: () => Promise.resolve() })).get(
-      "/healthz",
-    );
+    const response = await request(
+      createApp({ ...deps, checkDatabase: () => Promise.resolve() }),
+    ).get("/healthz");
 
     expect(response.status).toBe(200);
     expect(response.headers["content-type"]).toMatch(/application\/json/);
@@ -22,9 +28,9 @@ describe("GET /healthz", () => {
   });
 
   it("does not leak the Express fingerprint", async () => {
-    const response = await request(createApp({ checkDatabase: () => Promise.resolve() })).get(
-      "/healthz",
-    );
+    const response = await request(
+      createApp({ ...deps, checkDatabase: () => Promise.resolve() }),
+    ).get("/healthz");
 
     expect(response.headers["x-powered-by"]).toBeUndefined();
   });

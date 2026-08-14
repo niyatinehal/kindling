@@ -3,9 +3,16 @@ import request from "supertest";
 
 import { createApp } from "../src/app.js";
 
-const ready = () => createApp({ checkDatabase: () => Promise.resolve() });
+const deps = {
+  checkDatabase: () => Promise.resolve(),
+  prisma: {} as unknown as Parameters<typeof createApp>[0]["prisma"],
+  verify: () => Promise.resolve({ authUserId: "unused" }),
+};
+
+const ready = () => createApp({ ...deps, checkDatabase: () => Promise.resolve() });
 const broken = () =>
   createApp({
+    ...deps,
     checkDatabase: () =>
       Promise.reject(new Error("connection refused to postgres://user:SECRET@host/db")),
   });

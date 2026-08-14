@@ -15,6 +15,11 @@ services:
       # src/config/env.ts requires it at boot (prisma/seed.ts does use it),
       # so it must be forwarded here too or the container exits immediately.
       DIRECT_URL: ${DIRECT_URL:-postgresql://postgres:postgres@host.docker.internal:54322/postgres}
+      # src/config/env.ts requires this at boot too — the JWT issuer and JWKS
+      # endpoint are derived from it. Same failure mode as DATABASE_URL/
+      # DIRECT_URL above if it isn't forwarded: the container exits
+      # immediately and, under `restart: unless-stopped`, crash-loops.
+      SUPABASE_URL: ${SUPABASE_URL:-http://host.docker.internal:54321}
     extra_hosts:
       # Linux's Docker Engine doesn't resolve host.docker.internal natively;
       # this makes it resolve to the host gateway. Docker Desktop

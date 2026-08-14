@@ -33,13 +33,15 @@ export default {
       displayName: "integration",
       testMatch: ["<rootDir>/test/integration/**/*.test.ts"],
       testTimeout: 30000,
-      // Both integration files truncate every Domain A table in a global
-      // beforeAll, so two workers running concurrently delete each other's
-      // fixtures. Pinning this project to one worker serializes the files
-      // within `test:integration` and within `test:all` (which runs the
-      // `unit` and `integration` projects together) without slowing down
-      // `npm test`, which only ever selects the `unit` project.
-      maxWorkers: 1,
+      // NOTE: `maxWorkers` does NOT work here. Jest treats it as a top-level
+      // option and silently ignores it inside a `projects` entry — verified by
+      // observing 4/11 integration tests pass without `--runInBand` and 10/11
+      // with it, on identical code. Serialization is therefore enforced by
+      // `--runInBand` on the `test:integration` and `test:all` scripts instead.
+      // It is genuinely needed: both integration files truncate every Domain A
+      // table in a global `beforeAll`, so concurrent workers delete each
+      // other's fixtures. `npm test` selects only the `unit` project and stays
+      // parallel.
     },
   ],
 };

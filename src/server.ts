@@ -1,11 +1,16 @@
 import { loadEnv } from "./config/env.js";
 import { createPrismaClient, disconnect, pingDatabase } from "./db/prisma.js";
 import { createApp } from "./app.js";
+import { createSupabaseVerifier } from "./auth/verifyToken.js";
 
 const env = loadEnv(process.env);
 const prisma = createPrismaClient(env.DATABASE_URL);
 
-const app = createApp({ checkDatabase: () => pingDatabase(prisma) });
+const app = createApp({
+  checkDatabase: () => pingDatabase(prisma),
+  prisma,
+  verify: createSupabaseVerifier(env.SUPABASE_URL),
+});
 
 const server = app.listen(env.PORT, () => {
   console.log(`wellness-platform listening on http://localhost:${env.PORT}`);

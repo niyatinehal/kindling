@@ -79,20 +79,20 @@ The conventional Supabase pattern — `public.users.id` = `auth.users.id` — is
 
 Instead:
 
-| Field           | Type                                   | Constraints                                                      |
-| --------------- | -------------------------------------- | ---------------------------------------------------------------- |
-| `id`            | uuid (v7, client-generated)            | primary key                                                      |
-| `auth_user_id`  | uuid                                   | unique, **nullable**, FK → `auth.users(id)` `ON DELETE SET NULL` |
-| `email`         | string                                 | unique **where `deleted_at IS NULL`**                            |
-| `phone`         | string                                 | unique **where `deleted_at IS NULL`**                            |
-| `display_name`  | string                                 | not null                                                         |
-| `locale`        | enum(`en`, `hi`)                       | default `en`                                                     |
-| `status`        | enum(`active`, `suspended`, `deleted`) | default `active`                                                 |
-| `last_login_at` | timestamp                              | nullable                                                         |
+| Field           | Type                                   | Constraints                                                                                                                                                                               |
+| --------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`            | uuid (v7, client-generated)            | primary key                                                                                                                                                                               |
+| `auth_user_id`  | uuid                                   | unique, **nullable**, FK → `auth.users(id)` `ON DELETE SET NULL` — **superseded 2026-08-14: now `NOT NULL` with `ON DELETE RESTRICT`**, see `2026-08-14-auth-family-consent-design.md` §4 |
+| `email`         | string                                 | unique **where `deleted_at IS NULL`**                                                                                                                                                     |
+| `phone`         | string                                 | unique **where `deleted_at IS NULL`**                                                                                                                                                     |
+| `display_name`  | string                                 | not null                                                                                                                                                                                  |
+| `locale`        | enum(`en`, `hi`)                       | default `en`                                                                                                                                                                              |
+| `status`        | enum(`active`, `suspended`, `deleted`) | default `active`                                                                                                                                                                          |
+| `last_login_at` | timestamp                              | nullable                                                                                                                                                                                  |
 
 Cost of the indirection: one indexed lookup per authenticated request (`WHERE auth_user_id = <jwt.sub>`), trivially cacheable.
 
-`auth_user_id` is nullable in this scope because no signup flow exists yet — Sprint 1's rows come from the seed script. **Epic 2 tightens it to `NOT NULL`** once every user originates from Supabase Auth.
+`auth_user_id` is nullable in this scope because no signup flow exists yet — Sprint 1's rows come from the seed script. **Epic 2 tightens it to `NOT NULL`** once every user originates from Supabase Auth. **Done 2026-08-14** in Phase A of `2026-08-14-auth-family-consent-design.md`, which also changed the foreign key to `ON DELETE RESTRICT` — see its §4.
 
 `password_hash` and `auth_provider` are **removed** from `User` — Supabase owns both. `email` and `phone` remain, populated by the seed now; Epic 2 adds a trigger keeping them in sync with `auth.users`.
 
@@ -108,12 +108,12 @@ Per the database architecture doc, unchanged: `Family(name, created_by_user_id)`
 
 Prisma generates table DDL. Four migrations are hand-written, because Prisma's schema DSL cannot express them:
 
-| Hand-written SQL                                                                                | Why                                                                                       |
-| ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `CREATE UNIQUE INDEX ... ON family_memberships(user_id) WHERE status = 'active'`                | No partial-index support in the DSL. This is the invariant enforcing one-family-per-user. |
-| `set_updated_at()` function + `BEFORE UPDATE` triggers                                          | Prisma's `@updatedAt` is client-side only; any raw SQL write bypasses it.                 |
-| `ALTER TABLE users ADD FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE SET NULL` | Cross-schema FK, with `auth` deliberately outside the Prisma schema.                      |
-| `CREATE UNIQUE INDEX ... ON users(email) WHERE deleted_at IS NULL` (and `phone`)                | See §11 — plain unique + soft delete permanently burns an email address.                  |
+| Hand-written SQL                                                                                | Why                                                                                                                                                                                                                                                                                |
+| ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CREATE UNIQUE INDEX ... ON family_memberships(user_id) WHERE status = 'active'`                | No partial-index support in the DSL. This is the invariant enforcing one-family-per-user.                                                                                                                                                                                          |
+| `set_updated_at()` function + `BEFORE UPDATE` triggers                                          | Prisma's `@updatedAt` is client-side only; any raw SQL write bypasses it.                                                                                                                                                                                                          |
+| `ALTER TABLE users ADD FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE SET NULL` | Cross-schema FK, with `auth` deliberately outside the Prisma schema. **Superseded 2026-08-14: `ON DELETE RESTRICT`.** `SET NULL` was correct while the column was nullable; once Phase A made it `NOT NULL`, `SET NULL` could never succeed and silently blocked account deletion. |
+| `CREATE UNIQUE INDEX ... ON users(email) WHERE deleted_at IS NULL` (and `phone`)                | See §11 — plain unique + soft delete permanently burns an email address.                                                                                                                                                                                                           |
 
 **UUIDv7 is generated client-side** via Prisma's `uuid(7)` rather than as a database default, avoiding a dependency on a `pg_uuidv7` extension being present in Supabase's Postgres build. Consequence: raw SQL inserts must supply their own ids.
 
@@ -177,7 +177,7 @@ New dependencies this implies: `@prisma/adapter-pg`, `pg`, and `@prisma/client` 
 
 `src/config/env.ts`, validated with Zod, parsed **once at boot** so a missing variable fails immediately rather than at first query: `DATABASE_URL`, `DIRECT_URL`, `PORT` (default 3000), `NODE_ENV`.
 
-`SUPABASE_URL`, `SUPABASE_ANON_KEY`, and the service-role key are **not** added yet — nothing in this scope calls Supabase's API. They arrive with Auth in Epic 2. The service-role key, when it exists, never reaches a client and is never logged.
+`SUPABASE_URL`, `SUPABASE_ANON_KEY`, and the service-role key are **not** added yet — nothing in this scope calls Supabase's API. They arrive with Auth in Epic 2. **Superseded 2026-08-14:** `SUPABASE_URL` is now required at boot (the JWT issuer and JWKS endpoint derive from it) and `SUPABASE_SERVICE_ROLE_KEY` is required by the seed. `SUPABASE_ANON_KEY` is still not used server-side. The service-role key, when it exists, never reaches a client and is never logged.
 
 `.env.example` gains both connection URLs pointed at the local stack. Real `.env` stays gitignored.
 
@@ -261,16 +261,16 @@ This design changes three things in `2026-08-07-family-wellness-platform-databas
 
 ## 12. Out of scope
 
-| Deferred                                                     | Lands in                                                    |
-| ------------------------------------------------------------ | ----------------------------------------------------------- |
-| Auth flows, JWT middleware, session handling                 | Epic 2                                                      |
-| `auth_user_id` becoming `NOT NULL`; email/phone sync trigger | Epic 2                                                      |
-| `ConsentRecord` (DPDP audit trail)                           | Epic 2, with auth                                           |
-| RLS policies                                                 | Only if a use case demands them; the app tier enforces RBAC |
-| Supabase Storage wiring                                      | The media/vision sprint                                     |
-| Redis, BullMQ, `AIGenerationJob`                             | The AI pipeline sprints                                     |
-| Domains B–I (~33 entities)                                   | When a feature reads them                                   |
-| Supabase cloud project, production deploy                    | The deployment sprint                                       |
+| Deferred                                                                                           | Lands in                                                    |
+| -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Auth flows, JWT middleware, session handling                                                       | Epic 2                                                      |
+| `auth_user_id` becoming `NOT NULL` (**done 2026-08-14**); email/phone sync trigger (still pending) | Epic 2                                                      |
+| `ConsentRecord` (DPDP audit trail)                                                                 | Epic 2, with auth                                           |
+| RLS policies                                                                                       | Only if a use case demands them; the app tier enforces RBAC |
+| Supabase Storage wiring                                                                            | The media/vision sprint                                     |
+| Redis, BullMQ, `AIGenerationJob`                                                                   | The AI pipeline sprints                                     |
+| Domains B–I (~33 entities)                                                                         | When a feature reads them                                   |
+| Supabase cloud project, production deploy                                                          | The deployment sprint                                       |
 
 ---
 
