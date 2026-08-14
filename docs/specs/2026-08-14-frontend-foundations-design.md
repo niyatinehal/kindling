@@ -174,9 +174,42 @@ it is a runtime failure, so a green build is no evidence against it.
 
 **Therefore slice 1 must prove the PWA from a production build**
 (`next build && next start`), never from `next dev`. "Installs and compiles"
-counts as nothing. If #360 bites, the fallback is `@serwist/next` with
-`next build --webpack`, trading away Turbopack — a call for the user, not a
-silent substitution.
+counts as nothing.
+
+#### #360 reproduces, and there is a one-line fix
+
+A throwaway scaffold (Next 16.3.1, React 19.2.8, the real dependency set)
+reproduced #360 **locally**, not merely on Vercel:
+
+```
+Error: Cannot find package 'esbuild-wasm' imported from
+  .next/server/chunks/[root-of-the-server]__1quudrk._.js
+  code: 'ERR_MODULE_NOT_FOUND'
+> Build error occurred
+Error: Failed to collect page data for /serwist/[path]
+```
+
+The cause is that `@serwist/turbopack` declares **both** `esbuild` and
+`esbuild-wasm` as peers and defaults to the wasm one. Installing `esbuild`
+alone — which the documented install line tells you to do — leaves the wasm
+import unresolvable.
+
+**Fix: pass `useNativeEsbuild: true` to `createSerwistRoute`.** With it the
+build succeeds, and the fallback to `@serwist/next` + `--webpack` is not
+needed. Verified end to end against `next build && next start`:
+
+| Check            | Result                                                         |
+| ---------------- | -------------------------------------------------------------- |
+| `next build`     | ✓ compiled; `(serwist) 18 precache entries (603.25 KiB)`       |
+| `/serwist/sw.js` | **200**, `application/javascript`, 41,432 bytes, real manifest |
+| `/sw.js`         | **404** — confirms the worker is not at the origin root        |
+
+Two further gotchas the scaffold surfaced, both silent until they aren't:
+
+- **`swUrl` is not an option of `createSerwistRoute`** (TS2353). It belongs
+  only on `<SerwistProvider swUrl=…>`. The docs' prose invites the mistake.
+- **`app/sw.ts` needs `"webworker"` in `tsconfig.json`'s `lib`**, or
+  `ServiceWorkerGlobalScope` fails to resolve (TS2552).
 
 **Elderly mode.** Built as a mechanism, not exercised: a role-driven provider plus CSS custom properties for type scale and contrast. A brand-new user has no family and therefore no role, so slice 1 cannot render it. The seam is cheap now and expensive to retrofit.
 
