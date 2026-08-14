@@ -19,9 +19,19 @@ const prisma = createPrismaClient(connectionString);
  */
 let provisioned: string[] = [];
 
+/**
+ * Records the id handed back for each email, so tests can assert a seeded
+ * user's `authUserId` is the exact value the provisioner returned — not
+ * merely something UUID-shaped, which a seed that bypassed the seam and
+ * generated its own id inline would also produce.
+ */
+let provisionedIds = new Map<string, string>();
+
 const fakeProvisioner = (email: string): Promise<string> => {
   provisioned.push(email);
-  return Promise.resolve(randomUUID());
+  const id = randomUUID();
+  provisionedIds.set(email, id);
+  return Promise.resolve(id);
 };
 
 async function clearAll(): Promise<void> {
@@ -33,6 +43,7 @@ async function clearAll(): Promise<void> {
 
 beforeEach(() => {
   provisioned = [];
+  provisionedIds = new Map();
 });
 
 beforeAll(async () => {
@@ -109,21 +120,37 @@ describe("seed", () => {
   });
 
   it("does not provision again on a repeat run", async () => {
-    await seed(prisma, fakeProvisioner);
+    await clearAll();
     provisioned = [];
 
+    await seed(prisma, fakeProvisioner);
+
+    // Prove the seam was actually exercised on the first run — otherwise a
+    // seed that never calls the provisioner would satisfy the assertion
+    // below for the wrong reason.
+    expect(provisioned.sort()).toEqual(["admin@demo.test", "adult@demo.test"]);
+
+    provisioned = [];
     await seed(prisma, fakeProvisioner);
 
     expect(provisioned).toEqual([]);
   });
 
-  it("gives every seeded user a non-null auth_user_id", async () => {
+  it("gives every seeded user the auth_user_id the provisioner returned", async () => {
+    await clearAll();
+    provisionedIds.clear();
+
     await seed(prisma, fakeProvisioner);
 
     const users = await prisma.user.findMany();
     expect(users).toHaveLength(2);
+    expect(provisionedIds.size).toBe(2);
     for (const user of users) {
-      expect(user.authUserId).toMatch(/^[0-9a-f-]{36}$/);
+      const { email } = user;
+      if (email === null) {
+        throw new Error("seeded demo user has no email");
+      }
+      expect(provisionedIds.get(email)).toBe(user.authUserId);
     }
   });
 });
