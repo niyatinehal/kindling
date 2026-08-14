@@ -1,22 +1,33 @@
+import { loadEnv } from "./config/env.js";
+import { createPrismaClient, disconnect, pingDatabase } from "./db/prisma.js";
 import { createApp } from "./app.js";
 
-const DEFAULT_PORT = 3000;
+const env = loadEnv(process.env);
+const prisma = createPrismaClient(env.DATABASE_URL);
 
-function resolvePort(value: string | undefined): number {
-  if (value === undefined || value.trim() === "") {
-    return DEFAULT_PORT;
-  }
+const app = createApp({ checkDatabase: () => pingDatabase(prisma) });
 
-  const port = Number(value);
-  if (!Number.isInteger(port) || port < 0 || port > 65535) {
-    throw new Error(`Invalid PORT: ${value}`);
-  }
+const server = app.listen(env.PORT, () => {
+  console.log(`wellness-platform listening on http://localhost:${env.PORT}`);
+});
 
-  return port;
+/**
+ * Close the HTTP server before the connection pool, so in-flight requests are
+ * not cut off mid-query.
+ */
+async function shutdown(signal: string): Promise<void> {
+  console.log(`${signal} received, shutting down`);
+
+  await new Promise<void>((resolve, reject) => {
+    server.close((error) => (error ? reject(error) : resolve()));
+  });
+  await disconnect(prisma);
+
+  process.exit(0);
 }
 
-const port = resolvePort(process.env.PORT);
-
-createApp().listen(port, () => {
-  console.log(`wellness-platform listening on http://localhost:${port}`);
-});
+for (const signal of ["SIGTERM", "SIGINT"] as const) {
+  process.on(signal, () => {
+    void shutdown(signal);
+  });
+}

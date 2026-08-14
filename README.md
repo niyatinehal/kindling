@@ -1,5 +1,8 @@
 # Family Wellness Platform
 
+TypeScript + Express service backed by Postgres via Supabase and Prisma. The schema enforces
+Domain A's invariants (soft-deleted users, unique-while-live emails, one active membership per
+family member) at the database level, with `/healthz` and `/readyz` for liveness and readiness.
 [![CI](https://github.com/niyatinehal/wellness-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/niyatinehal/wellness-platform/actions/workflows/ci.yml)
 
 TypeScript + Express service skeleton. Sprint 0 deliberately contains **zero product logic** —
@@ -8,92 +11,157 @@ build, and CI are all in place before any feature depends on them.
 
 ## Prerequisites
 
-- **Node.js 22+** and npm 10+ (for the local path)
-- **Docker** with Compose v2 (for the container path)
-
-You need only one of the two.
+- **Node.js 22+** and npm 10+
+- **Docker** with Compose v2 — the Supabase CLI stack and the test database both run in it
 
 ## Run it locally
+
+The app always talks to a real Postgres, so the Supabase stack must be running before you start
+the app. `.env` is required, not optional: the `dev` script runs Node with `--env-file=.env`, and
+without that file Node refuses to start (`node: .env: not found`) before any app code runs.
 
 ```bash
 git clone <repo-url>
 cd wellness_platform
 npm ci
+npx prisma generate        # generates the client into generated/prisma; npm ci doesn't do this
+cp .env.example .env       # required — dev fails immediately without it
+npx supabase start         # Postgres, Auth, Storage in Docker; first run pulls images
+npx prisma migrate deploy  # apply the schema
+npx prisma db seed         # one demo family, two members (uses DIRECT_URL — see below)
 npm run dev
 ```
 
 Then, in another terminal:
 
 ```bash
-curl localhost:3000/healthz
+curl localhost:3000/healthz   # liveness  — 200 even with the database down
+curl localhost:3000/readyz    # readiness — 200 only when Postgres answers, 503 otherwise
 ```
 
-Expected:
+Expected from `/readyz`:
 
 ```json
-{ "status": "ok", "uptime": 0 }
+{ "status": "ready", "checks": { "database": "up" } }
 ```
 
 To use a different port: `PORT=4000 npm run dev`, then curl `localhost:4000/healthz`.
 
-## Run it with Docker Compose
+Stop the stack with `npx supabase stop`. Inspect data with `npx prisma studio` or the Supabase
+Studio URL that `supabase start` prints (`http://127.0.0.1:54323` by default).
 
-Boots the app plus a Postgres container:
+## Run it in a container
+
+`docker-compose.yml` runs **only** the `app` service — Task 2 retired the Postgres container that
+used to ship alongside it. The Supabase stack must already be running on the host; the container
+reaches it at `host.docker.internal:54322`. Start Supabase first:
 
 ```bash
-docker compose up --build
+npx supabase start
 ```
 
-Then:
+The compose file's `app` service adds `extra_hosts: ["host.docker.internal:host-gateway"]` so
+`host.docker.internal` resolves inside the container on Linux too (Docker Desktop on
+macOS/Windows already resolves it natively; the entry is a harmless no-op there).
+
+**If you already created `.env` for local dev (above), you must override `DATABASE_URL` and
+`DIRECT_URL` on the command line when you run Compose.** Docker Compose auto-loads `.env` from the
+project directory for variable substitution, and that file points both variables at
+`127.0.0.1:54322` for the host — which is loopback _inside the container_, not the host's
+Postgres, and `/readyz` reports `{"status":"not_ready","checks":{"database":"down"}}` if you skip
+this. Shell environment variables take precedence over `.env`, so setting them inline fixes it:
 
 ```bash
+DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:54322/postgres \
+DIRECT_URL=postgresql://postgres:postgres@host.docker.internal:54322/postgres \
+docker compose up -d --build
+
 curl localhost:3000/healthz
+curl localhost:3000/readyz
 ```
 
-Compose reads `.env` if present and otherwise falls back to the dev defaults baked into
-`docker-compose.yml`, so it boots with no setup. To customise credentials or ports:
+(If no `.env` file exists yet, the same two variables default to those same
+`host.docker.internal` values inside `docker-compose.yml`, so the override above is optional —
+but since these steps come after creating `.env`, pass it explicitly.)
+
+Stop the container with `docker compose down`.
+
+## Run the tests
 
 ```bash
-cp .env.example .env   # then edit
+npm test   # unit — 14 tests, no Docker required
 ```
 
-Shut down with `docker compose down` (add `-v` to also drop the Postgres volume).
-
-> Postgres is **not used by any code yet**. It is running so that Sprint 1 can connect to it
-> without changing the topology.
-
-## Run the container on its own
+Integration tests exercise the database invariants directly, so the test database needs its
+schema before they run:
 
 ```bash
-docker build -t wellness-platform .
-docker run --rm -p 3000:3000 wellness-platform
-curl localhost:3000/healthz
+npm run test:db:up          # start the disposable test Postgres on 127.0.0.1:54329
+DIRECT_URL=postgresql://postgres:postgres@127.0.0.1:54329/wellness_test npx prisma migrate deploy
+npm run test:integration    # 8 tests, single worker (see jest.config.js)
+npm run test:db:down
 ```
+
+The test database starts empty on every `test:db:up` (no volume), so the `migrate deploy` step is
+required every time, not just the first.
 
 ## npm scripts
 
-| Script                 | What it does                                       |
-| ---------------------- | -------------------------------------------------- |
-| `npm run dev`          | Watch mode via `tsx`, no build step                |
-| `npm run build`        | Compiles `src/` to `dist/` (`tsconfig.build.json`) |
-| `npm start`            | Runs the compiled `dist/server.js`                 |
-| `npm test`             | Jest + Supertest against `app.ts`                  |
-| `npm run typecheck`    | `tsc --noEmit` over `src/` **and** `test/`         |
-| `npm run lint`         | ESLint, type-aware; fails on warnings              |
-| `npm run lint:fix`     | ESLint with `--fix`                                |
-| `npm run format`       | Prettier, writes changes                           |
-| `npm run format:check` | Prettier, check only — fails instead of rewriting  |
+| Script                     | What it does                                                                                  |
+| -------------------------- | --------------------------------------------------------------------------------------------- |
+| `npm run dev`              | Watch mode via `tsx`, loads `.env` with `--env-file`                                          |
+| `npm run build`            | Compiles `src/` to `dist/` (`tsconfig.build.json`)                                            |
+| `npm start`                | Runs `node dist/src/server.js` — **no** `--env-file`; see note below                          |
+| `npm test`                 | Jest unit project — 14 tests, no Docker required                                              |
+| `npm run test:integration` | Jest integration project — 8 tests, `maxWorkers: 1` (jest.config.js), needs the test database |
+| `npm run test:all`         | Both Jest projects in one run                                                                 |
+| `npm run typecheck`        | `prisma generate`, then `tsc --noEmit` over `src/` **and** `test/`                            |
+| `npm run lint`             | ESLint, type-aware; fails on warnings                                                         |
+| `npm run lint:fix`         | ESLint with `--fix`                                                                           |
+| `npm run format`           | Prettier, writes changes                                                                      |
+| `npm run format:check`     | Prettier, check only — fails instead of rewriting                                             |
+| `npm run db:start`         | `supabase start` — the local Postgres/Auth/Storage stack                                      |
+| `npm run db:stop`          | `supabase stop`                                                                               |
+| `npm run db:status`        | `supabase status` — prints URLs and keys for the running stack                                |
+| `npm run test:db:up`       | Starts the disposable test Postgres (`docker-compose.test.yml`), waits for health             |
+| `npm run test:db:down`     | Stops and removes the test Postgres                                                           |
+| `npm run prisma:generate`  | `prisma generate` — regenerates the client into `generated/prisma`                            |
+| `npm run prisma:migrate`   | `prisma migrate dev` — see the migration note below before using this                         |
+| `npm run prisma:studio`    | `prisma studio` — browse the database at `DIRECT_URL`                                         |
+| `npm run db:seed`          | `prisma db seed` — runs `prisma/seed.ts` against `DIRECT_URL`                                 |
+
+`npm start` deliberately has no `--env-file`: it is the production entrypoint, and production
+environment variables come from the real process environment (container orchestrator, systemd,
+etc.), not a checked-in file. Run `npm run build` first, then run `npm start` from an environment
+that already has `DATABASE_URL`, `DIRECT_URL`, and `PORT` set.
+
+> **Creating new migrations:** `npx prisma migrate dev --create-only` currently fails against the
+> local Supabase database with `P4002`, because the schema has a foreign key into `auth.users`, a
+> table Supabase owns that the migration engine's diffing can't see across schemas. Until that's
+> resolved, hand-write new migration SQL under
+> `prisma/migrations/<timestamp>_<name>/migration.sql` (follow the existing migrations for the
+> pattern) and apply it with `npx prisma migrate deploy`, rather than running `prisma migrate dev`.
 
 ## Layout
 
 ```
 src/
   app.ts            Express app: middleware + routes. No .listen() — keeps it testable.
-  server.ts         Entrypoint: reads PORT, calls .listen().
+  server.ts         Entrypoint: reads PORT, calls .listen(), wires graceful shutdown.
+  config/
+    env.ts          Validates process.env with zod; fails fast at boot.
+  db/
+    prisma.ts        Builds the Prisma client with the driver adapter; readiness ping.
   routes/
-    health.ts       GET /healthz
+    health.ts        GET /healthz — liveness, no DB.
+    ready.ts          GET /readyz  — readiness, pings the database.
+prisma/
+  schema.prisma      Domain A models: User, Family, FamilyMembership.
+  migrations/        Hand-authored SQL migrations (see the note above).
+  seed.ts            Idempotent demo family + two members, run via `prisma db seed`.
 test/
-  health.test.ts    Supertest against app.ts directly, so no port is bound.
+  health.test.ts, ready.test.ts, config/, db/   Unit tests — no Docker.
+  integration/       Exercises the real database's constraints — needs the test DB.
 ```
 
 `app.ts` and `server.ts` are split on purpose: tests import the app and never bind a port, which
@@ -101,10 +169,31 @@ avoids "address already in use" and keeps the suite fast.
 
 ## Configuration
 
-All config comes from environment variables — see `.env.example` for the full list. `PORT` is the
-only one the code reads today, and it falls back to `3000`.
+All config comes from environment variables, validated at boot by `src/config/env.ts` — see
+`.env.example` for the full list and comments. `PORT` defaults to `3000`; `DATABASE_URL` and
+`DIRECT_URL` are required.
+
+Two connection strings exist because Supabase pools connections:
+
+- `DATABASE_URL` — pooled. Used by the app at runtime via the Prisma driver adapter.
+- `DIRECT_URL` — direct. Used by the Prisma CLI for migrations and seeding, which issue
+  statements the pooler does not support.
+
+Locally the Supabase CLI has no pooler, so both point at port 54322. In production they differ:
+6543 (pooled) and 5432 (direct).
+
+`SHADOW_DATABASE_URL` is optional and only needed to run the migration drift check
+(`prisma migrate diff`) locally — see `.env.example` for how it's used and why it must point at an
+always-empty database.
 
 ## CI
 
-`.github/workflows/ci.yml` runs on every pull request to `main`: `npm ci` → lint → format check →
-`tsc --noEmit` → test. A lint error, formatting drift, type error, or failing test blocks the PR.
+`.github/workflows/ci.yml` runs two jobs on every pull request to `main`:
+
+- **verify** — `npm ci` → `prisma generate` → lint → format check → `tsc --noEmit` → unit tests.
+- **integration** — brings up a disposable Postgres service, creates a shadow database, runs the
+  migration drift check (`prisma migrate diff --exit-code`, failing the build if `schema.prisma`
+  was edited without a matching migration), applies migrations, then runs the integration tests.
+
+A lint error, formatting drift, type error, failing test, schema drift, or failing integration
+test blocks the PR.

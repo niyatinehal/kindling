@@ -1,0 +1,17 @@
+name: wellness-platform-test
+
+services:
+  test-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: wellness_test
+    ports:
+      - "54329:5432"
+    # No volume: every run starts from an empty database on purpose.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d wellness_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 15

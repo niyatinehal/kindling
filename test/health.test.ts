@@ -9,7 +9,9 @@ import { createApp } from "../src/app.js";
  */
 describe("GET /healthz", () => {
   it("responds 200 with a JSON status body", async () => {
-    const response = await request(createApp()).get("/healthz");
+    const response = await request(createApp({ checkDatabase: () => Promise.resolve() })).get(
+      "/healthz",
+    );
 
     expect(response.status).toBe(200);
     expect(response.headers["content-type"]).toMatch(/application\/json/);
@@ -20,7 +22,9 @@ describe("GET /healthz", () => {
   });
 
   it("does not leak the Express fingerprint", async () => {
-    const response = await request(createApp()).get("/healthz");
+    const response = await request(createApp({ checkDatabase: () => Promise.resolve() })).get(
+      "/healthz",
+    );
 
     expect(response.headers["x-powered-by"]).toBeUndefined();
   });

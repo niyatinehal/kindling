@@ -8,33 +8,18 @@ services:
       NODE_ENV: production
       # The container always listens on 3000; remap on the host instead.
       PORT: 3000
-      # Unused in Sprint 0. Wired now so the topology is correct before it is
-      # load-bearing — Sprint 1 connects to this.
-      DATABASE_URL: postgres://${POSTGRES_USER:-wellness}:${POSTGRES_PASSWORD:-wellness}@db:5432/${POSTGRES_DB:-wellness}
+      # Pooled connection, used by the app at runtime. Locally there is no
+      # pooler, so this matches DIRECT_URL below.
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@host.docker.internal:54322/postgres}
+      # Direct connection. The app itself never reads this, but
+      # src/config/env.ts requires it at boot (prisma/seed.ts does use it),
+      # so it must be forwarded here too or the container exits immediately.
+      DIRECT_URL: ${DIRECT_URL:-postgresql://postgres:postgres@host.docker.internal:54322/postgres}
+    extra_hosts:
+      # Linux's Docker Engine doesn't resolve host.docker.internal natively;
+      # this makes it resolve to the host gateway. Docker Desktop
+      # (macOS/Windows) already resolves it, so this is a harmless no-op there.
+      - "host.docker.internal:host-gateway"
     ports:
       - "${APP_PORT:-3000}:3000"
-    depends_on:
-      db:
-        condition: service_healthy
     restart: unless-stopped
-
-  db:
-    # Pinned, never :latest.
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-wellness}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wellness}
-      POSTGRES_DB: ${POSTGRES_DB:-wellness}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
-    volumes:
-      # Named volume, so data survives `docker compose down`.
-      - postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wellness} -d ${POSTGRES_DB:-wellness}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-volumes:
-  postgres-data:
