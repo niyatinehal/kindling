@@ -33,7 +33,9 @@
 
 ## What moves into `api/`
 
-`src/`, `test/`, `prisma/`, `jest.config.js`, `tsconfig.json`, `tsconfig.build.json`, `eslint.config.js`, `prisma.config.ts`, `package.json`, and the untracked `.env`, `dist/`, `generated/`.
+`src/`, `test/`, `prisma/`, `jest.config.js`, `tsconfig.json`, `tsconfig.build.json`, `eslint.config.js`, `prisma.config.ts`, `package.json`, and the untracked `.env`.
+
+The untracked `dist/` and `generated/` are **deleted, not moved** — both are regenerable build output and Task 1 Step 3 removes them.
 
 ---
 
@@ -133,6 +135,10 @@ rm -rf dist generated node_modules
   }
 }
 ```
+
+This block is **not** Prettier-formatted as written — the repo's config expands
+`"workspaces": ["api"]` across multiple lines. Run `npx prettier --write package.json`
+immediately after saving it, or Step 7's `format:check` gate fails.
 
 Formatting and the Supabase CLI move to the root because both span workspaces: Prettier formats `web/` too, and `web/` authenticates against the same local stack.
 
@@ -270,7 +276,8 @@ RUN npm run build -w api
 RUN npm prune --omit=dev
 
 # @prisma/client declares `prisma` (the CLI) as an optional peer, so the prune
-# keeps it. Strip the ~40MB CLI explicitly. Hoisting means it is at the root.
+# keeps it. Strip the ~40MB CLI explicitly. Task 1 confirmed full hoisting, so
+# the CLI is at the root; the api/ path is kept only as a cheap safety net.
 RUN rm -rf node_modules/prisma api/node_modules/prisma
 ```
 
@@ -285,7 +292,6 @@ ENV PORT=3000
 WORKDIR /app
 
 COPY --from=builder --chown=node:node /app/node_modules ./node_modules
-COPY --from=builder --chown=node:node /app/api/node_modules ./api/node_modules
 COPY --from=builder --chown=node:node /app/api/dist ./api/dist
 COPY --chown=node:node package.json ./
 COPY --chown=node:node api/package.json ./api/package.json
@@ -300,7 +306,7 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 CMD ["node", "api/dist/src/server.js"]
 ```
 
-The second `COPY` of `api/node_modules` handles anything npm chose not to hoist. If that directory does not exist in the builder, the `COPY` fails the build — in that case delete the line and note it in your report, because it means npm hoisted everything.
+There is deliberately **no** `COPY` of `api/node_modules`. Task 1 confirmed npm hoists every dependency to the root `node_modules`, so that directory does not exist and copying it would fail the build. If a future dependency ever forces a nested install (a version conflict between workspaces), this stage must gain that copy back — the symptom would be a container that builds and then exits with `ERR_MODULE_NOT_FOUND`.
 
 - [ ] **Step 3: Update `.dockerignore`**
 
