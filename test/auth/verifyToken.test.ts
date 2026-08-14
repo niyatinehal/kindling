@@ -98,7 +98,54 @@ describe("createTokenVerifier", () => {
     await expect(verify(await mint({ sub: undefined }))).rejects.toThrow(InvalidTokenError);
   });
 
+  it("rejects a token with an empty-string subject", async () => {
+    await expect(verify(await mint({ sub: "" }))).rejects.toThrow(InvalidTokenError);
+  });
+
   it("rejects a token that is not a JWT at all", async () => {
     await expect(verify("not-a-token")).rejects.toThrow(InvalidTokenError);
+  });
+
+  it("rejects a token signed with a different algorithm (HS256)", async () => {
+    // Not a "kill" test for the `algorithms` option: jose's JWKS key
+    // resolvers (createLocalJWKSet/createRemoteJWKSet) refuse symmetric
+    // algorithms and bind every asymmetric algorithm to a fixed (kty, crv)
+    // pair before `algorithms` is ever consulted, so this rejects with or
+    // without that option present against an EC/P-256 key set — confirmed
+    // by temporarily deleting `algorithms: ["ES256"]` from the
+    // implementation and re-running this suite. It still documents and
+    // locks in the required behavior: a differently-algorithmed token must
+    // never verify.
+    const secret = new TextEncoder().encode("attacker-controlled-secret");
+    const token = await new SignJWT({})
+      .setProtectedHeader({ alg: "HS256", kid: "test-key" })
+      .setIssuer(ISSUER)
+      .setAudience(AUDIENCE)
+      .setSubject(SUB)
+      .setIssuedAt()
+      .setExpirationTime("5m")
+      .sign(secret);
+
+    await expect(verify(token)).rejects.toThrow(InvalidTokenError);
+  });
+
+  it("rejects a hand-crafted alg:none token with no signature", async () => {
+    // jose's SignJWT refuses to mint an alg:none token at all, so an
+    // attacker isn't emulated by jose's own signer here — the compact JWS
+    // is assembled by hand, the way an actual attacker would.
+    const encode = (value: unknown): string =>
+      Buffer.from(JSON.stringify(value)).toString("base64url");
+    const nowInSeconds = Math.floor(Date.now() / 1000);
+    const header = encode({ alg: "none", kid: "test-key" });
+    const payload = encode({
+      iss: ISSUER,
+      aud: AUDIENCE,
+      sub: SUB,
+      iat: nowInSeconds,
+      exp: nowInSeconds + 300,
+    });
+    const token = `${header}.${payload}.`;
+
+    await expect(verify(token)).rejects.toThrow(InvalidTokenError);
   });
 });
