@@ -15,7 +15,7 @@ type MintOptions = {
   sub?: string | undefined;
   issuer?: string;
   audience?: string;
-  expiresIn?: string;
+  expiresIn?: string | undefined;
   email?: string;
 };
 
@@ -29,8 +29,15 @@ async function mint(options: MintOptions = {}): Promise<string> {
     .setProtectedHeader({ alg: "ES256", kid: "test-key" })
     .setIssuer(options.issuer ?? ISSUER)
     .setAudience(options.audience ?? AUDIENCE)
-    .setIssuedAt()
-    .setExpirationTime(options.expiresIn ?? "5m");
+    .setIssuedAt();
+
+  // Mirrors the `sub` handling below: `"expiresIn" in options` distinguishes
+  // "key omitted, use the default" from "key present with value undefined,
+  // mint a token with no exp claim at all" — needed for the no-exp test.
+  const expiresIn = "expiresIn" in options ? options.expiresIn : "5m";
+  if (expiresIn !== undefined) {
+    token = token.setExpirationTime(expiresIn);
+  }
 
   const sub = "sub" in options ? options.sub : SUB;
   if (sub !== undefined) {
@@ -74,6 +81,16 @@ describe("createTokenVerifier", () => {
 
   it("rejects an expired token", async () => {
     await expect(verify(await mint({ expiresIn: "-1s" }))).rejects.toThrow(InvalidTokenError);
+  });
+
+  it("rejects a token with no expiry claim", async () => {
+    // jose does not require `exp` unless told to via `requiredClaims`.
+    // Without that option a token minted with no exp at all verifies and
+    // never expires. Non-vacuity confirmed by temporarily removing
+    // `requiredClaims: ["exp", "sub"]` from the implementation: this
+    // specific test failed (token was accepted), all others still passed;
+    // restoring the option made it pass again.
+    await expect(verify(await mint({ expiresIn: undefined }))).rejects.toThrow(InvalidTokenError);
   });
 
   it("rejects a tampered signature", async () => {
