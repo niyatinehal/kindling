@@ -128,19 +128,50 @@ async function ensureUser(
  * Calls Supabase's admin API to create a real auth account. Used only by
  * `prisma db seed` against the local stack — never on a request path, which is
  * why the service-role key is read here and nowhere else.
+ *
+ * Tolerates the account already existing: `migrate reset` drops the `public`
+ * schema and re-runs this seed, but `auth.users` is owned by the Supabase
+ * stack and survives the reset. Without this, the second `migrate reset` in a
+ * row dies here with a 422, because the demo email already has an auth
+ * account from the first run.
  */
 export function createSupabaseAuthUserProvisioner(
   supabaseUrl: string,
   serviceRoleKey: string,
 ): AuthUserProvisioner {
+  const baseUrl = supabaseUrl.replace(/\/+$/, "");
+  const headers = {
+    apikey: serviceRoleKey,
+    Authorization: `Bearer ${serviceRoleKey}`,
+    "Content-Type": "application/json",
+  };
+
+  /**
+   * GoTrue's admin list-users endpoint silently ignores an `email` query
+   * param — it returns every user, unfiltered, verified against a live local
+   * stack — but it does honor `filter`, which does a server-side substring
+   * match. Substring matching can still return near-misses (one address
+   * containing another), so the exact match is re-checked client-side rather
+   * than trusting the first row back.
+   */
+  async function findExistingAuthUserId(email: string): Promise<string | undefined> {
+    const response = await fetch(
+      `${baseUrl}/auth/v1/admin/users?filter=${encodeURIComponent(email)}`,
+      { headers },
+    );
+
+    if (!response.ok) {
+      return undefined;
+    }
+
+    const body = (await response.json()) as { users?: { id?: string; email?: string }[] };
+    return body.users?.find((user) => user.email === email)?.id;
+  }
+
   return async function provision(email: string): Promise<string> {
-    const response = await fetch(`${supabaseUrl.replace(/\/+$/, "")}/auth/v1/admin/users`, {
+    const response = await fetch(`${baseUrl}/auth/v1/admin/users`, {
       method: "POST",
-      headers: {
-        apikey: serviceRoleKey,
-        Authorization: `Bearer ${serviceRoleKey}`,
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify({
         email,
         password: "demo-password-change-me",
@@ -148,18 +179,29 @@ export function createSupabaseAuthUserProvisioner(
       }),
     });
 
-    if (!response.ok) {
-      // Deliberately does not include the response body: it can echo the
-      // service-role key back in an error envelope.
-      throw new Error(`could not provision an auth user (status ${String(response.status)})`);
+    if (response.ok) {
+      const body = (await response.json()) as { id?: string };
+      if (body.id === undefined) {
+        throw new Error("auth user creation returned no id");
+      }
+      return body.id;
     }
 
-    const body = (await response.json()) as { id?: string };
-    if (body.id === undefined) {
-      throw new Error("auth user creation returned no id");
+    if (response.status === 422) {
+      const errorBody = (await response.json().catch(() => undefined)) as
+        { error_code?: string } | undefined;
+
+      if (errorBody?.error_code === "email_exists") {
+        const existingId = await findExistingAuthUserId(email);
+        if (existingId !== undefined) {
+          return existingId;
+        }
+      }
     }
 
-    return body.id;
+    // Deliberately does not include the response body: it can echo the
+    // service-role key back in an error envelope.
+    throw new Error(`could not provision an auth user (status ${String(response.status)})`);
   };
 }
 
