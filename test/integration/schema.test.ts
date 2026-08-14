@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "@jest/globals";
 
 import { Prisma } from "../../generated/prisma/client.js";
 import { createPrismaClient, disconnect } from "../../src/db/prisma.js";
+import { randomUUID } from "node:crypto";
 
 const connectionString =
   process.env["TEST_DATABASE_URL"] ??
@@ -10,7 +11,13 @@ const connectionString =
 const prisma = createPrismaClient(connectionString);
 
 async function createUser(email: string) {
-  return prisma.user.create({ data: { displayName: "Test", email } });
+  // `auth_user_id` is NOT NULL, and on the Supabase stack it is foreign-keyed
+  // into `auth.users`. These tests run against plain Postgres, where that guard
+  // skips the constraint, so a generated UUID is both valid and honest here —
+  // these are schema-constraint tests, not auth tests.
+  return prisma.user.create({
+    data: { displayName: "Test", email, authUserId: randomUUID() },
+  });
 }
 
 /**

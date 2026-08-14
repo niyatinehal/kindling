@@ -6,13 +6,28 @@ const ADMIN_EMAIL = "admin@demo.test";
 const ADULT_EMAIL = "adult@demo.test";
 
 /**
+ * Creates a Supabase auth account and returns its id.
+ *
+ * This is injected rather than called directly because `users.auth_user_id` is
+ * NOT NULL and, on the Supabase stack, foreign-keyed into `auth.users` — so the
+ * seed cannot invent a value there. Integration tests run against plain
+ * Postgres, which has no `auth` schema and therefore no such foreign key, so
+ * they pass an implementation returning a generated UUID. The seed itself never
+ * inspects its environment.
+ */
+export type AuthUserProvisioner = (email: string) => Promise<string>;
+
+/**
  * Idempotent by design: re-running must not duplicate rows, because the
  * roadmap's definition of done is that a fresh clone plus migrate plus seed
  * produces identical data every time. Keyed on the demo email addresses.
  */
-export async function seed(prisma: PrismaClient): Promise<{ familyId: string }> {
-  const admin = await ensureUser(prisma, ADMIN_EMAIL, "Demo Admin");
-  const adult = await ensureUser(prisma, ADULT_EMAIL, "Demo Adult");
+export async function seed(
+  prisma: PrismaClient,
+  provisionAuthUser: AuthUserProvisioner,
+): Promise<{ familyId: string }> {
+  const admin = await ensureUser(prisma, provisionAuthUser, ADMIN_EMAIL, "Demo Admin");
+  const adult = await ensureUser(prisma, provisionAuthUser, ADULT_EMAIL, "Demo Adult");
 
   const family = await ensureFamily(prisma, "Demo Family", admin.id);
 
@@ -90,22 +105,80 @@ async function ensureMembership(
  * live rows — so `upsert` is not available here. Find-then-create is the
  * correct shape, and the demo emails are the idempotency key.
  */
-async function ensureUser(prisma: PrismaClient, email: string, displayName: string) {
+async function ensureUser(
+  prisma: PrismaClient,
+  provisionAuthUser: AuthUserProvisioner,
+  email: string,
+  displayName: string,
+) {
   const existing = await prisma.user.findFirst({ where: { email, deletedAt: null } });
 
   if (existing !== null) {
     return existing;
   }
 
-  return prisma.user.create({ data: { displayName, email, locale: "en" } });
+  // Provisioned only on the create path, so a repeat seed creates no further
+  // auth accounts — the tests assert exactly that.
+  const authUserId = await provisionAuthUser(email);
+
+  return prisma.user.create({ data: { displayName, email, locale: "en", authUserId } });
+}
+
+/**
+ * Calls Supabase's admin API to create a real auth account. Used only by
+ * `prisma db seed` against the local stack — never on a request path, which is
+ * why the service-role key is read here and nowhere else.
+ */
+export function createSupabaseAuthUserProvisioner(
+  supabaseUrl: string,
+  serviceRoleKey: string,
+): AuthUserProvisioner {
+  return async function provision(email: string): Promise<string> {
+    const response = await fetch(`${supabaseUrl.replace(/\/+$/, "")}/auth/v1/admin/users`, {
+      method: "POST",
+      headers: {
+        apikey: serviceRoleKey,
+        Authorization: `Bearer ${serviceRoleKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        password: "demo-password-change-me",
+        email_confirm: true,
+      }),
+    });
+
+    if (!response.ok) {
+      // Deliberately does not include the response body: it can echo the
+      // service-role key back in an error envelope.
+      throw new Error(`could not provision an auth user (status ${String(response.status)})`);
+    }
+
+    const body = (await response.json()) as { id?: string };
+    if (body.id === undefined) {
+      throw new Error("auth user creation returned no id");
+    }
+
+    return body.id;
+  };
 }
 
 // `prisma db seed` executes this file directly.
 if (process.argv[1]?.endsWith("seed.ts") === true) {
   const env = loadEnv(process.env);
+
+  if (env.SUPABASE_SERVICE_ROLE_KEY === undefined) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY is required to seed: the demo users need real Supabase auth accounts. Copy SERVICE_ROLE_KEY from `npx supabase status`.",
+    );
+  }
+
   const prisma = createPrismaClient(env.DIRECT_URL);
   try {
-    const { familyId } = await seed(prisma);
+    const { familyId } = await seed(
+      prisma,
+      createSupabaseAuthUserProvisioner(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY),
+    );
     console.log(`seeded demo family ${familyId}`);
   } finally {
     await disconnect(prisma);

@@ -1,4 +1,5 @@
-import { afterAll, beforeAll, describe, expect, it } from "@jest/globals";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "@jest/globals";
+import { randomUUID } from "node:crypto";
 
 import { createPrismaClient, disconnect } from "../../src/db/prisma.js";
 import { seed } from "../../prisma/seed.js";
@@ -9,10 +10,33 @@ const connectionString =
 
 const prisma = createPrismaClient(connectionString);
 
-beforeAll(async () => {
+/**
+ * Records which emails the seed asked to provision, so the tests can assert the
+ * seed only creates auth accounts for users it is actually creating. Returns a
+ * plain UUID: this database has no `auth` schema, so no foreign key constrains
+ * the value — which is exactly why the provisioner is injected rather than
+ * calling Supabase from inside the seed.
+ */
+let provisioned: string[] = [];
+
+const fakeProvisioner = (email: string): Promise<string> => {
+  provisioned.push(email);
+  return Promise.resolve(randomUUID());
+};
+
+async function clearAll(): Promise<void> {
   await prisma.familyMembership.deleteMany();
+  await prisma.consentRecord.deleteMany();
   await prisma.family.deleteMany();
   await prisma.user.deleteMany();
+}
+
+beforeEach(() => {
+  provisioned = [];
+});
+
+beforeAll(async () => {
+  await clearAll();
 });
 
 afterAll(async () => {
@@ -21,7 +45,7 @@ afterAll(async () => {
 
 describe("seed", () => {
   it("creates one family with two members", async () => {
-    const { familyId } = await seed(prisma);
+    const { familyId } = await seed(prisma, fakeProvisioner);
 
     const family = await prisma.family.findUniqueOrThrow({
       where: { id: familyId },
@@ -34,8 +58,8 @@ describe("seed", () => {
   });
 
   it("is idempotent — running twice does not duplicate", async () => {
-    await seed(prisma);
-    await seed(prisma);
+    await seed(prisma, fakeProvisioner);
+    await seed(prisma, fakeProvisioner);
 
     expect(await prisma.family.count()).toBe(1);
     expect(await prisma.user.count()).toBe(2);
@@ -43,7 +67,7 @@ describe("seed", () => {
   });
 
   it("re-seeds successfully after the demo family is soft-deleted", async () => {
-    const { familyId } = await seed(prisma);
+    const { familyId } = await seed(prisma, fakeProvisioner);
 
     // Mirrors the real failure mode: the family is soft-deleted while its
     // memberships stay `status = 'active'` — the partial unique index only
@@ -53,7 +77,7 @@ describe("seed", () => {
       data: { deletedAt: new Date() },
     });
 
-    const { familyId: secondFamilyId } = await seed(prisma);
+    const { familyId: secondFamilyId } = await seed(prisma, fakeProvisioner);
 
     // Re-seeding must revive the same family row rather than creating a
     // second one, because a second row would carry a new id and creating
@@ -73,5 +97,33 @@ describe("seed", () => {
     expect(family.memberships.every((m) => m.status === "active" && m.deletedAt === null)).toBe(
       true,
     );
+  });
+  it("provisions exactly one auth user per demo member on a first run", async () => {
+    await clearAll();
+    provisioned = [];
+
+    await seed(prisma, fakeProvisioner);
+
+    // "admin" sorts before "adult" — 'm' < 'u'.
+    expect(provisioned.sort()).toEqual(["admin@demo.test", "adult@demo.test"]);
+  });
+
+  it("does not provision again on a repeat run", async () => {
+    await seed(prisma, fakeProvisioner);
+    provisioned = [];
+
+    await seed(prisma, fakeProvisioner);
+
+    expect(provisioned).toEqual([]);
+  });
+
+  it("gives every seeded user a non-null auth_user_id", async () => {
+    await seed(prisma, fakeProvisioner);
+
+    const users = await prisma.user.findMany();
+    expect(users).toHaveLength(2);
+    for (const user of users) {
+      expect(user.authUserId).toMatch(/^[0-9a-f-]{36}$/);
+    }
   });
 });
