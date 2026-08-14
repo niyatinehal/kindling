@@ -85,7 +85,7 @@ Three new entities, all already specified in the database architecture doc:
 
 Unique on (`family_membership_id`, `data_category`). Keyed off the membership rather than the User so the model already generalises if a user ever belongs to more than one family.
 
-**Change to existing schema:** `users.auth_user_id` becomes `NOT NULL` (D4). On the Supabase stack that column also carries the guarded foreign key into `auth.users`.
+**Change to existing schema:** `users.auth_user_id` becomes `NOT NULL` (D4). On the Supabase stack that column also carries the guarded foreign key into `auth.users`, **`ON DELETE RESTRICT`** — see §4 for why this amends the Sprint 1 field table.
 
 ---
 
@@ -94,6 +94,8 @@ Unique on (`family_membership_id`, `data_category`). Keyed off the membership ra
 D4 has one non-obvious price, recorded here rather than discovered during implementation.
 
 The Sprint 1 seed creates two demo users with no auth accounts. Once `auth_user_id` is `NOT NULL` _and_ foreign-keyed, the seed can no longer invent a value on the Supabase stack. But integration tests run against **plain Postgres, where that FK does not exist** — it sits inside a `DO` guard that checks for the `auth` schema — so there any UUID is acceptable.
+
+**Amendment to the Sprint 1 field table:** `2026-08-13-supabase-database-setup-design.md` §4 specified `ON DELETE SET NULL` for this foreign key, which was correct while `auth_user_id` was still nullable. D4 makes the column `NOT NULL`, and a `NOT NULL` column can never accept `SET NULL` — deleting an `auth.users` row would make Postgres attempt it and fail with `23502` (not-null violation) unconditionally, silently blocking the PRD §17 account-deletion requirement. The foreign key is therefore `ON DELETE RESTRICT` instead. `CASCADE` was rejected too: it would hard-delete a domain user and their health data, which this schema deliberately soft-deletes, and `consent_records` already has its own `ON DELETE RESTRICT` foreign key to `users`, so a cascading delete would fail regardless. `RESTRICT` keeps D4's guarantee and makes account deletion an explicit application flow: soft-delete or anonymise the domain user first, then remove the auth account — which DPDP deletion needs anyway, since `consent_records` is append-only and some of it must be retained for audit.
 
 Two environments, two truths. The resolution is a seam, not an environment branch inside the seed:
 
