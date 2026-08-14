@@ -23,9 +23,16 @@ npx prisma generate        # generates the client into generated/prisma; npm ci 
 cp .env.example .env       # required — dev fails immediately without it
 npx supabase start         # Postgres, Auth, Storage in Docker; first run pulls images
 npx prisma migrate deploy  # apply the schema
+# copy SERVICE_ROLE_KEY from `npx supabase status` into .env as SUPABASE_SERVICE_ROLE_KEY first
 npx prisma db seed         # one demo family, two members (uses DIRECT_URL — see below)
 npm run dev
 ```
+
+`.env.example` already sets `SUPABASE_URL=http://127.0.0.1:54321`, which matches the local
+Supabase stack, so no edit is needed there for local dev. `SUPABASE_URL` is required at
+boot — `npm run dev` refuses to start without it — and `SUPABASE_SERVICE_ROLE_KEY` is required
+only for the seed step above, because `prisma db seed` creates real Supabase auth accounts for
+the demo users and throws immediately if the key is unset.
 
 Then, in another terminal:
 
@@ -44,6 +51,32 @@ To use a different port: `PORT=4000 npm run dev`, then curl `localhost:4000/heal
 
 Stop the stack with `npx supabase stop`. Inspect data with `npx prisma studio` or the Supabase
 Studio URL that `supabase start` prints (`http://127.0.0.1:54323` by default).
+
+## Authentication
+
+The client authenticates **directly against Supabase** with `supabase-js`; this API only ever
+verifies the resulting JWT. Signup, login, OTP, OAuth and token refresh have no endpoint here.
+
+| Endpoint                     | Purpose                                                                                                     |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `POST /api/v1/auth/register` | Called once after signup. Creates the domain user and records DPDP consent. Requires `health_data` consent. |
+| `GET /api/v1/auth/me`        | The caller, their family, and their role.                                                                   |
+
+A valid token whose user has not registered gets `403 REGISTRATION_REQUIRED` — the client should
+call `/auth/register` and retry. Every failure uses one envelope:
+
+```json
+{ "error": { "code": "UNAUTHENTICATED", "message": "The token is not valid." } }
+```
+
+Tokens are ES256, verified against `${SUPABASE_URL}/auth/v1/.well-known/jwks.json`. `SUPABASE_URL`
+is required at boot; `SUPABASE_SERVICE_ROLE_KEY` is required only to seed.
+
+**Deleting a user:** the `users.auth_user_id` foreign key into `auth.users` is `ON DELETE
+RESTRICT`. If a domain `users` row still references a Supabase auth account, deleting that account
+from the Supabase dashboard (or the admin API) is rejected by the database with a foreign key
+violation — this is deliberate, not a bug. Account deletion is an explicit application flow: soft
+delete or anonymise the domain `users` row first, then remove the auth account.
 
 ## Run it in a container
 
@@ -84,7 +117,7 @@ Stop the container with `docker compose down`.
 ## Run the tests
 
 ```bash
-npm test   # unit — 14 tests, no Docker required
+npm test   # unit — 37 tests, no Docker required
 ```
 
 Integration tests exercise the database invariants directly, so the test database needs its
@@ -93,7 +126,7 @@ schema before they run:
 ```bash
 npm run test:db:up          # start the disposable test Postgres on 127.0.0.1:54329
 DIRECT_URL=postgresql://postgres:postgres@127.0.0.1:54329/wellness_test npx prisma migrate deploy
-npm run test:integration    # 8 tests, single worker (see jest.config.js)
+npm run test:integration    # 21 tests, single worker (see jest.config.js)
 npm run test:db:down
 ```
 
@@ -102,28 +135,28 @@ required every time, not just the first.
 
 ## npm scripts
 
-| Script                     | What it does                                                                                  |
-| -------------------------- | --------------------------------------------------------------------------------------------- |
-| `npm run dev`              | Watch mode via `tsx`, loads `.env` with `--env-file`                                          |
-| `npm run build`            | Compiles `src/` to `dist/` (`tsconfig.build.json`)                                            |
-| `npm start`                | Runs `node dist/src/server.js` — **no** `--env-file`; see note below                          |
-| `npm test`                 | Jest unit project — 14 tests, no Docker required                                              |
-| `npm run test:integration` | Jest integration project — 8 tests, `maxWorkers: 1` (jest.config.js), needs the test database |
-| `npm run test:all`         | Both Jest projects in one run                                                                 |
-| `npm run typecheck`        | `prisma generate`, then `tsc --noEmit` over `src/` **and** `test/`                            |
-| `npm run lint`             | ESLint, type-aware; fails on warnings                                                         |
-| `npm run lint:fix`         | ESLint with `--fix`                                                                           |
-| `npm run format`           | Prettier, writes changes                                                                      |
-| `npm run format:check`     | Prettier, check only — fails instead of rewriting                                             |
-| `npm run db:start`         | `supabase start` — the local Postgres/Auth/Storage stack                                      |
-| `npm run db:stop`          | `supabase stop`                                                                               |
-| `npm run db:status`        | `supabase status` — prints URLs and keys for the running stack                                |
-| `npm run test:db:up`       | Starts the disposable test Postgres (`docker-compose.test.yml`), waits for health             |
-| `npm run test:db:down`     | Stops and removes the test Postgres                                                           |
-| `npm run prisma:generate`  | `prisma generate` — regenerates the client into `generated/prisma`                            |
-| `npm run prisma:migrate`   | `prisma migrate dev` — see the migration note below before using this                         |
-| `npm run prisma:studio`    | `prisma studio` — browse the database at `DIRECT_URL`                                         |
-| `npm run db:seed`          | `prisma db seed` — runs `prisma/seed.ts` against `DIRECT_URL`                                 |
+| Script                     | What it does                                                                                        |
+| -------------------------- | --------------------------------------------------------------------------------------------------- |
+| `npm run dev`              | Watch mode via `tsx`, loads `.env` with `--env-file`                                                |
+| `npm run build`            | Compiles `src/` to `dist/` (`tsconfig.build.json`)                                                  |
+| `npm start`                | Runs `node dist/src/server.js` — **no** `--env-file`; see note below                                |
+| `npm test`                 | Jest unit project — 37 tests, no Docker required                                                    |
+| `npm run test:integration` | Jest integration project — 21 tests, `maxWorkers: 1` (jest.config.js), needs the test database      |
+| `npm run test:all`         | Both Jest projects in one run                                                                       |
+| `npm run typecheck`        | `prisma generate`, then `tsc --noEmit` over `src/` **and** `test/`                                  |
+| `npm run lint`             | ESLint, type-aware; fails on warnings                                                               |
+| `npm run lint:fix`         | ESLint with `--fix`                                                                                 |
+| `npm run format`           | Prettier, writes changes                                                                            |
+| `npm run format:check`     | Prettier, check only — fails instead of rewriting                                                   |
+| `npm run db:start`         | `supabase start` — the local Postgres/Auth/Storage stack                                            |
+| `npm run db:stop`          | `supabase stop`                                                                                     |
+| `npm run db:status`        | `supabase status` — prints URLs and keys for the running stack                                      |
+| `npm run test:db:up`       | Starts the disposable test Postgres (`docker-compose.test.yml`), waits for health                   |
+| `npm run test:db:down`     | Stops and removes the test Postgres                                                                 |
+| `npm run prisma:generate`  | `prisma generate` — regenerates the client into `generated/prisma`                                  |
+| `npm run prisma:migrate`   | `prisma migrate dev` — see the migration note below before using this                               |
+| `npm run prisma:studio`    | `prisma studio` — browse the database at `DIRECT_URL`                                               |
+| `npm run db:seed`          | `prisma db seed` — runs `prisma/seed.ts` against `DIRECT_URL`; requires `SUPABASE_SERVICE_ROLE_KEY` |
 
 `npm start` deliberately has no `--env-file`: it is the production entrypoint, and production
 environment variables come from the real process environment (container orchestrator, systemd,
