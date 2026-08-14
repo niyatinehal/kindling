@@ -100,6 +100,11 @@ All 63 tests pass; lint, format and typecheck clean; `docker build` succeeds **a
 
 **Next.js 16 App Router**, with **Next 15.5.23 as the fallback**. Serwist hooks the build through webpack while Next 16 defaults to Turbopack; its declared peer range (`next: ">=14.0.0"`) is not evidence the integration works. This must be spiked before planning — the Prisma 7 spike caught five wrong assumptions by doing exactly this.
 
+> **Spike outcome (2026-08-14) — see §5.3.** Next 16 stands. The webpack
+> objection was real but has a supported answer: Serwist ships a **separate
+> Turbopack package**. Two of the three things this paragraph assumed about
+> the integration were wrong.
+
 ### 5.1 Where sign-in runs — the detail that makes or breaks F2
 
 `@supabase/ssr` offers two clients, and only one of them can produce an httpOnly cookie:
@@ -124,9 +129,54 @@ This is the concrete reason F1's Next.js choice pays for itself. It is also the 
 
 **Proxy.** `app/api/me/route.ts` and `app/api/register/route.ts`, each reading the session server-side, extracting the access token, and calling Express with an `Authorization: Bearer` header. The session cookie is never forwarded upstream.
 
-**Service worker.** Serwist precaches the app shell so §1's "app shell renders from cache when offline" holds. Background sync is deliberately excluded — it belongs with the tracking endpoints that do not exist.
+**Service worker.** Serwist precaches the app shell so §1's "app shell renders from cache when offline" holds, wired through **`@serwist/turbopack`** — not `@serwist/next`. See §5.3. Background sync is deliberately excluded — it belongs with the tracking endpoints that do not exist.
 
-**i18n.** Every string through a translation layer from the first screen; `web/messages/en.json` populated, `hi.json` empty. Next's App Router dropped built-in i18n routing, so this needs a library — `next-intl` is the likely choice, pinned during the spike rather than named from memory.
+**i18n.** Every string through a translation layer from the first screen; `web/messages/en.json` populated, `hi.json` empty. Next's App Router dropped built-in i18n routing, so this needs a library — **`next-intl@4.13.6`**, confirmed by the spike. Unlike Serwist it declares Next 16 explicitly (`next: "^12 || ^13 || ^14 || ^15 || ^16"`), so there is no ambiguity to resolve.
+
+### 5.3 The PWA integration, as the spike found it
+
+`@serwist/next` is **webpack-only** — its dependency list includes
+`@serwist/webpack-plugin`, and Next 16 builds with Turbopack by default.
+Serwist ships **`@serwist/turbopack`** for this, on the same 9.5.12 version
+line, so it is neither a fork nor a preview.
+
+|             | `@serwist/next` 9.5.12              | `@serwist/turbopack` 9.5.12             |
+| ----------- | ----------------------------------- | --------------------------------------- |
+| bundler     | webpack (`@serwist/webpack-plugin`) | Turbopack (`@swc/core`)                 |
+| extra peers | —                                   | `esbuild`, `esbuild-wasm` (`>=0.25 <1`) |
+| exports     | —                                   | `.`, `./react`, `./schema`, `./worker`  |
+
+**Both declare `next: ">=14.0.0"`.** npm therefore warns on neither, and
+installing the wrong one fails at build time or, worse, at runtime. An
+open-ended peer range is not evidence of compatibility — the same lesson
+this section already recorded, now confirmed against the registry.
+
+**The wiring is not a config wrapper.** It needs five pieces:
+
+- `npm i -D @serwist/turbopack esbuild serwist`
+- `next.config.mjs` — `withSerwist({...})`
+- `app/sw.ts` — the worker itself
+- `app/serwist/[path]/route.ts` — `createSerwistRoute`
+- `app/layout.tsx` — `<SerwistProvider swUrl="/serwist/sw.js">`
+
+Plus a web manifest and an offline fallback page at `/~offline`.
+
+The route handler is the consequential difference. The webpack flavour emits
+a static `sw.js`; **the Turbopack flavour serves the worker through a Next
+route**. Anything assuming `/sw.js` at the origin root is wrong, including
+the obvious smoke test.
+
+**Two open upstream bugs sit on this exact path**, both unresolved as of the
+spike: Serwist **#360** (2026-07-21), a _runtime_ `ERR_MODULE_NOT_FOUND` in
+`createSerwistRoute` on Vercel, and **#363** (2026-07-29), a `register()`
+throw. #360 is the dangerous one — it is on the API this path requires, and
+it is a runtime failure, so a green build is no evidence against it.
+
+**Therefore slice 1 must prove the PWA from a production build**
+(`next build && next start`), never from `next dev`. "Installs and compiles"
+counts as nothing. If #360 bites, the fallback is `@serwist/next` with
+`next build --webpack`, trading away Turbopack — a call for the user, not a
+silent substitution.
 
 **Elderly mode.** Built as a mechanism, not exercised: a role-driven provider plus CSS custom properties for type scale and contrast. A brand-new user has no family and therefore no role, so slice 1 cannot render it. The seam is cheap now and expensive to retrofit.
 
@@ -203,7 +253,7 @@ The route-handler tests matter most. A proxy that leaks the session cookie upstr
 
 | Risk                                                                                         | Mitigation                                                                                                                                                              |
 | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Serwist hooks webpack; Next 16 defaults to Turbopack. A declared peer range is not evidence. | Spike before planning. Fall back to Next 15.5.23.                                                                                                                       |
+| Serwist hooks webpack; Next 16 defaults to Turbopack. A declared peer range is not evidence. | ~~Spike before planning. Fall back to Next 15.5.23.~~ **Spiked 2026-08-14 (§5.3): use `@serwist/turbopack`. Next 16 stands; the fallback is now webpack, not Next 15.** |
 | The migration breaks Docker or CI silently                                                   | Slice 0's bar is a container that **boots**, not one that builds                                                                                                        |
 | Prisma's `../../generated` import chain moves with the root                                  | Explicitly re-verified after the move; this is what pins the `dist/src` layout                                                                                          |
 | Workspace hoisting changes `npm prune --omit=dev`                                            | Verify the runtime image still lacks the Prisma CLI and still contains `@prisma/client`                                                                                 |
@@ -211,3 +261,5 @@ The route-handler tests matter most. A proxy that leaks the session cookie upstr
 | The proxy could forward the session cookie upstream                                          | An explicit test asserts it does not                                                                                                                                    |
 | `createBrowserClient` is reached for instead of `createServerClient`                         | It fails **silently** — sign-in works, the cookie is simply not httpOnly and any script can read the session. A test must assert the session cookie carries `HttpOnly`. |
 | `next-pwa` looks like the obvious choice                                                     | It was last published in August 2022. Serwist 9.5.12 is the maintained path.                                                                                            |
+| `@serwist/next` looks like the obvious Serwist package for a Next app                        | It is webpack-only. Under Next 16's Turbopack default the correct package is `@serwist/turbopack`, and neither one's peer range will tell you.                          |
+| A green `next build` means the service worker works                                          | Serwist #360 is a **runtime** failure in `createSerwistRoute`. Only `next build && next start` plus a real request proves it.                                           |
