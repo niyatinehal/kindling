@@ -56,6 +56,24 @@ describe("registerUser", () => {
     expect(await prisma.consentRecord.count()).toBe(1);
   });
 
+  it("keeps the original row and ignores changed fields on a repeat call", async () => {
+    const data = input();
+
+    const first = await registerUser(prisma, data);
+    const second = await registerUser(prisma, {
+      ...data,
+      displayName: "Someone Else",
+      consents: [
+        ...data.consents,
+        { consentType: "marketing_notifications" as const, policyVersion: "2026-08-14" },
+      ],
+    });
+
+    expect(second.id).toBe(first.id);
+    expect(second.displayName).toBe("Meera");
+    expect(await prisma.consentRecord.count()).toBe(1);
+  });
+
   it("rolls back the user when a consent row is invalid", async () => {
     const data = {
       ...input(),

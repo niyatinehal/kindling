@@ -20,6 +20,9 @@ export async function registerUser(prisma: PrismaClient, input: RegisterUserInpu
     where: { authUserId: input.authUserId, deletedAt: null },
   });
   if (existing !== null) {
+    // A repeat call with the same authUserId returns the existing row as-is
+    // and silently discards any changed `displayName`, `locale`, or
+    // `consents` in this call's input. Registration is not an update path.
     return existing;
   }
 

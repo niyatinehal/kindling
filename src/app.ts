@@ -1,11 +1,16 @@
 import express from "express";
 import type { Express } from "express";
 
+import type { PrismaClient } from "../generated/prisma/client.js";
+import type { VerifiedToken } from "./auth/verifyToken.js";
 import { healthRouter } from "./routes/health.js";
 import { createReadyRouter } from "./routes/ready.js";
+import { createAuthRouter } from "./routes/auth.js";
 
 export type AppDeps = {
   checkDatabase: () => Promise<void>;
+  prisma: PrismaClient;
+  verify: (token: string) => Promise<VerifiedToken>;
 };
 
 /**
@@ -20,6 +25,7 @@ export function createApp(deps: AppDeps): Express {
 
   app.use(healthRouter);
   app.use(createReadyRouter(deps.checkDatabase));
+  app.use("/api/v1/auth", createAuthRouter({ prisma: deps.prisma, verify: deps.verify }));
 
   return app;
 }

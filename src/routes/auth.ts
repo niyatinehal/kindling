@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { PrismaClient } from "../../generated/prisma/client.js";
 import { sendError } from "../http/errors.js";
 import { registerUser } from "../services/registerUser.js";
+import { createAuthMiddleware } from "../auth/middleware.js";
 import { InvalidTokenError } from "../auth/verifyToken.js";
 import type { VerifiedToken } from "../auth/verifyToken.js";
 
@@ -49,15 +50,20 @@ export function createAuthRouter(deps: {
       return;
     }
 
-    const parsed = registerBody.safeParse(req.body);
-    if (!parsed.success) {
-      sendError(res, 400, "VALIDATION_FAILED", parsed.error.issues[0]?.message ?? "Invalid body.");
-      return;
-    }
-
     deps
       .verify(token)
       .then(async (verified) => {
+        const parsed = registerBody.safeParse(req.body);
+        if (!parsed.success) {
+          sendError(
+            res,
+            400,
+            "VALIDATION_FAILED",
+            parsed.error.issues[0]?.message ?? "Invalid body.",
+          );
+          return;
+        }
+
         const user = await registerUser(deps.prisma, {
           authUserId: verified.authUserId,
           ...(verified.email !== undefined && { email: verified.email }),
@@ -83,6 +89,31 @@ export function createAuthRouter(deps: {
           sendError(res, 401, "UNAUTHENTICATED", "The token is not valid.");
           return;
         }
+        next(error);
+      });
+  });
+
+  const authenticate = createAuthMiddleware({ verify: deps.verify, prisma: deps.prisma });
+
+  router.get("/me", authenticate, (req, res, next) => {
+    const user = req.user;
+    if (user === undefined) {
+      sendError(res, 401, "UNAUTHENTICATED", "A Bearer token is required.");
+      return;
+    }
+
+    deps.prisma.user
+      .findUniqueOrThrow({ where: { id: user.id } })
+      .then((row) => {
+        res.status(200).json({
+          id: row.id,
+          display_name: row.displayName,
+          locale: row.locale,
+          email: row.email,
+          family: user.familyId === undefined ? null : { id: user.familyId, role: user.role },
+        });
+      })
+      .catch((error: unknown) => {
         next(error);
       });
   });
