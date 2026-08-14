@@ -1563,7 +1563,7 @@ npm test
 npm run test:integration
 ```
 
-Expected, from a measured baseline of unit 14 and integration 8 (5 in `schema.test.ts`, 3 in `seed.test.ts`):
+Expected, from a measured baseline of unit 14 and integration 8 (5 in `schema.test.ts`, 3 in `seed.test.ts`) — **the phase finished at unit 37 / integration 21**:
 
 - **unit 29** = 14 existing + 8 from Task 2 + 7 from Task 5
 - **integration 20** = 8 existing + 3 added in Task 4 + 3 in Task 6 + 6 in Task 7

@@ -126,7 +126,7 @@ schema before they run:
 ```bash
 npm run test:db:up          # start the disposable test Postgres on 127.0.0.1:54329
 DIRECT_URL=postgresql://postgres:postgres@127.0.0.1:54329/wellness_test npx prisma migrate deploy
-npm run test:integration    # 21 tests, single worker (see jest.config.js)
+npm run test:integration    # 21 tests, serialized via --runInBand (see the note in jest.config.js)
 npm run test:db:down
 ```
 
@@ -143,7 +143,7 @@ required every time, not just the first.
 | `npm test`                 | Jest unit project — 37 tests, no Docker required                                                    |
 | `npm run test:integration` | Jest integration project — 21 tests, `maxWorkers: 1` (jest.config.js), needs the test database      |
 | `npm run test:all`         | Both Jest projects in one run                                                                       |
-| `npm run typecheck`        | `prisma generate`, then `tsc --noEmit` over `src/` **and** `test/`                                  |
+| `npm run typecheck`        | `prisma generate`, then `tsc --noEmit` over `src/`, `test/` and `prisma/`                           |
 | `npm run lint`             | ESLint, type-aware; fails on warnings                                                               |
 | `npm run lint:fix`         | ESLint with `--fix`                                                                                 |
 | `npm run format`           | Prettier, writes changes                                                                            |
