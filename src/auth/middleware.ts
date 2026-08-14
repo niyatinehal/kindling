@@ -77,7 +77,9 @@ export function createAuthMiddleware(deps: {
         if (error instanceof InvalidTokenError) {
           // The reason goes to the log only. A client learning *why* a token
           // failed learns whether it forged a signature or merely guessed.
-          console.error("token rejected", { reason: error.message });
+          // `error.message` is a fixed string; the actual reason lives on
+          // `.cause` (set by verifyToken.ts), so that is what gets logged.
+          console.error("token rejected", { reason: error.cause });
           sendError(res, 401, "UNAUTHENTICATED", "The token is not valid.");
           return;
         }

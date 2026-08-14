@@ -85,7 +85,9 @@ export function createAuthRouter(deps: {
       })
       .catch((error: unknown) => {
         if (error instanceof InvalidTokenError) {
-          console.error("token rejected at register", { reason: error.message });
+          // See src/auth/middleware.ts: `error.message` is a fixed string,
+          // the actual rejection reason lives on `.cause`.
+          console.error("token rejected at register", { reason: error.cause });
           sendError(res, 401, "UNAUTHENTICATED", "The token is not valid.");
           return;
         }
