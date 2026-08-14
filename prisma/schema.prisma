@@ -40,10 +40,10 @@ enum MembershipStatus {
 model User {
   id String @id @default(uuid(7)) @db.Uuid
 
-  /// Supabase auth.users.id. Nullable until Epic 2 introduces signup; the
-  /// foreign key is added by a hand-written migration because the auth schema
-  /// is deliberately not modelled here.
-  authUserId String? @unique @map("auth_user_id") @db.Uuid
+  /// Supabase auth.users.id. Every user now originates from Supabase Auth, so
+  /// this link is mandatory; the foreign key is added by a hand-written
+  /// migration because the auth schema is deliberately not modelled here.
+  authUserId String @unique @map("auth_user_id") @db.Uuid
 
   email       String?    @map("email")
   phone       String?    @map("phone")
@@ -58,6 +58,8 @@ model User {
 
   createdFamilies Family[]           @relation("FamilyCreatedBy")
   memberships     FamilyMembership[]
+  consents        ConsentRecord[]    @relation("UserConsents")
+  grantedConsents ConsentRecord[]    @relation("ConsentGrantedBy")
 
   @@map("users")
 }
@@ -98,4 +100,36 @@ model FamilyMembership {
   @@unique([familyId, userId])
   @@index([familyId, role])
   @@map("family_memberships")
+}
+
+enum ConsentType {
+  health_data
+  minor_guardian
+  marketing_notifications
+  photo_retention
+}
+
+model ConsentRecord {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation("UserConsents", fields: [userId], references: [id])
+
+  consentType ConsentType @map("consent_type")
+
+  /// Self, or an Admin consenting on behalf of a minor (PRD §17).
+  grantedByUserId String @map("granted_by_user_id") @db.Uuid
+  grantedBy       User   @relation("ConsentGrantedBy", fields: [grantedByUserId], references: [id])
+
+  grantedAt DateTime  @default(now()) @map("granted_at")
+  revokedAt DateTime? @map("revoked_at")
+
+  /// Which consent copy was shown. Required so an audit can reproduce it.
+  policyVersion String @map("policy_version")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId, consentType])
+  @@map("consent_records")
 }
