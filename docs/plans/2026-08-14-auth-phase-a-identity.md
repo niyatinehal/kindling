@@ -705,7 +705,7 @@ if (process.argv[1]?.endsWith("seed.ts") === true) {
 - [ ] **Step 4: Run to verify the tests pass**
 
 Run: `npm run test:integration -- test/integration/seed.test.ts`
-Expected: PASS, 5 tests.
+Expected: PASS, **6 tests** — the file has 3 today and this task adds 3.
 
 - [ ] **Step 5: Verify the real CLI path against the Supabase stack**
 
