@@ -7,6 +7,12 @@ const envSchema = z.object({
   DATABASE_URL: z.url(),
   // Direct connection — used by the Prisma CLI for migrations. See prisma.config.ts.
   DIRECT_URL: z.url(),
+  // Base URL of the Supabase project. The JWT issuer and JWKS endpoint are
+  // derived from it, so it must not carry a trailing slash.
+  SUPABASE_URL: z.url(),
+  // Service-role key. Needed ONLY by the seed's auth-user provisioner; the
+  // request path never uses it, which is why it is optional here.
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
