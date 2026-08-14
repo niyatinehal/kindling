@@ -243,8 +243,19 @@ Recorded here rather than silently applied, because these documents are the shar
 1. **PRD §15** lists `POST /auth/signup`, `POST /auth/otp/verify`, and `POST /auth/refresh`. Under D2 those three do not exist — Supabase owns them. The `auth` module's surface is `POST /auth/register` and `GET /auth/me`.
 2. **PRD §14** is stale: it lists 12 entities including a single generic `TrackingLog`. The database architecture doc supersedes it with ~36 entities and explicitly splits that into four typed tables. §14 should point at the newer document.
 3. **Engineering roadmap Sprint 2** states that `password_hash` and `auth_provider` are "already scaffolded in Sprint 1's model". Sprint 1 deliberately removed both (Supabase Auth owns credentials). Its task list should read: wire Supabase Auth, build `authMiddleware`, and take the hand-rolled implementation to `learn/auth-from-scratch`.
-4. **Engineering roadmap Sprint 3** (OTP, OAuth, refresh tokens) is largely absorbed by D1 — Supabase provides all three. Sprint 3 should be repurposed, most naturally to Phase C of this design.
-5. **The PRD's 8-sprint plan and the roadmap's 20-sprint plan use colliding sprint numbers.** One should be designated authoritative for scheduling; this design follows the roadmap's Epic structure and the PRD's requirement IDs.
+4. **Engineering roadmap Sprint 3** (OTP, OAuth, refresh tokens) no longer ships anything — Supabase provides all three. Rather than delete it, Sprint 3 **becomes the `learn/auth-from-scratch` sprint**: every task, learning topic and interview question in it is built and tested for real, on a branch that is never merged. Its Redis work stays branch-local; production does not gain Redis until the AI pipeline needs cost caps.
+5. **Engineering roadmap Sprint 4** already covers FR-AUTH-2 through FR-AUTH-5, so it is where **phases B and C** land. Two corrections to its task list: the partial unique index it proposes already exists (Sprint 1 shipped `family_memberships_user_id_active_key`, predicated on `status = 'active' AND deleted_at IS NULL`) and should be asserted rather than built; and the visibility work needs `FamilyScope`, not just a `VisibilitySetting` table, to satisfy §17's structural requirement.
+
+### Phase-to-sprint mapping
+
+| Phase                    | Roadmap sprint                              |
+| ------------------------ | ------------------------------------------- |
+| A — Identity             | Sprint 2 (amended)                          |
+| —                        | Sprint 3, repurposed to the learning branch |
+| B — Family & RBAC        | Sprint 4 (amended)                          |
+| C — Consent & visibility | Sprint 4 (amended)                          |
+
+**Not an amendment, corrected on review:** an earlier draft of this section claimed the PRD's and roadmap's sprint numbering collided with no designated authority. That was wrong — the roadmap's own preamble already states it "supersedes the PRD's sprint pacing for execution purposes", while PRD requirement IDs and architecture remain authoritative. No change was needed.
 
 ---
 
