@@ -1,7 +1,25 @@
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 import { webEnv } from "../env";
+
+/**
+ * Forces the security-critical cookie flags, regardless of what the caller
+ * (or a future Supabase default) passes in. The literals are spread AFTER
+ * `...options` so nothing can override them — that ordering is load-bearing.
+ *
+ * This is the one place both `createSupabaseServerClient` (below) and
+ * `middleware.ts` funnel through, so the httpOnly guarantee is enforced at
+ * a single site rather than duplicated and potentially drifting.
+ */
+export function secureCookieOptions(options: CookieOptions): CookieOptions {
+  return {
+    ...options,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  };
+}
 
 /**
  * The ONLY Supabase client in this app, and deliberately the server one.
@@ -22,7 +40,7 @@ export async function createSupabaseServerClient() {
       },
       setAll(cookiesToSet) {
         for (const { name, value, options } of cookiesToSet) {
-          cookieStore.set(name, value, { ...options, httpOnly: true, sameSite: "lax" });
+          cookieStore.set(name, value, secureCookieOptions(options));
         }
       },
     },
