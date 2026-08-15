@@ -36,6 +36,18 @@ describe("callApi", () => {
     expect(headers.get("cookie")).toBeNull();
   });
 
+  // `${base}@evil.com/x` parses with "api.test" as userinfo and "evil.com" as
+  // the host, and "//evil.com/x" is protocol-relative — either would post a
+  // Bearer token to somewhere we never chose. Task 6+ builds paths from ids,
+  // so the guard has to be in place before the first interpolated path lands.
+  it.each(["@evil.com/x", "//evil.com/x", "api/v1/auth/me"])(
+    "refuses the path %p rather than letting it choose the host",
+    async (path) => {
+      await expect(callApi(path, "the-access-token")).rejects.toThrow(/single "\/"/);
+      expect(global.fetch).not.toHaveBeenCalled();
+    },
+  );
+
   it("preserves the upstream status rather than flattening it", async () => {
     global.fetch = jest.fn(() =>
       Promise.resolve(

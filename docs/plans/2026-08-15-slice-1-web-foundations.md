@@ -16,6 +16,7 @@
 - **The session cookie must carry `HttpOnly`.** An explicit test asserts it. Without that assertion, a switch to `createBrowserClient` passes every other test in the suite.
 - **The proxy must never forward the session cookie upstream.** It extracts the access token and sends `Authorization: Bearer`. An explicit test asserts the upstream request carries no `cookie` header.
 - **A status from Express must survive the proxy.** A 403 surfaces as 403, not 500. The 403 `REGISTRATION_REQUIRED` is a _route_ in the onboarding journey, not an error.
+- **A proxy route handler must never throw.** Every response it emits either carries a parsable body or is a legal bodiless status — a rejected `fetch` and a non-JSON upstream body both become a 502 `{ error: { code: "UPSTREAM_UNAVAILABLE" } }`. The client parses the body before it decides where to route, so a bodiless 500 is a hung screen, not an error page.
 - **The PWA is proven from `next build && next start` only.** Serwist #360 is a _runtime_ `ERR_MODULE_NOT_FOUND`; a green build is no evidence. `next dev` proves nothing here.
 - **`useNativeEsbuild: true` is mandatory** on `createSerwistRoute`. `@serwist/turbopack` declares both `esbuild` and `esbuild-wasm` as peers and defaults to the wasm one, which the documented install line does not install. This is the verified fix for #360.
 - **The worker lives at `/serwist/sw.js`, not `/sw.js`.** Any check assuming the origin root is wrong.
@@ -48,6 +49,7 @@
 | `web/src/env.ts`                                                        | Zod-validated frontend env; fails at boot, mirroring `api/src/config/env.ts`.             |
 | `web/src/supabase/server.ts`                                            | `createSupabaseServerClient()` — the ONLY place `createServerClient` is constructed.      |
 | `web/src/api/upstream.ts`                                               | `callApi(path, accessToken)` — the single upstream caller. Sets Bearer, sends no cookies. |
+| `web/src/api/proxy.ts`                                                  | `proxyUpstream(send)` — the guard that makes a proxy route unable to throw.               |
 | `web/middleware.ts`                                                     | Session refresh + route guard.                                                            |
 | `web/app/api/auth/otp/route.ts`                                         | Request an OTP.                                                                           |
 | `web/app/api/auth/verify/route.ts`                                      | Verify the code — sets the httpOnly cookie.                                               |
@@ -903,13 +905,15 @@ git add web/ && git commit -m "feat: run every authentication action server-side
 
 **Files:**
 
-- Create: `web/src/api/upstream.ts`, `web/app/api/me/route.ts`, `web/app/api/register/route.ts`
-- Test: `web/src/api/__tests__/upstream.test.ts`
+- Create: `web/src/api/upstream.ts`, `web/src/api/proxy.ts`, `web/app/api/me/route.ts`, `web/app/api/register/route.ts`
+- Test: `web/src/api/__tests__/upstream.test.ts`, `web/app/api/me/__tests__/route.test.ts`, `web/app/api/register/__tests__/route.test.ts`
 
 **Interfaces:**
 
 - Consumes: `createSupabaseServerClient` (Task 3), `webEnv` (Task 3).
-- Produces: `callApi(path: string, accessToken: string, init?: { method?: string; body?: unknown }): Promise<Response>`. Task 6 consumes it.
+- Produces: `callApi(path: string, accessToken: string, init?: { method?: string; body?: unknown }): Promise<Response>` and `proxyUpstream(send: () => Promise<Response>): Promise<NextResponse>`. Task 6 consumes them.
+
+**The contract Task 6 is allowed to rely on:** every response either of these route handlers emits carries a parsable body or is a legal bodiless status, and neither handler can throw. Task 6's signin page does `router.push(nextStep(me.status, await me.json()))` and its consent page does `await response.json()` on any non-ok response — both reject on a bodiless 500, which strands the client on a hung screen before it can route anywhere. That is why `nextStep(500, {})` → `/error` is reachable at all.
 
 - [ ] **Step 1: Write the failing test — the three properties that matter**
 
@@ -954,6 +958,18 @@ describe("callApi", () => {
     expect(headers.get("cookie")).toBeNull();
   });
 
+  // `${base}@evil.com/x` parses with "api.test" as userinfo and "evil.com" as
+  // the host, and "//evil.com/x" is protocol-relative — either would post a
+  // Bearer token to somewhere we never chose. Task 6+ builds paths from ids,
+  // so the guard has to be in place before the first interpolated path lands.
+  it.each(["@evil.com/x", "//evil.com/x", "api/v1/auth/me"])(
+    "refuses the path %p rather than letting it choose the host",
+    async (path) => {
+      await expect(callApi(path, "the-access-token")).rejects.toThrow(/single "\/"/);
+      expect(global.fetch).not.toHaveBeenCalled();
+    },
+  );
+
   it("preserves the upstream status rather than flattening it", async () => {
     global.fetch = jest.fn(() =>
       Promise.resolve(
@@ -969,6 +985,8 @@ describe("callApi", () => {
 ```
 
 The cookie assertion is the one that would otherwise be missed: `fetch` does not attach cookies by default in this context, so the test locks in a property that is currently true by accident and could stop being true the moment someone adds `credentials: "include"` or copies the incoming headers wholesale.
+
+Be honest about the status test above: `callApi` returns `fetch`'s `Response` object directly, so that assertion is close to structural and cannot fail short of a rewrite. The place a status can genuinely get flattened is the route handlers, which is why Step 6 tests them separately and why that is where the 403 assertion actually earns its keep.
 
 - [ ] **Step 2: Run it and watch it fail**
 
@@ -993,6 +1011,16 @@ export async function callApi(
   accessToken: string,
   init: { method?: string; body?: unknown } = {},
 ): Promise<Response> {
+  // Insurance against a caller that interpolates: "@evil.com/x" parses as
+  // userinfo and "//evil.com/x" is protocol-relative, so either one would send
+  // a Bearer token to a host we did not choose. Both callers pass literals
+  // today; Task 6+ builds paths from ids, which is when this stops being
+  // theoretical. A throw here is caught by `proxyUpstream` and answered with
+  // the 502 envelope, so a bad path is a logged failure, never a crash.
+  if (!path.startsWith("/") || path.startsWith("//")) {
+    throw new Error(`callApi path must start with a single "/": ${path}`);
+  }
+
   const env = webEnv();
   const headers = new Headers({
     authorization: `Bearer ${accessToken}`,
@@ -1010,13 +1038,108 @@ export async function callApi(
 }
 ```
 
-- [ ] **Step 4: Implement the two proxy routes**
+- [ ] **Step 4: Implement `web/src/api/proxy.ts` — the part that cannot fail**
+
+`callApi` returns a `Promise<Response>`, and both of the obvious ways to use it are wrong. `await callApi(...)` with no `try` turns a refused connection, a DNS failure or an undici timeout into a rejection that Next answers with a bodiless 500 — no envelope, nothing for the client to parse. And `await upstream.json()` assumes a body that is both present and JSON, which it is not when Express misses a path (there is no catch-all 404, so `finalhandler` writes `text/html` `Cannot GET /...`), when an ingress in front of Express serves its own HTML 502, or when the body is simply empty. A 204 is worse still: `NextResponse.json(x, { status: 204 })` throws on its own.
+
+So the guard lives in one place and both handlers go through it:
+
+```ts
+import { NextResponse } from "next/server";
+
+/**
+ * Statuses that may not carry a body. `NextResponse.json(x, { status: 204 })`
+ * throws outright ("Invalid response status code"), so these have to be built
+ * as a bodiless response or they cannot be proxied at all.
+ */
+const STATUSES_WITHOUT_BODY = new Set([204, 304]);
+
+/**
+ * One code for every way upstream can fail to produce a usable answer. The
+ * client cannot act differently on "refused" versus "served HTML", and the
+ * distinction that does matter to us is in the log line, not the body.
+ */
+function upstreamUnavailable(): NextResponse {
+  return NextResponse.json({ error: { code: "UPSTREAM_UNAVAILABLE" } }, { status: 502 });
+}
+
+/**
+ * Turns one upstream call into a response this app can always return.
+ *
+ * The contract every route handler leans on: this never throws and never
+ * returns a bodiless 500. Whatever happens — Express down, DNS failure, a
+ * timeout, an ingress serving an HTML 502, a path miss serving `Cannot GET
+ * /...`, an empty body — the caller gets either a faithful pass-through of the
+ * upstream status and JSON, or a `{ error: { code } }` envelope. The client
+ * calls `.json()` on the result unconditionally, so a response with no parsable
+ * body strands it on a hung screen instead of letting it route to an error
+ * page.
+ *
+ * Reasons are logged, never returned: the caller has no business knowing which
+ * host refused a connection.
+ */
+export async function proxyUpstream(send: () => Promise<Response>): Promise<NextResponse> {
+  let upstream: Response;
+
+  try {
+    upstream = await send();
+  } catch (reason) {
+    console.error("upstream call failed", { reason: describe(reason) });
+    return upstreamUnavailable();
+  }
+
+  if (STATUSES_WITHOUT_BODY.has(upstream.status)) {
+    return new NextResponse(null, { status: upstream.status });
+  }
+
+  const contentType = upstream.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    console.error("upstream returned a non-JSON body", { status: upstream.status, contentType });
+    return upstreamUnavailable();
+  }
+
+  let body: string;
+  try {
+    body = await upstream.text();
+  } catch (reason) {
+    console.error("upstream body could not be read", { reason: describe(reason) });
+    return upstreamUnavailable();
+  }
+
+  // A legitimately empty body (a 200 with nothing in it) is passed through as
+  // an empty body rather than invented into `null`.
+  if (body.trim() === "") {
+    return new NextResponse(null, { status: upstream.status });
+  }
+
+  try {
+    // Status is passed through unchanged — a 403 REGISTRATION_REQUIRED is a
+    // step in onboarding, not a failure, and flattening it would hide the seam.
+    return NextResponse.json(JSON.parse(body), { status: upstream.status });
+  } catch (reason) {
+    console.error("upstream body was not valid JSON", {
+      status: upstream.status,
+      reason: describe(reason),
+    });
+    return upstreamUnavailable();
+  }
+}
+
+function describe(reason: unknown): string {
+  return reason instanceof Error ? reason.message : String(reason);
+}
+```
+
+`UPSTREAM_UNAVAILABLE` follows the SCREAMING_SNAKE vocabulary of `api/src/http/errors.ts` and the envelope shape `web/app/api/auth/otp/route.ts` already returns — `{ error: { code } }`, 502, reason to `console.error` and never to the body.
+
+- [ ] **Step 5: Implement the two proxy routes**
 
 `web/app/api/me/route.ts`:
 
 ```ts
 import { NextResponse } from "next/server";
 
+import { proxyUpstream } from "../../../src/api/proxy";
 import { callApi } from "../../../src/api/upstream";
 import { createSupabaseServerClient } from "../../../src/supabase/server";
 
@@ -1029,10 +1152,10 @@ export async function GET() {
     return NextResponse.json({ error: { code: "UNAUTHENTICATED" } }, { status: 401 });
   }
 
-  const upstream = await callApi("/api/v1/auth/me", accessToken);
-  // Status is passed through unchanged — a 403 REGISTRATION_REQUIRED is a step
-  // in onboarding, not a failure, and flattening it would hide the seam.
-  return NextResponse.json(await upstream.json(), { status: upstream.status });
+  // Every remaining outcome, success or failure, goes through `proxyUpstream`:
+  // this handler must not be able to answer with a bodiless 500, because the
+  // client parses the body before it decides where to route.
+  return proxyUpstream(() => callApi("/api/v1/auth/me", accessToken));
 }
 ```
 
@@ -1041,6 +1164,7 @@ export async function GET() {
 ```ts
 import { NextResponse } from "next/server";
 
+import { proxyUpstream } from "../../../src/api/proxy";
 import { callApi } from "../../../src/api/upstream";
 import { createSupabaseServerClient } from "../../../src/supabase/server";
 
@@ -1053,16 +1177,39 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: { code: "UNAUTHENTICATED" } }, { status: 401 });
   }
 
-  const upstream = await callApi("/api/v1/auth/register", accessToken, {
-    method: "POST",
-    body: await request.json(),
-  });
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    // The caller's own body, not upstream's — same rule though: answer with an
+    // envelope rather than letting the rejection become a bodiless 500.
+    return NextResponse.json({ error: { code: "VALIDATION_FAILED" } }, { status: 400 });
+  }
 
-  return NextResponse.json(await upstream.json(), { status: upstream.status });
+  // Every remaining outcome, success or failure, goes through `proxyUpstream`:
+  // this handler must not be able to answer with a bodiless 500, because the
+  // client parses the body before it decides where to route.
+  return proxyUpstream(() =>
+    callApi("/api/v1/auth/register", accessToken, { method: "POST", body }),
+  );
 }
 ```
 
-- [ ] **Step 5: Verify and commit**
+- [ ] **Step 6: Test the handlers, with `callApi` mocked**
+
+`web/app/api/me/__tests__/route.test.ts` and `web/app/api/register/__tests__/route.test.ts` mock both `../../../../src/supabase/server` and `../../../../src/api/upstream`, then assert on the handler's own response. The five that matter, per handler:
+
+1. a 200 (or 201) passes through with its body;
+2. **a 403 `REGISTRATION_REQUIRED` passes through with status and body intact** — the load-bearing one, since that status is the normal first answer for a new account and collapsing it strands every new user;
+3. no session → 401, and `callApi` is never called;
+4. `callApi` rejects → 502 `UPSTREAM_UNAVAILABLE`, not a throw, and the reason (`ECONNREFUSED`) does not appear in the body;
+5. upstream returns a `text/html` body → 502 envelope, not a throw.
+
+The `me` suite also pins the two shapes that used to be impossible: an empty body passes through as an empty body, and a 204 passes through as a 204 rather than blowing up inside `NextResponse.json`. The `register` suite additionally asserts the caller's parsed body reaches `callApi` unchanged and that a malformed request body is a 400 envelope.
+
+Silence `console.error` with a `jest.spyOn` in `beforeEach` and `jest.restoreAllMocks()` in `afterEach` — the failure paths log by design, and the suite should not be noisy about it.
+
+- [ ] **Step 7: Verify and commit**
 
 ```bash
 npm run test:web && npm run typecheck:web && npm run lint:web && npm run format:check
@@ -1939,7 +2086,8 @@ git add . && git commit -m "test: drive the onboarding journey end to end"
 | The session cookie is httpOnly               | Task 4's unit test, and again in Task 9's E2E against a real browser         |
 | `createBrowserClient` cannot be reintroduced | Task 3 Step 6 — the probe file must fail lint                                |
 | The proxy sends a Bearer token and no cookie | `npm run test:web` — `upstream.test.ts`                                      |
-| A 403 survives the proxy as a 403            | same suite                                                                   |
+| A 403 survives the proxy as a 403            | Task 5's `app/api/me/__tests__/route.test.ts` — the handler, not `callApi`   |
+| A dead upstream is a 502 envelope, not a 500 | same suites, both handlers                                                   |
 | Copy comes from the catalogue, not literals  | `landing.test.tsx`, including the missing-key case                           |
 | Consent posts the policy version shown       | `consent.test.tsx`                                                           |
 | The service worker actually serves           | Task 7 Step 5 — `/serwist/sw.js` 200 **and** `/sw.js` 404, from `next start` |

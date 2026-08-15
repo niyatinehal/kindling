@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { proxyUpstream } from "../../../src/api/proxy";
 import { callApi } from "../../../src/api/upstream";
 import { createSupabaseServerClient } from "../../../src/supabase/server";
 
@@ -12,8 +13,8 @@ export async function GET() {
     return NextResponse.json({ error: { code: "UNAUTHENTICATED" } }, { status: 401 });
   }
 
-  const upstream = await callApi("/api/v1/auth/me", accessToken);
-  // Status is passed through unchanged — a 403 REGISTRATION_REQUIRED is a step
-  // in onboarding, not a failure, and flattening it would hide the seam.
-  return NextResponse.json(await upstream.json(), { status: upstream.status });
+  // Every remaining outcome, success or failure, goes through `proxyUpstream`:
+  // this handler must not be able to answer with a bodiless 500, because the
+  // client parses the body before it decides where to route.
+  return proxyUpstream(() => callApi("/api/v1/auth/me", accessToken));
 }
