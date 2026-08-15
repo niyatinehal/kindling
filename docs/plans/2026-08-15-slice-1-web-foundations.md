@@ -40,27 +40,30 @@
 
 ## File Structure
 
-| File                                                                    | Responsibility                                                                            |
-| ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `package.json`                                                          | Modified: `workspaces` gains `web`; additive `*:web` scripts.                             |
-| `web/package.json`                                                      | The frontend workspace's deps and scripts.                                                |
-| `web/next.config.mjs`                                                   | `next-intl` plugin + `withSerwist`.                                                       |
-| `web/tsconfig.json`                                                     | Includes `"webworker"` in `lib` — without it `ServiceWorkerGlobalScope` fails to resolve. |
-| `web/src/env.ts`                                                        | Zod-validated frontend env; fails at boot, mirroring `api/src/config/env.ts`.             |
-| `web/src/supabase/server.ts`                                            | `createSupabaseServerClient()` — the ONLY place `createServerClient` is constructed.      |
-| `web/src/api/upstream.ts`                                               | `callApi(path, accessToken)` — the single upstream caller. Sets Bearer, sends no cookies. |
-| `web/src/api/proxy.ts`                                                  | `proxyUpstream(send)` — the guard that makes a proxy route unable to throw.               |
-| `web/middleware.ts`                                                     | Session refresh + route guard.                                                            |
-| `web/app/api/auth/otp/route.ts`                                         | Request an OTP.                                                                           |
-| `web/app/api/auth/verify/route.ts`                                      | Verify the code — sets the httpOnly cookie.                                               |
-| `web/app/auth/callback/route.ts`                                        | OAuth code exchange — sets the httpOnly cookie.                                           |
-| `web/app/api/me/route.ts`                                               | Proxy → `GET /api/v1/auth/me`.                                                            |
-| `web/app/api/register/route.ts`                                         | Proxy → `POST /api/v1/auth/register`.                                                     |
-| `web/app/page.tsx`, `web/app/consent/page.tsx`, `web/app/home/page.tsx` | The journey.                                                                              |
-| `web/src/ui/ElderlyModeProvider.tsx`                                    | Role-driven CSS custom properties. Mechanism only.                                        |
-| `web/app/sw.ts`, `web/app/serwist/[path]/route.ts`                      | The service worker and the route that serves it.                                          |
-| `web/app/~offline/page.tsx`, `web/public/manifest.webmanifest`          | Offline fallback and install metadata.                                                    |
-| `web/e2e/onboarding.spec.ts`                                            | Playwright: sign in → consent → home.                                                     |
+| File                                                                                                                         | Responsibility                                                                            |
+| ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `package.json`                                                                                                               | Modified: `workspaces` gains `web`; additive `*:web` scripts.                             |
+| `web/package.json`                                                                                                           | The frontend workspace's deps and scripts.                                                |
+| `web/next.config.mjs`                                                                                                        | `next-intl` plugin + `withSerwist`.                                                       |
+| `web/tsconfig.json`                                                                                                          | Includes `"webworker"` in `lib` — without it `ServiceWorkerGlobalScope` fails to resolve. |
+| `web/src/env.ts`                                                                                                             | Zod-validated frontend env; fails at boot, mirroring `api/src/config/env.ts`.             |
+| `web/src/supabase/server.ts`                                                                                                 | `createSupabaseServerClient()` — the ONLY place `createServerClient` is constructed.      |
+| `web/src/api/upstream.ts`                                                                                                    | `callApi(path, accessToken)` — the single upstream caller. Sets Bearer, sends no cookies. |
+| `web/src/api/proxy.ts`                                                                                                       | `proxyUpstream(send)` — the guard that makes a proxy route unable to throw.               |
+| `web/middleware.ts`                                                                                                          | Session refresh + route guard.                                                            |
+| `web/app/api/auth/otp/route.ts`                                                                                              | Request an OTP.                                                                           |
+| `web/app/api/auth/verify/route.ts`                                                                                           | Verify the code — sets the httpOnly cookie.                                               |
+| `web/app/api/auth/google/route.ts`                                                                                           | Starts the Google flow — mints the authorize URL server-side and redirects.               |
+| `web/app/auth/callback/route.ts`                                                                                             | OAuth code exchange — sets the httpOnly cookie.                                           |
+| `web/app/api/me/route.ts`                                                                                                    | Proxy → `GET /api/v1/auth/me`.                                                            |
+| `web/app/api/register/route.ts`                                                                                              | Proxy → `POST /api/v1/auth/register`.                                                     |
+| `web/app/page.tsx`, `web/app/signin/page.tsx`, `web/app/consent/page.tsx`, `web/app/home/page.tsx`, `web/app/error/page.tsx` | The journey.                                                                              |
+| `web/src/onboarding/nextStep.ts`                                                                                             | Where GET /api/me sends the user. The 403 REGISTRATION_REQUIRED seam.                     |
+| `web/src/api/readJsonBody.ts`, `web/src/api/errorCode.ts`                                                                    | The client half of the proxy contract: never reject on a body, read the envelope's code.  |
+| `web/src/ui/ElderlyModeProvider.tsx`                                                                                         | Role-driven CSS custom properties. Mechanism only.                                        |
+| `web/app/sw.ts`, `web/app/serwist/[path]/route.ts`                                                                           | The service worker and the route that serves it.                                          |
+| `web/app/~offline/page.tsx`, `web/public/manifest.webmanifest`                                                               | Offline fallback and install metadata.                                                    |
+| `web/e2e/onboarding.spec.ts`                                                                                                 | Playwright: sign in → consent → home.                                                     |
 
 Dependency order: T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9.
 
@@ -1222,14 +1225,20 @@ git add web/ && git commit -m "feat: proxy to Express with a Bearer token and no
 
 **Files:**
 
-- Create: `web/app/signin/page.tsx`, `web/app/consent/page.tsx`, `web/app/consent/ConsentForm.tsx`, `web/app/home/page.tsx`, `web/src/onboarding/nextStep.ts`
+- Create: `web/app/signin/page.tsx`, `web/app/consent/page.tsx`, `web/app/consent/ConsentForm.tsx`, `web/app/home/page.tsx`, `web/app/error/page.tsx`, `web/app/api/auth/google/route.ts`, `web/src/onboarding/nextStep.ts`, `web/src/api/errorCode.ts`, `web/src/api/readJsonBody.ts`
 - Modify: `web/messages/en.json`
-- Test: `web/src/__tests__/consent.test.tsx`, `web/src/onboarding/__tests__/nextStep.test.ts`
+- Test: `web/src/__tests__/consent.test.tsx`, `web/src/onboarding/__tests__/nextStep.test.ts`, `web/src/api/__tests__/readJsonBody.test.ts`, `web/app/api/auth/__tests__/google.test.ts`
 
 **Interfaces:**
 
-- Consumes: `callApi` indirectly through `/api/register`.
-- Produces: the `/consent` and `/home` routes. Task 9's Playwright spec drives them.
+- Consumes: `callApi` indirectly through `/api/register`; `proxyUpstream`'s contract, which is what forces the defensive body read below.
+- Produces: the `/signin`, `/consent`, `/home` and `/error` routes, plus `GET /api/auth/google` which starts the OAuth flow. Task 9's Playwright spec drives them.
+
+**Contracts Task 9 must be written against (as built):**
+
+- The consent form collects a **display name**. Submission is disabled until the name is non-empty after trimming AND the health-data box is ticked. `POST /api/register` carries `{ display_name, locale: "en", consents }` with the name the user typed — nothing is hardcoded.
+- The "Continue with Google" link points at `/api/auth/google`, not `/auth/callback`.
+- `nextStep` is matched on the error CODE, never the status alone.
 
 - [ ] **Step 1: Write the failing component test**
 
@@ -1251,22 +1260,61 @@ function renderForm(onSubmit = jest.fn()) {
   return onSubmit;
 }
 
+function submitButton() {
+  return screen.getByRole("button", { name: messages.consent.submit });
+}
+
+function nameInput() {
+  return screen.getByLabelText(messages.consent.nameLabel);
+}
+
+function consentCheckbox() {
+  return screen.getByRole("checkbox", { name: messages.consent.healthDataLabel });
+}
+
 describe("consent form", () => {
   it("disables submission until health data consent is given", () => {
     renderForm();
 
-    expect(screen.getByRole("button", { name: messages.consent.submit })).toBeDisabled();
+    fireEvent.change(nameInput(), { target: { value: "Meera" } });
+
+    expect(submitButton()).toBeDisabled();
   });
 
-  it("submits the policy version alongside the consent", () => {
+  it("disables submission until a name is given", () => {
+    renderForm();
+
+    fireEvent.click(consentCheckbox());
+
+    expect(submitButton()).toBeDisabled();
+  });
+
+  it("treats a whitespace-only name as no name", () => {
+    renderForm();
+
+    fireEvent.change(nameInput(), { target: { value: "   " } });
+    fireEvent.click(consentCheckbox());
+
+    expect(submitButton()).toBeDisabled();
+  });
+
+  it("submits the trimmed name and the policy version alongside the consent", () => {
     const onSubmit = renderForm();
 
-    fireEvent.click(screen.getByRole("checkbox", { name: messages.consent.healthDataLabel }));
-    fireEvent.click(screen.getByRole("button", { name: messages.consent.submit }));
+    fireEvent.change(nameInput(), { target: { value: "  Meera  " } });
+    fireEvent.click(consentCheckbox());
+    fireEvent.click(submitButton());
 
     expect(onSubmit).toHaveBeenCalledWith({
+      displayName: "Meera",
       consents: [{ consent_type: "health_data", policy_version: "2026-08-15" }],
     });
+  });
+
+  it("caps the name at the length the API accepts", () => {
+    renderForm();
+
+    expect(nameInput()).toHaveAttribute("maxLength", "120");
   });
 
   it("renders the error envelope's code rather than a raw failure", () => {
@@ -1278,10 +1326,22 @@ describe("consent form", () => {
 
     expect(screen.getByRole("alert")).toHaveTextContent(messages.errors.VALIDATION_FAILED);
   });
+
+  it("falls back to the unknown-error copy for a code it has no message for", () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={messages}>
+        <ConsentForm onSubmit={jest.fn()} policyVersion="2026-08-15" error="TEAPOT" />
+      </NextIntlClientProvider>,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(messages.errors.UNKNOWN);
+  });
 });
 ```
 
-The `policy_version` assertion matters for a reason beyond correctness: the spec requires it match the copy actually shown, so an audit can reproduce what was agreed to. A form that posts a hardcoded or stale version silently breaks that.
+The `policy_version` assertion matters for a reason beyond correctness: the spec requires it match the copy actually shown, so an audit can reproduce what was agreed to. A form that posts a hardcoded or stale version silently breaks that. **If the consent copy changes, bump `POLICY_VERSION` in the same commit.**
+
+The display name is required for the same class of reason: a form that posts a constant (`"New member"`) ships a visible bug — every account in the product would carry the same name — and the E2E written against it would encode that bug as the expected behaviour. `120` is the cap the API enforces (`api/src/routes/auth.ts`), so the input enforces the same one rather than letting the journey end in a rejection the user cannot act on.
 
 - [ ] **Step 2: Run it and watch it fail**
 
@@ -1293,9 +1353,18 @@ Expected: FAIL — `ConsentForm` does not exist.
 Merge into `web/messages/en.json`:
 
 ```json
+  "signin": {
+    "title": "Sign in",
+    "contactLabel": "Phone number or email",
+    "sendCode": "Send me a code",
+    "codeLabel": "Enter the code",
+    "verify": "Continue",
+    "google": "Continue with Google"
+  },
   "consent": {
     "title": "Before we start",
     "body": "This app stores what you log — workouts, meals, water, sleep — and any health conditions you choose to share, so it can build a plan that fits you. You can export or delete this data at any time.",
+    "nameLabel": "What should we call you?",
     "healthDataLabel": "I agree to the app storing my health data",
     "submit": "Continue"
   },
@@ -1303,13 +1372,20 @@ Merge into `web/messages/en.json`:
     "title": "You're set up",
     "noFamily": "You're not in a family yet. Family setup arrives soon."
   },
+  "error": {
+    "title": "Something went wrong"
+  },
   "errors": {
     "VALIDATION_FAILED": "Something in that form wasn't right. Please check and try again.",
     "UNAUTHENTICATED": "Your session has expired. Please sign in again.",
     "REGISTRATION_REQUIRED": "One more step before you can continue.",
+    "OTP_REQUEST_FAILED": "We couldn't send that code. Please check the number or email and try again.",
+    "UPSTREAM_UNAVAILABLE": "We couldn't reach the server. Please try again in a moment.",
     "UNKNOWN": "Something went wrong. Please try again."
   }
 ```
+
+`errors` carries a message for every code the user can actually reach — including `UPSTREAM_UNAVAILABLE`, which Task 5's proxy emits — and `UNKNOWN` catches the rest. No screen renders a raw code.
 
 - [ ] **Step 4: Implement the form and pages**
 
@@ -1321,7 +1397,15 @@ Merge into `web/messages/en.json`:
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
+/**
+ * The API caps `display_name` at 120 characters (`api/src/routes/auth.ts`).
+ * Enforcing the same limit here keeps a preventable rejection out of the
+ * journey — the field simply stops accepting more.
+ */
+export const DISPLAY_NAME_MAX_LENGTH = 120;
+
 export type ConsentSubmission = {
+  displayName: string;
   consents: { consent_type: "health_data"; policy_version: string }[];
 };
 
@@ -1336,7 +1420,11 @@ export function ConsentForm({
 }) {
   const t = useTranslations("consent");
   const tError = useTranslations("errors");
+  const [name, setName] = useState("");
   const [agreed, setAgreed] = useState(false);
+
+  const displayName = name.trim();
+  const complete = displayName !== "" && agreed;
 
   return (
     <main>
@@ -1346,6 +1434,16 @@ export function ConsentForm({
       {error !== undefined && (
         <p role="alert">{tError.has(error) ? tError(error) : tError("UNKNOWN")}</p>
       )}
+
+      <label>
+        {t("nameLabel")}
+        <input
+          type="text"
+          value={name}
+          maxLength={DISPLAY_NAME_MAX_LENGTH}
+          onChange={(event) => setName(event.target.value)}
+        />
+      </label>
 
       <label>
         <input
@@ -1359,15 +1457,57 @@ export function ConsentForm({
 
       <button
         type="button"
-        disabled={!agreed}
+        disabled={!complete}
         onClick={() => {
-          onSubmit({ consents: [{ consent_type: "health_data", policy_version: policyVersion }] });
+          onSubmit({
+            displayName,
+            consents: [{ consent_type: "health_data", policy_version: policyVersion }],
+          });
         }}
       >
         {t("submit")}
       </button>
     </main>
   );
+}
+```
+
+`web/src/api/readJsonBody.ts` — the client half of the proxy contract:
+
+```ts
+/**
+ * Reads a response body the client is about to route on, without ever
+ * rejecting.
+ *
+ * `proxyUpstream` guarantees a parsable body OR a legal bodiless status — it
+ * emits one for an empty upstream body and for 204/304. A blind `.json()` on
+ * those rejects, and a rejection inside a click handler is not an error page:
+ * it is a screen that sits there forever. Returning `{}` instead lets the
+ * caller carry on and route on the status, which for anything unexpected means
+ * `/error`.
+ */
+export async function readJsonBody(response: Response): Promise<unknown> {
+  try {
+    return await response.json();
+  } catch {
+    return {};
+  }
+}
+```
+
+`web/src/api/errorCode.ts` — one parser for the `{ error: { code } }` envelope, shared by `nextStep` and the consent page:
+
+```ts
+export function errorCode(body: unknown): string | undefined {
+  if (typeof body !== "object" || body === null || !("error" in body)) {
+    return undefined;
+  }
+  const error = (body as { error: unknown }).error;
+  if (typeof error !== "object" || error === null || !("code" in error)) {
+    return undefined;
+  }
+  const code = (error as { code: unknown }).code;
+  return typeof code === "string" ? code : undefined;
 }
 ```
 
@@ -1379,11 +1519,14 @@ export function ConsentForm({
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { errorCode } from "../../src/api/errorCode";
+import { readJsonBody } from "../../src/api/readJsonBody";
 import { ConsentForm, type ConsentSubmission } from "./ConsentForm";
 
 /**
- * Bumped whenever the consent copy above changes. It is stored with the
- * consent record so an audit can reproduce exactly what was agreed to.
+ * Bumped whenever the consent copy in `messages.consent` changes. It is stored
+ * with the consent record so an audit can reproduce exactly what was agreed to,
+ * which is why the version submitted must be the one whose copy is rendered.
  */
 const POLICY_VERSION = "2026-08-15";
 
@@ -1395,7 +1538,11 @@ export default function ConsentPage() {
     const response = await fetch("/api/register", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ display_name: "New member", locale: "en", ...submission }),
+      body: JSON.stringify({
+        display_name: submission.displayName,
+        locale: "en",
+        consents: submission.consents,
+      }),
     });
 
     if (response.ok) {
@@ -1403,12 +1550,10 @@ export default function ConsentPage() {
       return;
     }
 
-    const body: unknown = await response.json();
-    const code =
-      typeof body === "object" && body !== null && "error" in body
-        ? String((body as { error: { code?: string } }).error.code ?? "UNKNOWN")
-        : "UNKNOWN";
-    setError(code);
+    // Read the body defensively: the proxy is allowed to answer with a legal
+    // bodiless status, and a rejected `.json()` here would leave the user on a
+    // screen that never changes.
+    setError(errorCode(await readJsonBody(response)) ?? "UNKNOWN");
   }
 
   return (
@@ -1469,29 +1614,23 @@ describe("nextStep", () => {
   it("routes an unexpected status to the error page rather than guessing", () => {
     expect(nextStep(500, {})).toBe("/error");
   });
+
+  it("does not route a bodiless 403 to consent", () => {
+    expect(nextStep(403, {})).toBe("/error");
+  });
 });
 ```
 
-The fourth case is the one worth having. Routing on the status alone would send every 403 to consent, so a future authorisation failure would silently render the consent screen and post a duplicate registration.
+The fourth case is the one worth having. Routing on the status alone would send every 403 to consent, so a future authorisation failure would silently render the consent screen and post a duplicate registration. The sixth is its bodiless twin: `readJsonBody` turns an empty response into `{}`, and `{}` is not evidence of the seam.
 
 - [ ] **Step 6: Implement the decision and the sign-in screen**
 
 `web/src/onboarding/nextStep.ts`:
 
 ```ts
-export type OnboardingDestination = "/signin" | "/consent" | "/home" | "/error";
+import { errorCode } from "../api/errorCode";
 
-function errorCode(body: unknown): string | undefined {
-  if (typeof body !== "object" || body === null || !("error" in body)) {
-    return undefined;
-  }
-  const error = (body as { error: unknown }).error;
-  if (typeof error !== "object" || error === null || !("code" in error)) {
-    return undefined;
-  }
-  const code = (error as { code: unknown }).code;
-  return typeof code === "string" ? code : undefined;
-}
+export type OnboardingDestination = "/signin" | "/consent" | "/home" | "/error";
 
 /**
  * Where the user goes after GET /api/me.
@@ -1524,10 +1663,12 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { readJsonBody } from "../../src/api/readJsonBody";
 import { nextStep } from "../../src/onboarding/nextStep";
 
 export default function SignInPage() {
   const t = useTranslations("signin");
+  const tError = useTranslations("errors");
   const router = useRouter();
   const [contact, setContact] = useState("");
   const [code, setCode] = useState("");
@@ -1561,14 +1702,19 @@ export default function SignInPage() {
     }
 
     // The session cookie is set. Ask the product whether it knows this user.
+    // The body is read defensively: the proxy may legally answer with no body
+    // at all, and a rejected `.json()` here would hang the screen instead of
+    // routing to /error.
     const me = await fetch("/api/me");
-    router.push(nextStep(me.status, await me.json()));
+    router.push(nextStep(me.status, await readJsonBody(me)));
   }
 
   return (
     <main>
       <h1>{t("title")}</h1>
-      {error !== undefined && <p role="alert">{error}</p>}
+      {error !== undefined && (
+        <p role="alert">{tError.has(error) ? tError(error) : tError("UNKNOWN")}</p>
+      )}
 
       <label>
         {t("contactLabel")}
@@ -1601,26 +1747,56 @@ export default function SignInPage() {
         </>
       )}
 
-      <a href={`/auth/callback`}>{t("google")}</a>
+      {/*
+        Points at the route that STARTS the OAuth flow, not at /auth/callback,
+        which is where Google comes back to. Linking to the callback directly
+        arrives with no `code` and is bounced straight to /?error=oauth.
+      */}
+      <a href="/api/auth/google">{t("google")}</a>
     </main>
   );
 }
 ```
 
-Add to `web/messages/en.json`:
+The sign-in screen renders failures through the `errors` catalogue, like the consent form does — a raw `OTP_REQUEST_FAILED` on screen is a bug, not a message.
 
-```json
-  "signin": {
-    "title": "Sign in",
-    "contactLabel": "Phone number or email",
-    "sendCode": "Send me a code",
-    "codeLabel": "Enter the code",
-    "verify": "Continue",
-    "google": "Continue with Google"
+Also add a minimal `web/app/error/page.tsx` rendering `error.title` and `errors.UNKNOWN`, so `nextStep`'s `/error` destination is a real route rather than a 404. Deliberately a `page.tsx`, not Next's `error.tsx` boundary: this is somewhere the app routes to on purpose.
+
+- [ ] **Step 6b: The route that STARTS the Google flow**
+
+The sign-in screen cannot link straight to `/auth/callback` — that is the route Google redirects _back_ to, and Task 4's handler bounces a request with no `code` to `/?error=oauth`. The flow has to be started server-side anyway: `signInWithOAuth` writes the PKCE verifier through the server client's cookie adapter, so it lands in an httpOnly cookie that `/auth/callback` can read when it exchanges the code. Outside a browser `signInWithOAuth` does not redirect — it returns the authorize URL — so the redirect is ours to issue.
+
+Test it first (`web/app/api/auth/__tests__/google.test.ts`, mocking `createSupabaseServerClient` exactly as `verify.test.ts` does): a 307 to the provider URL on success; `redirectTo` pointing at `/auth/callback` on the request's own origin; a redirect to `/?error=oauth` when Supabase errors or returns no URL; and the reason never appearing in the response.
+
+`web/app/api/auth/google/route.ts`:
+
+```ts
+import { NextResponse } from "next/server";
+
+import { createSupabaseServerClient } from "../../../../src/supabase/server";
+
+export async function GET(request: Request) {
+  const origin = new URL(request.url).origin;
+  const supabase = await createSupabaseServerClient();
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: new URL("/auth/callback", origin).toString() },
+  });
+
+  if (error !== null || !data.url) {
+    // Same shape of failure as the callback's, so it lands in the same place.
+    // The reason is logged and never handed to the caller — a browser is
+    // following this link, and "provider is not enabled" is our problem.
+    console.error("oauth start failed", { reason: error?.message ?? "no provider url returned" });
+    return NextResponse.redirect(new URL("/?error=oauth", origin));
   }
+
+  return NextResponse.redirect(data.url);
+}
 ```
 
-Also add a minimal `web/app/error/page.tsx` rendering `errors.UNKNOWN`, so `nextStep`'s `/error` destination is a real route rather than a 404.
+Failure redirects rather than returning the `{ error: { code } }` envelope its `/api/auth/*` siblings use, because a browser is _navigating_ here: a JSON envelope would be rendered as raw text at the user. It matches `/auth/callback`, the other navigation in this flow, and lands in the same place.
 
 - [ ] **Step 7: Verify and commit**
 

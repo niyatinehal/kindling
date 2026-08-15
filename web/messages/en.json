@@ -3,5 +3,35 @@
     "title": "Family Wellness Platform",
     "subtitle": "One app your whole family opens.",
     "signIn": "Sign in"
+  },
+  "signin": {
+    "title": "Sign in",
+    "contactLabel": "Phone number or email",
+    "sendCode": "Send me a code",
+    "codeLabel": "Enter the code",
+    "verify": "Continue",
+    "google": "Continue with Google"
+  },
+  "consent": {
+    "title": "Before we start",
+    "body": "This app stores what you log — workouts, meals, water, sleep — and any health conditions you choose to share, so it can build a plan that fits you. You can export or delete this data at any time.",
+    "nameLabel": "What should we call you?",
+    "healthDataLabel": "I agree to the app storing my health data",
+    "submit": "Continue"
+  },
+  "home": {
+    "title": "You're set up",
+    "noFamily": "You're not in a family yet. Family setup arrives soon."
+  },
+  "error": {
+    "title": "Something went wrong"
+  },
+  "errors": {
+    "VALIDATION_FAILED": "Something in that form wasn't right. Please check and try again.",
+    "UNAUTHENTICATED": "Your session has expired. Please sign in again.",
+    "REGISTRATION_REQUIRED": "One more step before you can continue.",
+    "OTP_REQUEST_FAILED": "We couldn't send that code. Please check the number or email and try again.",
+    "UPSTREAM_UNAVAILABLE": "We couldn't reach the server. Please try again in a moment.",
+    "UNKNOWN": "Something went wrong. Please try again."
   }
 }
