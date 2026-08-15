@@ -28,3 +28,6 @@ supabase/.temp/
 
 # prisma generated client
 generated/
+
+# next.js build output
+.next/

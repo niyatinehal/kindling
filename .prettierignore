@@ -8,3 +8,6 @@ package-lock.json
 .claude/
 
 generated/
+
+web/.next/
+web/next-env.d.ts
