@@ -4,6 +4,14 @@
 import { secureCookieOptions } from "../server";
 
 describe("secureCookieOptions", () => {
+  // Restores every `jest.replaceProperty` below even when an expectation
+  // throws. Restoring inline after the `expect` would be skipped on exactly
+  // the failure this suite exists to catch, leaking a mutated NODE_ENV into
+  // whatever the worker runs next.
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("forces httpOnly to true even when the caller explicitly passed httpOnly: false", () => {
     const result = secureCookieOptions({ httpOnly: false });
 
@@ -17,21 +25,19 @@ describe("secureCookieOptions", () => {
   });
 
   it("sets secure to false when NODE_ENV is not production", () => {
-    const nodeEnv = jest.replaceProperty(process.env, "NODE_ENV", "test");
+    jest.replaceProperty(process.env, "NODE_ENV", "test");
 
     const result = secureCookieOptions({});
 
     expect(result.secure).toBe(false);
-    nodeEnv.restore();
   });
 
   it("sets secure to true when NODE_ENV is production", () => {
-    const nodeEnv = jest.replaceProperty(process.env, "NODE_ENV", "production");
+    jest.replaceProperty(process.env, "NODE_ENV", "production");
 
     const result = secureCookieOptions({});
 
     expect(result.secure).toBe(true);
-    nodeEnv.restore();
   });
 
   it("preserves unrelated incoming options", () => {
