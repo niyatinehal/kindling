@@ -11,26 +11,29 @@
     "test": "jest"
   },
   "dependencies": {
-    "next": "16.3.1",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.58.0",
+    "next": "16.3.1",
     "next-intl": "4.13.6",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@serwist/turbopack": "^9.5.12",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@types/jest": "^30.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
-    "@types/jest": "^30.0.0",
-    "jest": "^30.4.2",
-    "jest-environment-jsdom": "^30.4.1",
-    "@testing-library/react": "^16.3.0",
-    "@testing-library/jest-dom": "^6.6.3",
-    "typescript": "^6.0.3",
-    "@eslint/js": "^10.0.1",
+    "esbuild": "^0.28.2",
     "eslint": "^10.8.1",
     "eslint-config-prettier": "^10.1.8",
+    "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1",
+    "serwist": "^9.5.12",
+    "typescript": "^6.0.3",
     "typescript-eslint": "^8.67.0"
   }
 }
