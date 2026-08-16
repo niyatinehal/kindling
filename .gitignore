@@ -31,3 +31,6 @@ generated/
 
 # next.js build output
 .next/
+
+# Visual brainstorming companion scratch output
+.superpowers/
