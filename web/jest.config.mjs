@@ -13,8 +13,11 @@ const common = { clearMocks: true };
 // into `createJestConfig` can't undo that default — it only adds more
 // exclusions. So the restrictive pattern nextJest computes is replaced
 // outright, for tests only; this does not touch the production build.
+// `serwist` and `@serwist/*` are ESM-only too (`"type": "module"`, `.mjs`
+// only), and the PWA runtime-caching test loads `@serwist/turbopack/worker` to
+// assert against the real `defaultCache` rather than a hand-written stand-in.
 const transformIgnorePatterns = [
-  "/node_modules/(?!(next-intl|use-intl|@formatjs|@schummar|icu-minify|intl-messageformat)/)",
+  "/node_modules/(?!(next-intl|use-intl|@formatjs|@schummar|icu-minify|intl-messageformat|serwist|@serwist)/)",
 ];
 
 export default async function config() {

@@ -23,7 +23,15 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           `Service-Worker-Allowed: /`, and SerwistProvider registers with
           `scope: "/"` (its default when no `options.scope` is given).
         */}
-        <SerwistProvider swUrl="/serwist/sw.js">
+        {/*
+          `reloadOnOnline` defaults to true, which calls `location.reload()` on
+          the window `online` event. Sign-in keeps the contact, the code and
+          "a code was sent" in React state, so a Wi-Fi-to-cellular handoff or a
+          two-second drop mid-OTP would wipe the code being typed and the fact
+          that one had been requested. A reload buys nothing here — the pages
+          fetch what they need on mount — so it is off.
+        */}
+        <SerwistProvider swUrl="/serwist/sw.js" reloadOnOnline={false}>
           <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>
         </SerwistProvider>
       </body>

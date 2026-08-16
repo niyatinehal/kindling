@@ -1850,8 +1850,9 @@ git add web/ && git commit -m "feat: add sign-in, consent and the registration-r
 
 **Files:**
 
-- Create: `web/app/sw.ts`, `web/app/serwist/[path]/route.ts`, `web/app/~offline/page.tsx`, `web/public/manifest.webmanifest`
-- Modify: `web/next.config.mjs`, `web/app/layout.tsx`, `web/package.json`
+- Create: `web/app/sw.ts`, `web/app/serwist/[path]/route.ts`, `web/app/~offline/page.tsx`, `web/public/manifest.webmanifest`, `web/src/pwa/runtimeCaching.ts`
+- Modify: `web/next.config.mjs`, `web/app/layout.tsx`, `web/package.json`, `web/jest.config.mjs`
+- Test: `web/src/pwa/__tests__/runtimeCaching.test.ts`
 
 **Interfaces:**
 
@@ -1866,7 +1867,38 @@ npm i -D -w web @serwist/turbopack@9.5.12 serwist@9.5.12 esbuild@^0.28.2
 
 `@serwist/next` is webpack-only and Next 16 builds with Turbopack. **Both packages declare `next: ">=14.0.0"`, so npm warns on neither** — installing the wrong one fails at build or, worse, at runtime.
 
-- [ ] **Step 2: Create the worker**
+- [ ] **Step 2a: Keep our own API out of Cache Storage**
+
+`defaultCache` is not safe to hand to `Serwist` as-is. It runs a `NetworkFirst` over every same-origin GET under `/api/` — `/api/auth/*` is carved out ahead of it, `/api/me` is not — and that strategy copies the response body into `caches.open("apis")`. `/api/me` returns `id`, `display_name`, `locale`, `email` and `family: { id, role }`, and Task 6's sign-in page fetches it from the browser the moment a code is verified. `Cache-Control: private, no-store` does not help: the Cache API stores whatever it is handed. That puts the user's email and family role in plaintext, readable by any script on the origin, for 24h past last use — the exact thing the httpOnly session cookie in Task 5 exists to prevent. `NetworkFirst` also serves the cached copy when the network is slow or down, so on a shared family device the next person to open the app can be routed by the previous person's `/api/me`.
+
+`web/src/pwa/runtimeCaching.ts`:
+
+```ts
+import { NetworkOnly, type RuntimeCaching } from "serwist";
+
+export const withoutApiCaching = (runtimeCaching: readonly RuntimeCaching[]): RuntimeCaching[] => [
+  {
+    matcher: ({ sameOrigin, url }) => sameOrigin && url.pathname.startsWith("/api/"),
+    handler: new NetworkOnly(),
+  },
+  ...runtimeCaching,
+];
+```
+
+A rule in **front** of the list rather than a surgical edit of the offending entry: Serwist registers routes by pushing onto a per-method array and `findMatchingRoute` returns the first match, so a leading `/api/` rule makes every later `/api/` rule unreachable — the one `defaultCache` ships today and any a future version adds. The rest is spread through by reference, so upstream changes to the font, image and page rules still reach us instead of being frozen at whatever we copied. Nothing is given up at slice 1: there is no offline-data feature to lose.
+
+`web/jest.config.mjs` — add `serwist|@serwist` to the `transformIgnorePatterns` allowlist. Both are ESM-only (`"type": "module"`, `.mjs` only), and the test below loads `@serwist/turbopack/worker` to assert against the real `defaultCache`.
+
+`web/src/pwa/__tests__/runtimeCaching.test.ts` asserts the defect and the fix in one breath:
+
+```ts
+expect(handlerFor(defaultCache, "/api/me")).toBeInstanceOf(NetworkFirst as never);
+expect(handlerFor(withoutApiCaching(defaultCache), "/api/me")).toBeInstanceOf(NetworkOnly as never);
+```
+
+Two traps make the naive version of this test vacuous. `defaultCache` picks its contents at module-eval time — anything other than `NODE_ENV=production` gets a single `NetworkOnly` catch-all, so an ordinary import asserts against a list the browser never sees; use `jest.replaceProperty(process.env, "NODE_ENV", "production")` plus `jest.isolateModulesAsync`. And an isolated registry hands out its **own** copy of `serwist`, so `NetworkFirst` imported at the top of the file is not the `NetworkFirst` the isolated `defaultCache` was built from — import `serwist` and `../runtimeCaching` from inside the same `isolateModulesAsync` block. Restore in `afterEach`, not inline, so a failing expectation cannot leak a production `NODE_ENV`.
+
+- [ ] **Step 2b: Create the worker**
 
 `web/app/sw.ts`:
 
@@ -1874,6 +1906,8 @@ npm i -D -w web @serwist/turbopack@9.5.12 serwist@9.5.12 esbuild@^0.28.2
 import { defaultCache } from "@serwist/turbopack/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
 import { Serwist } from "serwist";
+
+import { withoutApiCaching } from "../src/pwa/runtimeCaching";
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -1884,11 +1918,16 @@ declare global {
 declare const self: ServiceWorkerGlobalScope;
 
 const serwist = new Serwist({
-  precacheEntries: self.__SW_MANIFEST,
+  // `__SW_MANIFEST` is typed as possibly-undefined, but `SerwistOptions`
+  // declares `precacheEntries?:` without `| undefined` — and this tsconfig sets
+  // `exactOptionalPropertyTypes`, so passing the bare value is TS2379.
+  // Serwist's own guard is `!!precacheEntries && precacheEntries.length > 0`,
+  // so an empty array is precisely as inert as the undefined it replaces.
+  precacheEntries: self.__SW_MANIFEST ?? [],
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: defaultCache,
+  runtimeCaching: withoutApiCaching(defaultCache),
   fallbacks: {
     entries: [{ url: "/~offline", matcher: ({ request }) => request.destination === "document" }],
   },
@@ -1897,6 +1936,8 @@ const serwist = new Serwist({
 serwist.addEventListeners();
 ```
 
+**The fallback only works because Step 3 precaches `/~offline`.** `PrecacheFallbackPlugin` resolves these entries with `matchPrecache()`, which reads the precache and nothing else — a copy of `/~offline` left in a runtime cache by an earlier visit is invisible to it, and `navigateFallback` is unset, so there is no second path. Declare the fallback without the precache entry and it is dead code that no test in this plan would notice.
+
 If `ServiceWorkerGlobalScope` fails to resolve (TS2552), `"webworker"` is missing from `web/tsconfig.json`'s `lib`. Task 1 put it there; verify rather than working around it.
 
 - [ ] **Step 3: Create the route that serves the worker**
@@ -1904,24 +1945,55 @@ If `ServiceWorkerGlobalScope` fails to resolve (TS2552), `"webworker"` is missin
 `web/app/serwist/[path]/route.ts`:
 
 ```ts
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+
 import { createSerwistRoute } from "@serwist/turbopack";
+
+// The sources that decide what the precached /~offline document contains: the
+// page, the root layout that wraps it, and the message catalogues the layout
+// serialises into the HTML. Paths are relative to a Next build's working
+// directory, which is this workspace root — the same assumption `swSrc` makes.
+const offlineDocumentSources = [
+  "app/~offline/page.tsx",
+  "app/layout.tsx",
+  "messages/en.json",
+  "messages/hi.json",
+];
+
+const offlineDocumentRevision = offlineDocumentSources
+  .reduce((digest, source) => digest.update(readFileSync(source)), createHash("sha256"))
+  .digest("hex")
+  .slice(0, 32);
 
 /**
  * `useNativeEsbuild: true` is required, not optional.
  *
  * @serwist/turbopack declares BOTH `esbuild` and `esbuild-wasm` as peers and
- * defaults to the wasm one. The documented install line installs only
- * `esbuild`, leaving the wasm import unresolvable — which surfaces as Serwist
- * issue #360: a RUNTIME `ERR_MODULE_NOT_FOUND` during page-data collection,
- * not a compile error. This flag is the verified one-line fix.
+ * defaults to the wasm one off Windows. The documented install line installs
+ * only `esbuild`, leaving the wasm import unresolvable — which surfaces as
+ * Serwist issue #360: a RUNTIME `ERR_MODULE_NOT_FOUND` during page-data
+ * collection, not a compile error. This flag is the verified one-line fix.
  *
  * `swUrl` is NOT an option here (TS2353) — it belongs on <SerwistProvider>.
+ *
+ * Every binding the factory returns is re-exported, not just `GET`. The route
+ * segment config (`dynamic`/`dynamicParams`/`revalidate`) plus
+ * `generateStaticParams` is what makes Next prerender the worker at build
+ * time; drop them and the worker is built lazily on first request instead.
  */
-export const { GET } = createSerwistRoute({
+const serwistRoute = createSerwistRoute({
   swSrc: "app/sw.ts",
   useNativeEsbuild: true,
+  additionalPrecacheEntries: [{ url: "/~offline", revision: offlineDocumentRevision }],
 });
+
+export const { dynamic, dynamicParams, revalidate, generateStaticParams, GET } = serwistRoute;
 ```
+
+**`additionalPrecacheEntries` is not optional polish — without it the Step 2b fallback can never fire.** Turbopack's default glob set is `${distDir}static/**/*` plus `public/**/*`, and App Router pages are rendered into neither, so no route's HTML is eligible for precaching: the manifest is JS chunks plus `manifest.webmanifest` and not one HTML document. `additionalPrecacheEntries` is a supported option (`@serwist/build`'s base schema, threaded through `@serwist/turbopack`'s validator, and applied only when `NODE_ENV=production`).
+
+**Why the entry needs a `revision`.** `revision: null` is right for the JS chunks, because their URLs are content-hashed — a new build gives a new URL, so the entry changes by itself. `/~offline` has no hash in its URL, so `revision: null` there means "cached once, never fetched again": the first deploy's offline page would outlive every rewrite of it. The digest above moves whenever the copy, the layout or a message catalogue moves, and stays put otherwise, so an unchanged page is not re-downloaded. Known gap, accepted: a build that changes only Next's build ID moves the script URLs inside the rendered HTML without moving the digest, so the cached copy can reference chunks that no longer exist. That costs the offline page its hydration, not its content — it is static text with no interactivity. A per-build value would fix that at the price of re-downloading it every deploy and making the build non-deterministic.
 
 - [ ] **Step 4: Wire the provider, manifest and offline page**
 
@@ -1948,11 +2020,13 @@ import { SerwistProvider } from "@serwist/turbopack/react";
 
 ```tsx
 <body>
-  <SerwistProvider swUrl="/serwist/sw.js">
+  <SerwistProvider swUrl="/serwist/sw.js" reloadOnOnline={false}>
     <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>
   </SerwistProvider>
 </body>
 ```
+
+`reloadOnOnline={false}` is load-bearing, not a preference. It defaults to `true`, which calls `location.reload()` on the window `online` event. Task 6's sign-in page holds the contact, the code and "a code was sent" in React state, so a Wi-Fi-to-cellular handoff or a two-second drop mid-OTP would wipe both the code being typed and the fact that one had been requested. A reload buys nothing here — these pages fetch what they need on mount. Comment it in the file so nobody restores the default.
 
 and add to `metadata`: `manifest: "/manifest.webmanifest"`.
 
@@ -1985,8 +2059,30 @@ export default function OfflinePage() {
 
 - [ ] **Step 5: Prove it from a production build — the only proof that counts**
 
+Four HTTP status codes cannot observe whether the PWA works offline. `curl /~offline -> 200` proves the page renders, which was never in doubt; it says nothing about whether the worker can reach that page with the network gone. **Read the shipped worker instead.**
+
 ```bash
 npm run build:web 2>&1 | tail -20
+node -e '
+const s = require("fs").readFileSync("web/.next/server/app/serwist/sw.js.body", "utf8");
+const a = s.slice(s.indexOf("[{url:"), s.indexOf("}];", s.indexOf("[{url:")) + 2);
+console.log(a.replace(/},\{/g, "},\n{"));
+console.log("entries:", (a.match(/url:/g) || []).length);
+console.log("~offline precached:", a.includes("/~offline"));
+console.log("api NetworkOnly bundled ahead of defaultCache:",
+  /=>\[\{matcher:\(\{sameOrigin:\w+,url:\w+\}\)=>\w+&&\w+\.pathname\.startsWith\("\/api\/"\),handler:new \w+\},\.\.\./.test(s));
+'
+```
+
+Assertions that actually bind:
+
+- **`/~offline` appears in the precache manifest, with a non-null `revision`.** This is the one that would have caught the dead fallback. Before `additionalPrecacheEntries` the manifest was 15 entries — 14 JS files and `/manifest.webmanifest`, no HTML of any kind — so `matchPrecache("/~offline")` had nothing to find.
+- **The `/api/` `NetworkOnly` survived bundling and is spread ahead of `defaultCache`.** The worker should contain `[{matcher:({sameOrigin,url})=>sameOrigin&&url.pathname.startsWith("/api/"),handler:new NetworkOnly},...defaultCache]` in minified form — that leading position is what makes the `cacheName:"apis"` entry unreachable. This is a bundling check only; the behaviour itself is gated by `runtimeCaching.test.ts`.
+- build log contains a `(serwist)` precache-entries line whose count matches the manifest above.
+
+The server-side checks are still worth running, but as a smoke test, not as the offline proof. Note `npm run start:web` needs `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `API_BASE_URL` set — without them Task 5's middleware throws and every page under it answers **500**, not 404/200:
+
+```bash
 PORT=3001 npm run start:web &
 sleep 5
 curl -s -o /dev/null -w '/serwist/sw.js -> %{http_code} (%{content_type}, %{size_download} bytes)\n' localhost:3001/serwist/sw.js
@@ -1996,12 +2092,7 @@ curl -s -o /dev/null -w '/manifest      -> %{http_code}\n' localhost:3001/manife
 kill %1
 ```
 
-Expected, matching the spike:
-
-- build log contains a `(serwist)` precache-entries line
-- `/serwist/sw.js` → **200**, `application/javascript`, tens of KB
-- `/sw.js` → **404** — this confirms the worker is NOT at the origin root
-- `/~offline` and the manifest → 200
+`/serwist/sw.js` → 200 `application/javascript`; `/sw.js` → **404**, which confirms the worker is not at the origin root; `/~offline` and the manifest → 200.
 
 If the build fails with `Cannot find package 'esbuild-wasm'`, `useNativeEsbuild: true` is missing or misspelled. Do not install `esbuild-wasm` to work around it — that is treating the symptom.
 
@@ -2009,7 +2100,7 @@ If the build fails with `Cannot find package 'esbuild-wasm'`, `useNativeEsbuild:
 
 ```bash
 npm run test:web && npm run typecheck:web && npm run lint:web && npm run format:check
-git add web/ package-lock.json && git commit -m "build: precache the app shell with Serwist via Turbopack"
+git add web/ package-lock.json && git commit -m "build: serve a Serwist worker with an offline fallback"
 ```
 
 ---
@@ -2298,17 +2389,19 @@ git add . && git commit -m "test: drive the onboarding journey end to end"
 
 ## Verification Summary
 
-| Claim                                        | Command                                                                      |
-| -------------------------------------------- | ---------------------------------------------------------------------------- |
-| The session cookie is httpOnly               | Task 4's unit test, and again in Task 9's E2E against a real browser         |
-| `createBrowserClient` cannot be reintroduced | Task 3 Step 6 — the probe file must fail lint                                |
-| The proxy sends a Bearer token and no cookie | `npm run test:web` — `upstream.test.ts`                                      |
-| A 403 survives the proxy as a 403            | Task 5's `app/api/me/__tests__/route.test.ts` — the handler, not `callApi`   |
-| A dead upstream is a 502 envelope, not a 500 | same suites, both handlers                                                   |
-| Copy comes from the catalogue, not literals  | `landing.test.tsx`, including the missing-key case                           |
-| Consent posts the policy version shown       | `consent.test.tsx`                                                           |
-| An unregistered user cannot reach /home      | `app/home/__tests__/page.test.ts` — the guard, including the OAuth case      |
-| A double click posts one registration        | `consentPage.test.tsx`                                                       |
-| The service worker actually serves           | Task 7 Step 5 — `/serwist/sw.js` 200 **and** `/sw.js` 404, from `next start` |
-| The whole journey works                      | `npm run e2e:web`                                                            |
-| The backend is unaffected                    | `npm test` — 40 unit, unchanged throughout                                   |
+| Claim                                        | Command                                                                          |
+| -------------------------------------------- | -------------------------------------------------------------------------------- |
+| The session cookie is httpOnly               | Task 4's unit test, and again in Task 9's E2E against a real browser             |
+| `createBrowserClient` cannot be reintroduced | Task 3 Step 6 — the probe file must fail lint                                    |
+| The proxy sends a Bearer token and no cookie | `npm run test:web` — `upstream.test.ts`                                          |
+| A 403 survives the proxy as a 403            | Task 5's `app/api/me/__tests__/route.test.ts` — the handler, not `callApi`       |
+| A dead upstream is a 502 envelope, not a 500 | same suites, both handlers                                                       |
+| Copy comes from the catalogue, not literals  | `landing.test.tsx`, including the missing-key case                               |
+| Consent posts the policy version shown       | `consent.test.tsx`                                                               |
+| An unregistered user cannot reach /home      | `app/home/__tests__/page.test.ts` — the guard, including the OAuth case          |
+| A double click posts one registration        | `consentPage.test.tsx`                                                           |
+| The service worker actually serves           | Task 7 Step 5 — `/serwist/sw.js` 200 **and** `/sw.js` 404, from `next start`     |
+| The offline fallback can actually resolve    | Task 7 Step 5 — `/~offline` present in the precache manifest inside `sw.js.body` |
+| No API response reaches Cache Storage        | `src/pwa/__tests__/runtimeCaching.test.ts` — `/api/me` lands on `NetworkOnly`    |
+| The whole journey works                      | `npm run e2e:web`                                                                |
+| The backend is unaffected                    | `npm test` — 40 unit, unchanged throughout                                       |
