@@ -19,66 +19,48 @@ This is an npm workspaces monorepo:
 ```
 wellness_platform/
   package.json            workspace root — shared infra scripts, Prettier, Supabase CLI
+  scripts/dev.sh           the one-command dev script (`npm run dev`)
   api/                     the backend service (Express, Prisma, Jest)
     src/  test/  prisma/
+  web/                     the frontend (Next.js)
   supabase/                local Supabase stack config, shared by every workspace
   docker-compose.yml       app container
   docker-compose.test.yml  disposable Postgres for integration tests
 ```
 
-`workspaces` currently lists only `api` — a `web/` workspace (Next.js frontend) arrives in a later
-slice; see `docs/specs/2026-08-14-frontend-foundations-design.md`.
+`workspaces` lists both `api` and `web`.
 
 Backend commands run from the repo root and delegate — `npm test`, `npm run lint`, `npm run
-typecheck`, `npm run dev` — or directly with `-w api` (e.g. `npm run prisma:generate -w api`).
+typecheck`, `npm run dev:api` — or directly with `-w api` (e.g. `npm run prisma:generate -w api`).
 Prisma CLI commands that aren't wrapped in a root script (`prisma migrate deploy`, `prisma
 validate`, ...) need `cd api` first, because the CLI resolves `prisma.config.ts` from the working
 directory.
 
 ## Run it locally
 
-The app always talks to a real Postgres, so the Supabase stack must be running before you start
-the app. `api/.env` is required, not optional: the `dev` script runs `tsx` with `--env-file=.env`
-from inside the `api` workspace, and without that file Node refuses to start
-(`node: .env: not found`) before any app code runs.
-
 ```bash
 git clone <repo-url>
 cd wellness_platform
 npm ci
-npm run prisma:generate -w api           # generates the client into api/generated/prisma; npm ci doesn't do this
-cp .env.example api/.env                 # required — dev fails immediately without it
-npx supabase start                       # Postgres, Auth, Storage in Docker; first run pulls images
-( cd api && npx prisma migrate deploy )  # apply the schema
-# copy SERVICE_ROLE_KEY from `npx supabase status` into api/.env as SUPABASE_SERVICE_ROLE_KEY first
-npm run db:seed                          # one demo family, two members (uses DIRECT_URL — see below)
 npm run dev
 ```
 
-`.env.example` stays at the repo root as the template — `cp` it into `api/`, which is where the
-backend actually loads it from. It already sets `SUPABASE_URL=http://127.0.0.1:54321`, which
-matches the local Supabase stack, so no edit is needed there for local dev. `SUPABASE_URL` is
-required at boot — `npm run dev` refuses to start without it — and `SUPABASE_SERVICE_ROLE_KEY` is
-required only for the seed step above, because `prisma db seed` creates real Supabase auth
-accounts for the demo users and throws immediately if the key is unset.
+That is the whole thing. `scripts/dev.sh` checks Docker, starts Supabase if it
+is not up, waits for Postgres to answer, creates `api/.env` and
+`web/.env.local` if they are missing, fills in the Supabase keys from
+`supabase status`, generates the Prisma client, applies migrations, and then
+runs the API on **3000** and the web app on **3001** together. Every step is a
+no-op when already satisfied, so it is also the command to use every day.
 
-Then, in another terminal:
+- **Web app:** http://localhost:3001
+- **API:** http://localhost:3000 (`/healthz`, `/readyz`)
+- **Supabase Studio:** http://127.0.0.1:54323
 
-```bash
-curl localhost:3000/healthz   # liveness  — 200 even with the database down
-curl localhost:3000/readyz    # readiness — 200 only when Postgres answers, 503 otherwise
-```
+Ctrl-C stops both apps and leaves Supabase running. `npm run stop` stops
+Supabase too. To run one side alone: `npm run dev:api` or `npm run dev:web`.
 
-Expected from `/readyz`:
-
-```json
-{ "status": "ready", "checks": { "database": "up" } }
-```
-
-To use a different port: `PORT=4000 npm run dev`, then curl `localhost:4000/healthz`.
-
-Stop the stack with `npx supabase stop`. Inspect data with `npx prisma studio` or the Supabase
-Studio URL that `supabase start` prints (`http://127.0.0.1:54323` by default).
+Seeding stays manual — `npm run db:seed` creates real Supabase auth accounts
+and is not safe to re-run blindly.
 
 ## Authentication
 
@@ -173,7 +155,9 @@ at the root, because `web/` will need it too.
 
 | Script                     | Scope                 | What it does                                                                                                    |
 | -------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `npm run dev`              | root → api (delegate) | Watch mode via `tsx`, loads `api/.env` with `--env-file`                                                        |
+| `npm run dev`              | root only             | `scripts/dev.sh` — the one-command dev script; brings up Supabase, the API and the web app together             |
+| `npm run dev:api`          | root → api (delegate) | Watch mode via `tsx`, loads `api/.env` with `--env-file` — what `npm run dev` used to mean                      |
+| `npm run stop`             | root only             | `supabase stop`                                                                                                 |
 | `npm run build`            | root → api (delegate) | Compiles `api/src/` to `api/dist/` (`tsconfig.build.json`)                                                      |
 | `npm start`                | root → api (delegate) | Runs `node dist/src/server.js` from `api/` — **no** `--env-file`; see note below                                |
 | `npm test`                 | root → api (delegate) | Jest unit project — 40 tests, no Docker required                                                                |
@@ -216,8 +200,7 @@ required at boot (see `api/src/config/env.ts`), and `npm start` crashes immediat
 ## Layout
 
 This is `api/`'s internal layout — see [Repository layout](#repository-layout) above for how it
-sits inside the workspace root. A `web/` workspace (frontend) arrives in a later slice; it does not
-exist yet.
+sits inside the workspace root.
 
 ```
 api/
