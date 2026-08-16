@@ -18,6 +18,8 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/?error=oauth", url.origin));
   }
 
-  // Onboarding decides between /consent and /home from GET /api/me.
+  // Always /home, and /home itself decides: it runs the onboarding guard
+  // server-side and sends a user with no `users` row on to /consent. Deciding
+  // here instead would leave /home reachable, unguarded, by typing the URL.
   return NextResponse.redirect(new URL("/home", url.origin));
 }

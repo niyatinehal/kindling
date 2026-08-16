@@ -75,6 +75,21 @@ describe("consent form", () => {
     expect(nameInput()).toHaveAttribute("maxLength", "120");
   });
 
+  // Without this the button stays clickable for the whole POST, and the second
+  // click posts a second registration.
+  it("disables submission while one is already in flight", () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={messages}>
+        <ConsentForm onSubmit={jest.fn()} policyVersion="2026-08-15" submitting />
+      </NextIntlClientProvider>,
+    );
+
+    fireEvent.change(nameInput(), { target: { value: "Meera" } });
+    fireEvent.click(consentCheckbox());
+
+    expect(submitButton()).toBeDisabled();
+  });
+
   it("renders the error envelope's code rather than a raw failure", () => {
     render(
       <NextIntlClientProvider locale="en" messages={messages}>

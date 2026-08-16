@@ -1,12 +1,25 @@
-import { useTranslations } from "next-intl";
+import { redirect } from "next/navigation";
 
-export default function HomePage() {
-  const t = useTranslations("home");
+import { currentStep } from "../../src/onboarding/currentStep";
+import { HomeView } from "./HomeView";
 
-  return (
-    <main>
-      <h1>{t("title")}</h1>
-      <p>{t("noFamily")}</p>
-    </main>
-  );
+/**
+ * The guard for the whole journey, and the reason it lives HERE rather than in
+ * `/auth/callback`: a first-time Google user arrives at /home with a Supabase
+ * session but no `users` row, no consent record and no display name, and so
+ * does anyone who simply types the URL. Redirecting from the callback would
+ * close only the first of those. Guarding the destination closes both.
+ *
+ * Nothing is caught around `redirect()` on purpose: it signals the redirect by
+ * throwing, and `currentStep` already resolves every failure to a destination,
+ * so there is nothing left here that needs a try/catch.
+ */
+export default async function HomePage() {
+  const step = await currentStep();
+
+  if (step !== "/home") {
+    redirect(step);
+  }
+
+  return <HomeView />;
 }

@@ -847,7 +847,10 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/?error=oauth", url.origin));
   }
 
-  // Onboarding decides between /consent and /home from GET /api/me.
+  // Always /home, and /home itself decides: Task 6 makes it an async server
+  // component that runs the onboarding guard and sends a user with no `users`
+  // row on to /consent. Deciding here instead would leave /home reachable,
+  // unguarded, by typing the URL.
   return NextResponse.redirect(new URL("/home", url.origin));
 }
 ```
@@ -1225,9 +1228,9 @@ git add web/ && git commit -m "feat: proxy to Express with a Bearer token and no
 
 **Files:**
 
-- Create: `web/app/signin/page.tsx`, `web/app/consent/page.tsx`, `web/app/consent/ConsentForm.tsx`, `web/app/home/page.tsx`, `web/app/error/page.tsx`, `web/app/api/auth/google/route.ts`, `web/src/onboarding/nextStep.ts`, `web/src/api/errorCode.ts`, `web/src/api/readJsonBody.ts`
+- Create: `web/app/signin/page.tsx`, `web/app/consent/page.tsx`, `web/app/consent/ConsentForm.tsx`, `web/app/home/page.tsx`, `web/app/home/HomeView.tsx`, `web/app/error/page.tsx`, `web/app/api/auth/google/route.ts`, `web/src/onboarding/nextStep.ts`, `web/src/onboarding/currentStep.ts`, `web/src/api/errorCode.ts`, `web/src/api/readJsonBody.ts`
 - Modify: `web/messages/en.json`
-- Test: `web/src/__tests__/consent.test.tsx`, `web/src/onboarding/__tests__/nextStep.test.ts`, `web/src/api/__tests__/readJsonBody.test.ts`, `web/app/api/auth/__tests__/google.test.ts`
+- Test: `web/src/__tests__/consent.test.tsx`, `web/src/__tests__/consentPage.test.tsx`, `web/src/onboarding/__tests__/nextStep.test.ts`, `web/app/home/__tests__/page.test.ts`, `web/src/api/__tests__/readJsonBody.test.ts`, `web/app/api/auth/__tests__/google.test.ts`
 
 **Interfaces:**
 
@@ -1236,9 +1239,10 @@ git add web/ && git commit -m "feat: proxy to Express with a Bearer token and no
 
 **Contracts Task 9 must be written against (as built):**
 
-- The consent form collects a **display name**. Submission is disabled until the name is non-empty after trimming AND the health-data box is ticked. `POST /api/register` carries `{ display_name, locale: "en", consents }` with the name the user typed — nothing is hardcoded.
+- The consent form collects a **display name**. Submission is disabled until the name is non-empty after trimming AND the health-data box is ticked, and stays disabled while a registration is in flight — one click, one `POST /api/register`. That request carries `{ display_name, locale: "en", consents }` with the name the user typed — nothing is hardcoded.
 - The "Continue with Google" link points at `/api/auth/google`, not `/auth/callback`.
 - `nextStep` is matched on the error CODE, never the status alone.
+- **`/home` is guarded, and it is the only place the journey is routed for an OAuth user.** `/auth/callback` redirects unconditionally to `/home`; `/home` is an async server component that resolves `currentStep()` before rendering and `redirect()`s to `/consent` (403 `REGISTRATION_REQUIRED`), `/signin` (no session, or 401) or `/error` (anything else, including a dead API). A first-time Google user therefore reaches the consent screen, and so does anyone who types `/home` directly — the callback alone could not have closed the second hole. Playwright can assert this by navigating to `/home` with a fresh session and expecting to land on `/consent`.
 
 - [ ] **Step 1: Write the failing component test**
 
@@ -1568,22 +1572,57 @@ export default function ConsentPage() {
 }
 ```
 
-`web/app/home/page.tsx`:
+The consent page also owns the in-flight state: `submitting` is set before the first `await`, passed to `ConsentForm`, and cleared only on a failure — on success the route change is already under way and re-enabling the button would allow a second registration during it. A `fetch` that rejects outright (offline) is caught and surfaced as `UPSTREAM_UNAVAILABLE`, because that path reaches neither branch and would otherwise leave the button dead forever.
+
+`web/app/home/page.tsx` — **the guard for the whole journey**, split in two because `useTranslations` is a hook and cannot be called from the `async` component that awaits the guard:
 
 ```tsx
-import { useTranslations } from "next-intl";
+// web/app/home/page.tsx
+import { redirect } from "next/navigation";
 
-export default function HomePage() {
-  const t = useTranslations("home");
+import { currentStep } from "../../src/onboarding/currentStep";
+import { HomeView } from "./HomeView";
 
-  return (
-    <main>
-      <h1>{t("title")}</h1>
-      <p>{t("noFamily")}</p>
-    </main>
-  );
+export default async function HomePage() {
+  const step = await currentStep();
+
+  if (step !== "/home") {
+    redirect(step);
+  }
+
+  return <HomeView />;
 }
 ```
+
+`web/app/home/HomeView.tsx` holds the markup that was originally inline here (`main` > `h1` + `p`, both from `messages.home`).
+
+`web/src/onboarding/currentStep.ts` — the server twin of the sign-in screen's `nextStep(me.status, body)` call:
+
+```ts
+export async function currentStep(): Promise<OnboardingDestination> {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data } = await supabase.auth.getSession();
+    const accessToken = data.session?.access_token;
+
+    if (accessToken === undefined) {
+      return nextStep(401, { error: { code: "UNAUTHENTICATED" } });
+    }
+
+    const response = await proxyUpstream(() => callApi("/api/v1/auth/me", accessToken));
+    return nextStep(response.status, await readJsonBody(response));
+  } catch (reason) {
+    console.error("onboarding step could not be resolved", { reason: describe(reason) });
+    return "/error";
+  }
+}
+```
+
+Three decisions worth keeping:
+
+- It **reuses `nextStep`** rather than restating the rules. The OAuth journey and the OTP journey must not drift apart on the one distinction that matters — 403 `REGISTRATION_REQUIRED` is consent, any other 403 (`FORBIDDEN_ROLE`) is not.
+- It calls `callApi` **directly instead of fetching our own `/api/me` over HTTP**. A server component has no origin to build an absolute URL from — `request.url` is the bind address here, not the address a client would use — so an HTTP call to ourselves would be a second, breakable copy of two in-process steps. It still goes through `proxyUpstream`, purely for Task 5's normalisation: a dead API, an HTML error page or an unparsable body becomes a 502 envelope, so `nextStep` never sees a status whose body contradicts it.
+- It **never throws**, so the page needs no try/catch — which is load-bearing, because `redirect()` signals by throwing and a catch around it would swallow the redirect and render the page it was leaving.
 
 - [ ] **Step 5: Write the failing test for the routing decision**
 
@@ -2105,6 +2144,8 @@ git add web/ && git commit -m "feat: carry the elderly-mode seam from the first 
 
 - Consumes: everything above.
 
+**The spec below is OTP-only and it reaches consent with an explicit `page.goto("/consent")`, so it cannot catch a routing bug: it never asks the app where a new user belongs.** That is exactly how a first-time Google user came to land on `/home` — signed in, with no `users` row, no consent record and no display name — while every test stayed green. Task 9 must additionally cover **the OAuth journey's routing**, and at minimum the assertion that carries it: with a fresh session that has not registered, `page.goto("/home")` must end on `/consent`, never on the home screen. Driving Google's own consent screen is not feasible in CI, so drive the seam rather than the provider — mint a Supabase session for an unregistered account (the local stack's admin API), then navigate. Add it as a second `test()` in the same spec; the unit test at `web/app/home/__tests__/page.test.ts` proves the decision, and this proves the redirect actually happens in a browser.
+
 - [ ] **Step 1: Install Playwright and configure it**
 
 ```bash
@@ -2266,6 +2307,8 @@ git add . && git commit -m "test: drive the onboarding journey end to end"
 | A dead upstream is a 502 envelope, not a 500 | same suites, both handlers                                                   |
 | Copy comes from the catalogue, not literals  | `landing.test.tsx`, including the missing-key case                           |
 | Consent posts the policy version shown       | `consent.test.tsx`                                                           |
+| An unregistered user cannot reach /home      | `app/home/__tests__/page.test.ts` — the guard, including the OAuth case      |
+| A double click posts one registration        | `consentPage.test.tsx`                                                       |
 | The service worker actually serves           | Task 7 Step 5 — `/serwist/sw.js` 200 **and** `/sw.js` 404, from `next start` |
 | The whole journey works                      | `npm run e2e:web`                                                            |
 | The backend is unaffected                    | `npm test` — 40 unit, unchanged throughout                                   |

@@ -19,10 +19,13 @@ export function ConsentForm({
   onSubmit,
   policyVersion,
   error,
+  submitting = false,
 }: {
   onSubmit: (submission: ConsentSubmission) => void;
   policyVersion: string;
   error?: string;
+  /** True while a registration this form started is still in flight. */
+  submitting?: boolean;
 }) {
   const t = useTranslations("consent");
   const tError = useTranslations("errors");
@@ -61,9 +64,15 @@ export function ConsentForm({
         {t("healthDataLabel")}
       </label>
 
+      {/*
+        `submitting` is not a nicety: without it the button stays enabled for
+        the whole POST, and a second click posts a second registration. That is
+        survivable today only because the API's register is idempotent — this
+        form must not be the thing relying on that.
+      */}
       <button
         type="button"
-        disabled={!complete}
+        disabled={!complete || submitting}
         onClick={() => {
           onSubmit({
             displayName,
