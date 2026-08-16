@@ -94,7 +94,11 @@ read_key() {
 set_env_var() {
   local file="$1" key="$2" value="$3"
   grep -qE "^${key}=." "$file" && return 0
-  grep -vE "^#? *${key}=" "$file" > "${file}.tmp" && mv "${file}.tmp" "$file"
+  # grep -v exits 1 when it emits no lines, which here means every line in the
+  # file matched the key being stripped — a successful strip, not a failure.
+  # Exit 2 is a real grep error and must still bring the script down.
+  grep -vE "^#? *${key}=" "$file" > "${file}.tmp" || [ "$?" = 1 ]
+  mv "${file}.tmp" "$file"
   printf '%s=%s\n' "$key" "$value" >> "$file"
   say "Wrote ${key} into ${file}"
 }
