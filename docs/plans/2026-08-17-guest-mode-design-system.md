@@ -1747,8 +1747,10 @@ the event."
 - Create: `web/src/ui/Card.tsx`
 - Create: `web/src/ui/Alert.tsx`
 - Create: `web/src/ui/Screen.tsx`
+- Create: `web/src/ui/LinkButton.tsx`
 - Create: `web/src/ui/__tests__/Alert.test.tsx`
 - Create: `web/src/ui/__tests__/Screen.test.tsx`
+- Create: `web/src/ui/__tests__/LinkButton.test.tsx`
 
 **Interfaces:**
 
@@ -1757,6 +1759,7 @@ the event."
   - `<Card tone?: "surface" | "ink", children>` — a padded, rounded container.
   - `<Alert children>` — renders `role="alert"`; used wherever an error envelope is shown.
   - `<Screen title?: string, children>` — the `<main>` wrapper with the page's max width and spacing; renders an `<h1>` when `title` is given.
+  - `<LinkButton href: string, variant?: "primary" | "secondary", children>` — renders an `<a>` styled as a button. It exists because two screens (landing's sign-in, sign-in's Google) need something that **navigates** but reads as an action; `Button` renders `<button>`, which is the wrong element for a destination and which the existing landing test would not find as a link.
   - Tasks 9–11 build every screen from these.
 
 - [ ] **Step 1: Write the failing tests**
@@ -1803,12 +1806,48 @@ describe("Screen", () => {
 });
 ```
 
+Create `web/src/ui/__tests__/LinkButton.test.tsx`:
+
+```tsx
+import { render, screen } from "@testing-library/react";
+
+import { LinkButton } from "../LinkButton";
+
+describe("LinkButton", () => {
+  // The whole reason this exists rather than reusing Button: it must be a
+  // link, because it navigates. The landing test finds it with getByRole("link").
+  it("is a link, not a button", () => {
+    render(<LinkButton href="/signin">Sign in</LinkButton>);
+
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/signin");
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("meets the minimum touch target on every variant", () => {
+    const { rerender } = render(<LinkButton href="/x">Go</LinkButton>);
+    for (const variant of ["primary", "secondary"] as const) {
+      rerender(
+        <LinkButton href="/x" variant={variant}>
+          Go
+        </LinkButton>,
+      );
+      expect(screen.getByRole("link", { name: "Go" }).className).toContain("min-h-12");
+    }
+  });
+
+  it("never puts white text on the bright accent", () => {
+    render(<LinkButton href="/x">Go</LinkButton>);
+    expect(screen.getByRole("link", { name: "Go" }).className).not.toContain("bg-accent-bright");
+  });
+});
+```
+
 - [ ] **Step 2: Run them to verify they fail**
 
 Run: `npm run test:web -- src/ui`
 Expected: FAIL — `Cannot find module '../Alert'`.
 
-- [ ] **Step 3: Write the three components**
+- [ ] **Step 3: Write the four components**
 
 Create `web/src/ui/Card.tsx`:
 
@@ -1877,16 +1916,57 @@ export function Screen({ children, title }: { children: ReactNode; title?: strin
 }
 ```
 
+Create `web/src/ui/LinkButton.tsx`:
+
+```tsx
+import type { ReactNode } from "react";
+
+/**
+ * A link that reads as a button. Two screens need one — the landing screen's
+ * sign-in action and the sign-in screen's "Continue with Google" — and both
+ * NAVIGATE, so `<button>` would be the wrong element and the existing landing
+ * test would stop finding it with `getByRole("link")`.
+ *
+ * It exists as a primitive rather than as a class string copied into each
+ * screen so that the button look is defined once. Keep the variants in step
+ * with `Button`'s: only `--color-accent` (5.02:1 against white) ever carries
+ * white text, never `--color-accent-bright` (3.30:1).
+ */
+const VARIANTS = {
+  primary: "bg-accent text-surface",
+  secondary: "border border-line bg-surface text-ink",
+} as const;
+
+export function LinkButton({
+  href,
+  children,
+  variant = "primary",
+}: {
+  href: string;
+  children: ReactNode;
+  variant?: keyof typeof VARIANTS;
+}) {
+  return (
+    <a
+      href={href}
+      className={`flex min-h-12 w-full items-center justify-center rounded-card px-6 text-[1.0625rem] font-semibold ${VARIANTS[variant]}`}
+    >
+      {children}
+    </a>
+  );
+}
+```
+
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `npm run test:web -- src/ui`
-Expected: PASS, 13 tests across all four `src/ui` test files.
+Expected: PASS, 16 tests across all five `src/ui` test files.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add web/src/ui
-git commit -m "feat: add the Card, Alert and Screen primitives
+git commit -m "feat: add the Card, Alert, Screen and LinkButton primitives
 
 role=alert lives in Alert rather than on each screen, so a screen cannot
 forget it — every existing test finds its error with getByRole('alert').
@@ -1904,11 +1984,11 @@ makes body text effortless to read."
 - Modify: `web/app/error/page.tsx`
 - Modify: `web/app/~offline/page.tsx`
 - Modify: `web/messages/en.json` (offline copy, if it is currently hardcoded)
-- Modify: `web/src/__tests__/landing.test.tsx`
+- **Do NOT modify** `web/src/__tests__/landing.test.tsx`. It must pass untouched — if it needs editing, the restyle changed behaviour and that is the bug.
 
 **Interfaces:**
 
-- Consumes: `Screen`, `Card`, `Button` from Tasks 7–8.
+- Consumes: `Screen`, `Card`, `LinkButton` from Task 8.
 - Produces: nothing later tasks import.
 
 - [ ] **Step 1: Read the three screens and the landing test**
@@ -1926,6 +2006,7 @@ Note every string each renders and how the landing test locates the sign-in affo
 ```tsx
 import { useTranslations } from "next-intl";
 
+import { LinkButton } from "../src/ui/LinkButton";
 import { Screen } from "../src/ui/Screen";
 
 export default function LandingPage() {
@@ -1939,16 +2020,10 @@ export default function LandingPage() {
       </div>
 
       {/*
-        Styled as the primary action but still an anchor: it navigates. Using
-        Button here would make it a <button>, which the landing test finds as a
-        link and which would be the wrong element for a destination.
+        LinkButton, not Button: this navigates. A <button> would be the wrong
+        element for a destination, and the landing test locates it as a link.
       */}
-      <a
-        href="/signin"
-        className="flex min-h-12 w-full items-center justify-center rounded-card bg-accent px-6 text-[1.0625rem] font-semibold text-surface"
-      >
-        {t("signIn")}
-      </a>
+      <LinkButton href="/signin">{t("signIn")}</LinkButton>
     </Screen>
   );
 }
@@ -2018,7 +2093,7 @@ reads as a crash rather than a state."
 
 **Interfaces:**
 
-- Consumes: `Screen`, `Card`, `Button`, `Field`, `Alert`.
+- Consumes: `Screen`, `Card`, `Button`, `Field`, `Alert`, `LinkButton`.
 - Produces: nothing. Behaviour is unchanged throughout — this is markup only.
 
 - [ ] **Step 1: Restyle the sign-in screen**
@@ -2063,12 +2138,9 @@ return (
           which is where Google comes back to. Linking to the callback directly
           arrives with no `code` and is bounced straight to /?error=oauth.
         */}
-      <a
-        href="/api/auth/google"
-        className="flex min-h-12 w-full items-center justify-center rounded-card border border-line bg-surface px-6 text-[1.0625rem] font-semibold text-ink"
-      >
+      <LinkButton href="/api/auth/google" variant="secondary">
         {t("google")}
-      </a>
+      </LinkButton>
 
       <Button
         variant="ghost"
@@ -2083,7 +2155,7 @@ return (
 );
 ```
 
-Add the imports for `Screen`, `Card`, `Field`, `Button` and `Alert` from `../../src/ui/…`.
+Add the imports for `Screen`, `Card`, `Field`, `Button`, `Alert` and `LinkButton` from `../../src/ui/…`.
 
 - [ ] **Step 2: Run the sign-in tests**
 
