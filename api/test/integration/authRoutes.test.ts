@@ -47,8 +47,20 @@ afterAll(async () => {
   await disconnect(prisma);
 });
 
-const tokenFor = (authUserId: string, email = "meera@example.test"): Promise<string> =>
-  new SignJWT({ email })
+// Defaults to the shape a real Supabase anonymous user's token actually has —
+// "email" and "phone" both present as keys, both empty strings, never absent
+// — so a caller must opt IN to a real email rather than opting out of an
+// anonymous one. The old default (a non-empty email, no "phone" key at all)
+// is not a shape Supabase ever issues, and it is exactly why this
+// real-Postgres suite was blind to a real-Postgres bug: an absent "phone" key
+// verifies to `undefined`, and `undefined` never collided even before the
+// fix. Only a *present, empty* "phone" claim reaches the partial unique index
+// and can collide.
+const tokenFor = (
+  authUserId: string,
+  { email = "", phone = "" }: { email?: string; phone?: string } = {},
+): Promise<string> =>
+  new SignJWT({ email, phone })
     .setProtectedHeader({ alg: "ES256", kid: "test-key" })
     .setIssuer(ISSUER)
     .setAudience("authenticated")
@@ -99,6 +111,30 @@ describe("POST /api/v1/auth/register", () => {
 
     expect(response.status).toBe(401);
     expect((response.body as ErrorBody).error?.code).toBe("UNAUTHENTICATED");
+  });
+
+  // The regression this guards: Supabase issues "" — not a missing key, not
+  // null — for an identity an anonymous account doesn't have, so every real
+  // anonymous user's token carries a literal `"phone": ""`. The partial unique
+  // index behind `users.phone` exempts only NULL, so a second such account
+  // used to collide with the first and fail registration with a 500 (Unique
+  // constraint failed on the fields: (`phone`)). This is the invariant that
+  // matters, not the normalisation that fixes it: two accounts with no phone
+  // number must both be able to register.
+  it("lets two guests in a row register despite neither having a phone number", async () => {
+    const first = await tokenFor(randomUUID(), { email: "", phone: "" });
+    const firstResponse = await request(app)
+      .post("/api/v1/auth/register")
+      .set("Authorization", `Bearer ${first}`)
+      .send(body);
+    expect(firstResponse.status).toBe(201);
+
+    const second = await tokenFor(randomUUID(), { email: "", phone: "" });
+    const secondResponse = await request(app)
+      .post("/api/v1/auth/register")
+      .set("Authorization", `Bearer ${second}`)
+      .send(body);
+    expect(secondResponse.status).toBe(201);
   });
 });
 
