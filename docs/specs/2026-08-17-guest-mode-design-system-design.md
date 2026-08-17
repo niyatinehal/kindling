@@ -108,16 +108,18 @@ A `@theme` block in `web/app/globals.css` defines the palette once. Components r
 | `--color-accent`        | `#15803D` | Primary actions, any white-on-colour text |
 | `--color-accent-bright` | `#16A34A` | Large accents, non-text                   |
 | `--color-accent-glow`   | `#4ADE80` | Progress fills, accents on dark           |
-| `--color-muted`         | `#6B7F73` | Secondary text                            |
+| `--color-muted`         | `#5D7166` | Secondary text                            |
 | `--color-line`          | `#DDE7DE` | Borders                                   |
 
 **Measured contrast:**
 
-| Pair                              | Ratio      | Verdict                    |
-| --------------------------------- | ---------- | -------------------------- |
-| `--color-ink` on `--color-canvas` | **11.3:1** | Passes AAA                 |
-| White on `--color-accent`         | **5.02:1** | Passes AA                  |
-| White on `--color-accent-bright`  | **3.30:1** | Fails AA for text — see D7 |
+| Pair                                         | Ratio      | Verdict                    |
+| -------------------------------------------- | ---------- | -------------------------- |
+| `--color-ink` on `--color-canvas`            | **11.3:1** | Passes AAA                 |
+| White on `--color-accent`                    | **5.02:1** | Passes AA                  |
+| White on `--color-accent-bright`             | **3.30:1** | Fails AA for text — see D7 |
+| `--color-muted` on `--color-surface` (white) | **5.22:1** | Passes AA                  |
+| `--color-muted` on `--color-canvas`          | **4.83:1** | Passes AA                  |
 
 ### 4.3 Legibility constraints
 

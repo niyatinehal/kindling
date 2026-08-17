@@ -6,6 +6,12 @@
  *
  * `onChange` hands back the value, not the event. Callers store strings; making
  * each one reach into `event.target.value` is repetition with a typo in it.
+ *
+ * The input's border is `border-muted`, not `border-line`. `--color-line`
+ * measures 1.27:1 against white — nowhere near the 3:1 WCAG 1.4.11 requires
+ * for a non-text boundary that is the sole means of identifying a control,
+ * which for an input the border is. `--color-line` stays as-is everywhere
+ * else (a Card's edge is decorative, not the only cue a control exists).
  */
 export function Field({
   label,
@@ -31,7 +37,7 @@ export function Field({
         {...(maxLength !== undefined && { maxLength })}
         {...(inputMode !== undefined && { inputMode })}
         onChange={(event) => onChange(event.target.value)}
-        className="min-h-12 w-full rounded-card border border-line bg-surface px-4 text-[1.0625rem] text-ink"
+        className="min-h-12 w-full rounded-card border border-muted bg-surface px-4 text-[1.0625rem] text-ink"
       />
     </label>
   );
