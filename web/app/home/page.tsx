@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { currentStep } from "../../src/onboarding/currentStep";
+import { isGuestSession } from "../../src/onboarding/isGuestSession";
 import { HomeView } from "./HomeView";
 
 /**
@@ -21,5 +22,7 @@ export default async function HomePage() {
     redirect(step);
   }
 
-  return <HomeView />;
+  // Resolved only after the guard has decided this request belongs here, so a
+  // redirected caller never pays for it.
+  return <HomeView isGuest={await isGuestSession()} />;
 }

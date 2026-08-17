@@ -24,7 +24,9 @@
   },
   "home": {
     "title": "You're set up",
-    "noFamily": "You're not in a family yet. Family setup arrives soon."
+    "noFamily": "You're not in a family yet. Family setup arrives soon.",
+    "guestChip": "Guest",
+    "guestNote": "You're exploring as a guest. Add an email later to keep what you log."
   },
   "error": {
     "title": "Something went wrong"

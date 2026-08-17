@@ -15,10 +15,14 @@ jest.mock("../../../src/supabase/server", () => ({
 jest.mock("../../../src/api/upstream", () => ({
   callApi: jest.fn(),
 }));
+jest.mock("../../../src/onboarding/isGuestSession", () => ({
+  isGuestSession: jest.fn(() => Promise.resolve(false)),
+}));
 
 import { redirect } from "next/navigation";
 
 import { callApi } from "../../../src/api/upstream";
+import { isGuestSession } from "../../../src/onboarding/isGuestSession";
 import { createSupabaseServerClient } from "../../../src/supabase/server";
 import { HomeView } from "../HomeView";
 import HomePage from "../page";
@@ -84,6 +88,16 @@ describe("/home", () => {
 
     expect(mockRedirect).not.toHaveBeenCalled();
     expect(page.type).toBe(HomeView);
+  });
+
+  it("marks the view as a guest when the session is anonymous", async () => {
+    signedIn();
+    mockCallApi.mockResolvedValue(json({ id: "u1", display_name: "Guest", family: null }, 200));
+    (isGuestSession as jest.Mock).mockResolvedValue(true);
+
+    const page = await HomePage();
+
+    expect(page.props.isGuest).toBe(true);
   });
 
   it("sends a caller with no session to sign in, without calling the API", async () => {
