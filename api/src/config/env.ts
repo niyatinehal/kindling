@@ -13,6 +13,11 @@ const envSchema = z.object({
   // Service-role key. Needed ONLY by the seed's auth-user provisioner; the
   // request path never uses it, which is why it is optional here.
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
+  // Which workout plan engine to run. `rules` is deterministic, free, and needs
+  // no credentials, so it is the default rather than a fallback — see
+  // src/workouts/planGenerator.ts. An LLM-backed engine would be a new value
+  // here, not a change to the calling code.
+  WORKOUT_ENGINE: z.enum(["rules"]).default("rules"),
 });
 
 export type Env = z.infer<typeof envSchema>;

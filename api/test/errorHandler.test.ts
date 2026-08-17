@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals
 import request from "supertest";
 
 import { createApp } from "../src/app.js";
+import { rulesPlanGenerator } from "../src/workouts/planGenerator.js";
 
 /**
  * Every route in this app dispatches failures with `next(error)` (see
@@ -34,6 +35,7 @@ function appWithBrokenSecondLookup() {
   return createApp({
     checkDatabase: () => Promise.resolve(),
     prisma,
+    planGenerator: rulesPlanGenerator,
     verify: () => Promise.resolve({ authUserId: USER.authUserId }),
   });
 }

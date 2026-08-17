@@ -2,6 +2,7 @@ import { loadEnv } from "./config/env.js";
 import { createPrismaClient, disconnect, pingDatabase } from "./db/prisma.js";
 import { createApp } from "./app.js";
 import { createSupabaseVerifier } from "./auth/verifyToken.js";
+import { createPlanGenerator } from "./workouts/planGenerator.js";
 
 const env = loadEnv(process.env);
 const prisma = createPrismaClient(env.DATABASE_URL);
@@ -10,6 +11,7 @@ const app = createApp({
   checkDatabase: () => pingDatabase(prisma),
   prisma,
   verify: createSupabaseVerifier(env.SUPABASE_URL),
+  planGenerator: createPlanGenerator(env.WORKOUT_ENGINE),
 });
 
 const server = app.listen(env.PORT, () => {

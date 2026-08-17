@@ -57,6 +57,7 @@ model User {
   deletedAt DateTime? @map("deleted_at")
 
   profile         Profile?
+  workoutPlans    WorkoutPlan[]
   createdFamilies Family[]           @relation("FamilyCreatedBy")
   memberships     FamilyMembership[]
   consents        ConsentRecord[]    @relation("UserConsents")
@@ -221,6 +222,74 @@ model Profile {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("profiles")
+}
+
+enum PlanStatus {
+  active
+  superseded
+}
+
+/// A generated workout plan (PRD FR-WRK-1).
+///
+/// `profileSnapshot` is the whole profile as it stood when the plan was built,
+/// which is what PRD §14 means by a plan being "tied to a Profile snapshot": the
+/// plan stays explainable after the profile moves on, and comparing the snapshot
+/// against the live profile is how the regeneration prompt in FR-PROF-2 knows
+/// something changed. It is a JSON copy rather than a foreign key to a version
+/// table because nothing else needs profile history.
+model WorkoutPlan {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id])
+
+  status PlanStatus @default(active)
+
+  /// Which generator produced this, e.g. `rules@1`. Recorded so a plan built by
+  /// the deterministic engine stays distinguishable from one built by a future
+  /// LLM adapter — without it, an output-quality regression has no provenance.
+  generator String
+
+  profileSnapshot Json @map("profile_snapshot")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  exercises PlanExercise[]
+
+  @@index([userId, status])
+  @@map("workout_plans")
+}
+
+/// One exercise on one day of a plan (PRD §14's `Exercise`).
+///
+/// `exerciseKey` points into the code-owned exercise library rather than a
+/// catalog table: the library is reference data that ships with the code and is
+/// what the contraindication rules are written against, so keeping it in git
+/// makes both reviewable in one diff.
+model PlanExercise {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  planId String      @map("plan_id") @db.Uuid
+  plan   WorkoutPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  /// 1 = Monday through 7 = Sunday, matching ISO-8601.
+  dayOfWeek Int @map("day_of_week")
+  position  Int
+
+  exerciseKey String @map("exercise_key")
+
+  sets Int?
+  /// Null for a held or timed movement, where `durationSeconds` carries the dose.
+  reps            Int?
+  durationSeconds Int? @map("duration_seconds")
+  restSeconds     Int  @map("rest_seconds")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([planId, dayOfWeek, position])
+  @@index([planId, dayOfWeek])
+  @@map("plan_exercises")
 }
 
 enum ConsentType {

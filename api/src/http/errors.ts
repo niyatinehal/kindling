@@ -5,6 +5,10 @@ export type ApiErrorCode =
   | "REGISTRATION_REQUIRED"
   | "FORBIDDEN_ROLE"
   | "NOT_IN_FAMILY"
+  // A valid, registered caller who has not completed wellness intake. Like
+  // REGISTRATION_REQUIRED it is a step in the journey rather than a failure —
+  // the client's move is to send the user to /onboarding/profile.
+  | "PROFILE_REQUIRED"
   | "FLOOR_LOCKED"
   | "ALREADY_IN_FAMILY"
   | "INVITE_EXPIRED"

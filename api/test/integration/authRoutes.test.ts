@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import request from "supertest";
 
 import { createApp } from "../../src/app.js";
+import { rulesPlanGenerator } from "../../src/workouts/planGenerator.js";
 import { createTokenVerifier } from "../../src/auth/verifyToken.js";
 import { createPrismaClient, disconnect } from "../../src/db/prisma.js";
 
@@ -30,12 +31,15 @@ beforeEach(async () => {
   app = createApp({
     checkDatabase: () => Promise.resolve(),
     prisma,
+    planGenerator: rulesPlanGenerator,
     verify: createTokenVerifier({
       issuer: ISSUER,
       audience: "authenticated",
       keys: createLocalJWKSet({ keys: [jwk] }),
     }),
   });
+
+  await prisma.workoutPlan.deleteMany();
 
   await prisma.profile.deleteMany();
 

@@ -3,16 +3,19 @@ import type { Express, NextFunction, Request, Response } from "express";
 
 import type { PrismaClient } from "../generated/prisma/client.js";
 import type { VerifiedToken } from "./auth/verifyToken.js";
+import type { PlanGenerator } from "./workouts/planGenerator.js";
 import { sendError } from "./http/errors.js";
 import { healthRouter } from "./routes/health.js";
 import { createReadyRouter } from "./routes/ready.js";
 import { createAuthRouter } from "./routes/auth.js";
 import { createProfileRouter } from "./routes/profiles.js";
+import { createPlanRouter } from "./routes/plans.js";
 
 export type AppDeps = {
   checkDatabase: () => Promise<void>;
   prisma: PrismaClient;
   verify: (token: string) => Promise<VerifiedToken>;
+  planGenerator: PlanGenerator;
 };
 
 /**
@@ -29,6 +32,14 @@ export function createApp(deps: AppDeps): Express {
   app.use(createReadyRouter(deps.checkDatabase));
   app.use("/api/v1/auth", createAuthRouter({ prisma: deps.prisma, verify: deps.verify }));
   app.use("/api/v1/profiles", createProfileRouter({ prisma: deps.prisma, verify: deps.verify }));
+  app.use(
+    "/api/v1/plans",
+    createPlanRouter({
+      prisma: deps.prisma,
+      verify: deps.verify,
+      planGenerator: deps.planGenerator,
+    }),
+  );
 
   // Mounted last on purpose: Express only recognizes a 4-argument function as
   // an error handler, and only routes to it when it is the final middleware

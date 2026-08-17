@@ -2,10 +2,12 @@ import { describe, expect, it } from "@jest/globals";
 import request from "supertest";
 
 import { createApp } from "../src/app.js";
+import { rulesPlanGenerator } from "../src/workouts/planGenerator.js";
 
 const deps = {
   checkDatabase: () => Promise.resolve(),
   prisma: {} as unknown as Parameters<typeof createApp>[0]["prisma"],
+  planGenerator: rulesPlanGenerator,
   verify: () => Promise.resolve({ authUserId: "unused" }),
 };
 
