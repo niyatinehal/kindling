@@ -1,21 +1,19 @@
 import type { ReactNode } from "react";
 
+import { VARIANT_CLASSES } from "./variants";
+import type { LinkVariant } from "./variants";
+
 /**
  * A link that reads as a button. Two screens need one — the landing screen's
  * sign-in action and the sign-in screen's "Continue with Google" — and both
  * NAVIGATE, so `<button>` would be the wrong element and the existing landing
  * test would stop finding it with `getByRole("link")`.
  *
- * It exists as a primitive rather than as a class string copied into each
- * screen so that the button look is defined once. Keep the variants in step
- * with `Button`'s: only `--color-accent` (5.02:1 against white) ever carries
- * white text, never `--color-accent-bright` (3.30:1).
+ * The variant class strings live in `./variants`, shared with `Button`, so
+ * this can no longer drift from it the way it once did. There is no `ghost`
+ * entry here: nothing in this app renders a ghost link, so `variant` is typed
+ * to the two `Button` looks this component can actually style.
  */
-const VARIANTS = {
-  primary: "bg-accent text-surface",
-  secondary: "border border-line bg-surface text-ink",
-} as const;
-
 export function LinkButton({
   href,
   children,
@@ -23,12 +21,12 @@ export function LinkButton({
 }: {
   href: string;
   children: ReactNode;
-  variant?: keyof typeof VARIANTS;
+  variant?: LinkVariant;
 }) {
   return (
     <a
       href={href}
-      className={`flex min-h-12 w-full items-center justify-center rounded-card px-6 text-[1.0625rem] font-semibold ${VARIANTS[variant]}`}
+      className={`flex min-h-12 w-full items-center justify-center rounded-card px-6 text-[1.0625rem] font-semibold transition ${VARIANT_CLASSES[variant]}`}
     >
       {children}
     </a>
