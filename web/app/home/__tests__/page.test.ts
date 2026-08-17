@@ -61,6 +61,11 @@ async function redirectedTo(): Promise<string> {
 
 beforeEach(() => {
   jest.spyOn(console, "error").mockImplementation(() => {});
+  // `clearMocks` (jest.config.js) clears calls/instances/results but NOT an
+  // implementation set via `mockResolvedValue` — only `resetMocks` does that.
+  // Without this, the `true` set by the "marks the view as a guest" test
+  // below would persist into every test that runs after it in file order.
+  (isGuestSession as jest.Mock).mockResolvedValue(false);
 });
 
 afterEach(() => {
