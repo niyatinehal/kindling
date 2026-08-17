@@ -1,8 +1,13 @@
+import { useTranslations } from "next-intl";
+
+import { Screen } from "../../src/ui/Screen";
+
 export default function OfflinePage() {
+  const t = useTranslations("offline");
+
   return (
-    <main>
-      <h1>You are offline</h1>
-      <p>Today&apos;s plan is available; anything new will load when you reconnect.</p>
-    </main>
+    <Screen title={t("title")}>
+      <p className="text-lg text-muted">{t("body")}</p>
+    </Screen>
   );
 }

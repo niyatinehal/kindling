@@ -29,7 +29,12 @@
     "guestNote": "You're exploring as a guest. Add an email later to keep what you log."
   },
   "error": {
-    "title": "Something went wrong"
+    "title": "Something went wrong",
+    "back": "Back to the start"
+  },
+  "offline": {
+    "title": "You are offline",
+    "body": "Today's plan is available; anything new will load when you reconnect."
   },
   "errors": {
     "VALIDATION_FAILED": "Something in that form wasn't right. Please check and try again.",
