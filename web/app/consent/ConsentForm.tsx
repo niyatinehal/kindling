@@ -53,7 +53,9 @@ export function ConsentForm({
 
       {isGuest && <p className="rounded-card bg-surface p-4 text-muted">{t("guestBody")}</p>}
 
-      {error !== undefined && <Alert>{tError.has(error) ? tError(error) : tError("UNKNOWN")}</Alert>}
+      {error !== undefined && (
+        <Alert>{tError.has(error) ? tError(error) : tError("UNKNOWN")}</Alert>
+      )}
 
       <Card>
         <div className="flex flex-col gap-5">

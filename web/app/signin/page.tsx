@@ -73,11 +73,13 @@ export default function SignInPage() {
 
   return (
     <Screen title={t("title")}>
-      {error !== undefined && <Alert>{tError.has(error) ? tError(error) : tError("UNKNOWN")}</Alert>}
+      {error !== undefined && (
+        <Alert>{tError.has(error) ? tError(error) : tError("UNKNOWN")}</Alert>
+      )}
 
       <Card>
         <div className="flex flex-col gap-4">
-          <Field label={t("contactLabel")} value={contact} onChange={setContact} inputMode="tel" />
+          <Field label={t("contactLabel")} value={contact} onChange={setContact} />
 
           {!sent ? (
             <Button
