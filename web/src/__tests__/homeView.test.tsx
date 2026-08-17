@@ -36,3 +36,33 @@ describe("HomeView", () => {
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 });
+
+describe("HomeView shell", () => {
+  it("shows the today card in its empty state", () => {
+    renderView();
+
+    expect(screen.getByText(messages.home.todayLabel)).toBeInTheDocument();
+    expect(screen.getByText(messages.home.todayEmpty)).toBeInTheDocument();
+  });
+
+  it("shows stat tiles with no values", () => {
+    renderView();
+
+    expect(screen.getByText(messages.home.stepsLabel)).toBeInTheDocument();
+    expect(screen.getByText(messages.home.waterLabel)).toBeInTheDocument();
+    expect(screen.getByText(messages.home.workoutsLabel)).toBeInTheDocument();
+    expect(screen.getAllByText(messages.home.empty)).toHaveLength(3);
+  });
+
+  // The line this whole screen must not cross. There is no tracking endpoint,
+  // so any digit here would be fiction rendered as fact.
+  it("invents no data", () => {
+    const { container } = render(
+      <NextIntlClientProvider locale="en" messages={messages}>
+        <HomeView />
+      </NextIntlClientProvider>,
+    );
+
+    expect(container.textContent).not.toMatch(/\d/);
+  });
+});

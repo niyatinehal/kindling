@@ -26,7 +26,15 @@
     "title": "You're set up",
     "noFamily": "You're not in a family yet. Family setup arrives soon.",
     "guestChip": "Guest",
-    "guestNote": "You're exploring as a guest. Add an email later to keep what you log."
+    "guestNote": "You're exploring as a guest. Add an email later to keep what you log.",
+    "greeting": "Welcome",
+    "todayLabel": "Today",
+    "todayEmpty": "Your first plan is on its way. Nothing to do yet — that's allowed.",
+    "statsLabel": "This week",
+    "stepsLabel": "Steps",
+    "waterLabel": "Water",
+    "workoutsLabel": "Workouts",
+    "empty": "—"
   },
   "error": {
     "title": "Something went wrong",
