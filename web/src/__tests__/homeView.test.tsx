@@ -30,15 +30,18 @@ describe("HomeView", () => {
   // Claiming an account is not built. A button that does nothing is worse
   // than no button, so there must not be one.
   //
-  // Rendered with a profile already saved on purpose: the intake CTA is the one
-  // link this screen ever shows, and it is not a claim action. Asserting "no
-  // links at all" only says something about claiming in the state where that
-  // CTA is absent.
+  // The screen now always carries exactly one link — the Today card's next step —
+  // so "no links at all" no longer expresses this. What still holds, and is what
+  // the test is for, is that the only link goes to the journey and never to a
+  // claim flow that does not exist.
   it("offers no claim action, because claiming is not built yet", () => {
     renderView({ isGuest: true, hasProfile: true });
 
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
-    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+
+    const links = screen.getAllByRole("link");
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveAttribute("href", "/plan");
   });
 });
 
@@ -57,13 +60,18 @@ describe("HomeView shell", () => {
     );
   });
 
-  // And once it is saved it must not keep asking, nor claim a plan is coming:
-  // nothing generates one yet.
-  it("reports a saved profile without re-inviting or promising a plan", () => {
+  // Once the profile is saved the card stops asking for it and points at the
+  // plan instead. The promise is now keepable — a plan really can be built — so
+  // unlike before, the card is allowed to make it.
+  it("points at the plan once the profile is saved", () => {
     renderView({ hasProfile: true });
 
-    expect(screen.getByText(messages.home.todayProfileSet)).toBeInTheDocument();
+    expect(screen.getByText(messages.home.todayPlanReady)).toBeInTheDocument();
     expect(screen.queryByText(messages.home.todayNoProfile)).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: messages.home.viewPlan })).toHaveAttribute(
+      "href",
+      "/plan",
+    );
     expect(screen.queryByRole("link", { name: messages.home.startIntake })).not.toBeInTheDocument();
   });
 

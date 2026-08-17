@@ -44,23 +44,25 @@ export function HomeView({
 
       {/*
         The Today card is the one thing on this screen with something to say, so
-        it carries the only action. Before intake it asks for it; after intake it
-        reports the truth and nothing more. It deliberately does NOT claim a plan
-        is "on its way" — no code generates one yet, and a promise the product
-        cannot keep is the same failure as an invented step count below.
+        it carries the only action, and the action is whatever the journey needs
+        next: intake when there is no profile, the plan once there is one. It
+        still promises nothing it cannot deliver — the stat tiles below stay
+        empty because no tracking endpoint exists yet.
       */}
       <Card tone="ink">
         <p className="text-sm font-semibold tracking-widest text-accent-glow uppercase">
           {t("todayLabel")}
         </p>
         <p className="mt-2 text-lg leading-relaxed">
-          {hasProfile ? t("todayProfileSet") : t("todayNoProfile")}
+          {hasProfile ? t("todayPlanReady") : t("todayNoProfile")}
         </p>
-        {!hasProfile && (
-          <div className="mt-4">
+        <div className="mt-4">
+          {hasProfile ? (
+            <LinkButton href="/plan">{t("viewPlan")}</LinkButton>
+          ) : (
             <LinkButton href="/onboarding/profile">{t("startIntake")}</LinkButton>
-          </div>
-        )}
+          )}
+        </div>
       </Card>
 
       <section>
