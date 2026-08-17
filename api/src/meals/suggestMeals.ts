@@ -1,4 +1,5 @@
 import type { DietaryConstraint, MedicalCondition } from "../../generated/prisma/enums.js";
+import { meetsProteinTarget, pairingFor, PROTEIN_TARGET_G } from "./protein.js";
 import { RECIPES } from "./recipeLibrary.js";
 import type { Ingredient, MealSlot, Recipe } from "./recipeLibrary.js";
 
@@ -16,6 +17,11 @@ export type MealSuggestion = {
   minutes: number;
   /** Conditions this dish is a poor fit for, surfaced as advice not a refusal. */
   cautions: MedicalCondition[];
+  /** Whether the dish alone carries enough protein for its slot. */
+  meetsProtein: boolean;
+  /** What to serve alongside when it does not. Null when the dish stands alone. */
+  pairWith: string | null;
+  proteinTargetG: number;
 };
 
 export type MealPlanDraft = {
@@ -55,6 +61,11 @@ function suitsDiet(recipe: Recipe, declared: readonly DietaryConstraint[]): bool
  * right now" beats "buy two things"), then most on-hand ingredients used, then
  * highest protein, then the recipe key so the output is stable. Deterministic
  * throughout, which is what makes it testable.
+ *
+ * No suggested meal is left protein-free. A dish that clears its slot's target
+ * stands alone; one that does not comes with a pairing that closes the gap. See
+ * `protein.ts` for why this pairs rather than filters — dropping thin dishes would
+ * delete half of Indian home cooking's side dishes as though they were errors.
  */
 export function suggestMeals(input: {
   onHand: readonly Ingredient[];
@@ -89,21 +100,33 @@ export function suggestMeals(input: {
 
   return {
     generator: RULES_MEAL_GENERATOR,
-    suggestions: scored.slice(0, SUGGESTIONS).map((entry) => ({
-      recipeKey: entry.recipe.key,
-      // The first slot the dish fits, or the requested one. A dish is not
-      // duplicated across slots — one suggestion, one place in the day.
-      slot: input.slot ?? entry.recipe.slots[0] ?? "lunch",
-      usesOnHand: entry.usesOnHand,
-      missing: entry.missing,
-      approxKcal: entry.recipe.approxKcal,
-      proteinG: entry.recipe.proteinG,
-      minutes: entry.recipe.minutes,
-      // Advice, never exclusion. Unlike a workout, where a contraindicated
-      // movement can injure someone, a dish that suits a condition poorly is a
-      // choice to inform — and refusing to show rice to a diabetic would be both
-      // patronising and wrong about Indian food.
-      cautions: entry.recipe.cautionFor.filter((condition) => input.conditions.includes(condition)),
-    })),
+    suggestions: scored.slice(0, SUGGESTIONS).map((entry) => {
+      const slot = input.slot ?? entry.recipe.slots[0] ?? "lunch";
+      const meets = meetsProteinTarget(entry.recipe, slot);
+
+      return {
+        recipeKey: entry.recipe.key,
+        // The first slot the dish fits, or the requested one. A dish is not
+        // duplicated across slots — one suggestion, one place in the day.
+        slot,
+        usesOnHand: entry.usesOnHand,
+        missing: entry.missing,
+        approxKcal: entry.recipe.approxKcal,
+        proteinG: entry.recipe.proteinG,
+        minutes: entry.recipe.minutes,
+        // Advice, never exclusion. Unlike a workout, where a contraindicated
+        // movement can injure someone, a dish that suits a condition poorly is a
+        // choice to inform — and refusing to show rice to a diabetic would be
+        // both patronising and wrong about Indian food.
+        cautions: entry.recipe.cautionFor.filter((condition) =>
+          input.conditions.includes(condition),
+        ),
+        meetsProtein: meets,
+        // Drawn from `scored`, so a pairing always satisfies the same diet and
+        // the same slot filter as the dish it accompanies.
+        pairWith: meets ? null : (pairingFor(entry.recipe, scored, slot)?.key ?? null),
+        proteinTargetG: PROTEIN_TARGET_G[slot],
+      };
+    }),
   };
 }

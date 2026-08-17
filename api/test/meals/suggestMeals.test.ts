@@ -195,3 +195,143 @@ describe("suggestMeals — conditions and slots", () => {
     }
   });
 });
+
+// "There should be at least one source of protein for every meal." Pairing rather
+// than filtering, because aloo gobi and cabbage poriyal are sides people actually
+// cook, not mistakes to delete.
+describe("suggestMeals — protein", () => {
+  it("leaves no suggestion protein-free: each one clears the target or names a pairing", () => {
+    for (const slot of ["breakfast", "lunch", "dinner", "snack"] as const) {
+      const result = suggestMeals({ onHand: [], dietary: [], conditions: [], slot });
+
+      for (const suggestion of result.suggestions) {
+        expect(suggestion.meetsProtein || suggestion.pairWith !== null).toBe(true);
+      }
+    }
+  });
+
+  it("reports the target it judged the dish against", () => {
+    const lunch = suggestMeals({ onHand: [], dietary: [], conditions: [], slot: "lunch" });
+    const snack = suggestMeals({ onHand: [], dietary: [], conditions: [], slot: "snack" });
+
+    expect(lunch.suggestions[0]?.proteinTargetG).toBe(12);
+    // A snack held to a main meal's bar would flag every light dish as deficient.
+    expect(snack.suggestions[0]?.proteinTargetG).toBe(5);
+  });
+
+  it("pairs a thin dish with something that actually closes the gap", () => {
+    const result = suggestMeals({
+      onHand: ["cabbage", "toor_dal", "rice"],
+      dietary: [],
+      conditions: [],
+      slot: "lunch",
+    });
+
+    const poriyal = result.suggestions.find((s) => s.recipeKey === "cabbage_poriyal");
+    expect(poriyal?.meetsProtein).toBe(false);
+    expect(poriyal?.pairWith).not.toBeNull();
+
+    const pairing = RECIPES_BY_KEY.get(poriyal?.pairWith ?? "");
+    const shortfall = (poriyal?.proteinTargetG ?? 0) - (poriyal?.proteinG ?? 0);
+    expect(pairing?.proteinG).toBeGreaterThanOrEqual(shortfall);
+  });
+
+  it("does not pair a dish that already carries enough", () => {
+    const result = suggestMeals({
+      onHand: ["toor_dal", "rice"],
+      dietary: [],
+      conditions: [],
+      slot: "lunch",
+    });
+
+    const dal = result.suggestions.find((s) => s.recipeKey === "dal_chawal");
+    expect(dal?.meetsProtein).toBe(true);
+    expect(dal?.pairWith).toBeNull();
+  });
+
+  // A pairing comes from the already-filtered set, so it cannot break the diet it
+  // is meant to accompany.
+  it("never pairs a vegan dish with something non-vegan", () => {
+    const result = suggestMeals({
+      onHand: ["cabbage", "brinjal", "onion", "tomato"],
+      dietary: ["vegan"],
+      conditions: [],
+      slot: "lunch",
+    });
+
+    for (const suggestion of result.suggestions) {
+      if (suggestion.pairWith !== null) {
+        expect(RECIPES_BY_KEY.get(suggestion.pairWith)?.suitableFor).toContain("vegan");
+      }
+    }
+  });
+
+  it("never pairs a dish with itself", () => {
+    for (const slot of ["breakfast", "lunch", "dinner", "snack"] as const) {
+      for (const suggestion of suggestMeals({ onHand: [], dietary: [], conditions: [], slot })
+        .suggestions) {
+        expect(suggestion.pairWith).not.toBe(suggestion.recipeKey);
+      }
+    }
+  });
+
+  // The library must be able to satisfy its own rule for every diet, or someone
+  // with that diet gets an unpairable suggestion.
+  it("can meet the lunch target for every single diet", () => {
+    for (const diet of [
+      "vegetarian",
+      "vegan",
+      "eggetarian",
+      "non_vegetarian",
+      "jain",
+      "no_dairy",
+      "no_gluten",
+      "no_nuts",
+    ] as const) {
+      const result = suggestMeals({
+        onHand: [],
+        dietary: [diet],
+        conditions: [],
+        slot: "lunch",
+      });
+
+      const satisfiable = result.suggestions.some((s) => s.meetsProtein || s.pairWith !== null);
+      expect(satisfiable).toBe(true);
+    }
+  });
+});
+
+// The bug the live run caught: a 10g dish was "fixed" by pairing it with a 6g one.
+// The sum cleared the target, so the arithmetic passed — but the advice was "serve
+// this vegetable with another vegetable", which is not a source of protein.
+describe("suggestMeals — a pairing must itself be a protein source", () => {
+  it("never pairs a thin dish with another thin dish", () => {
+    for (const slot of ["breakfast", "lunch", "dinner", "snack"] as const) {
+      const result = suggestMeals({ onHand: [], dietary: [], conditions: [], slot });
+
+      for (const suggestion of result.suggestions) {
+        if (suggestion.pairWith === null) {
+          continue;
+        }
+        const pairing = RECIPES_BY_KEY.get(suggestion.pairWith);
+        // The pairing clears the slot's target on its own — dal, rajma, chana,
+        // paneer, egg or meat, never a second vegetable side.
+        expect(pairing?.proteinG).toBeGreaterThanOrEqual(suggestion.proteinTargetG);
+      }
+    }
+  });
+
+  it("pairs roti sabzi with a real protein rather than another vegetable", () => {
+    const result = suggestMeals({
+      onHand: ["atta", "potato", "cauliflower", "toor_dal", "rice"],
+      dietary: [],
+      conditions: [],
+      slot: "lunch",
+    });
+
+    const roti = result.suggestions.find((s) => s.recipeKey === "roti_sabzi");
+    expect(roti?.meetsProtein).toBe(false);
+    expect(roti?.pairWith).not.toBe("aloo_gobi");
+    expect(RECIPES_BY_KEY.get(roti?.pairWith ?? "")?.proteinG).toBeGreaterThanOrEqual(12);
+  });
+});

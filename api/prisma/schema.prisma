@@ -448,6 +448,13 @@ model TrackingLog {
   /// (FR-TRK-2). Optional on both.
   rating Int?
 
+  /// Which library dish this meal was, when it was one. Null means the user
+  /// typed their own — FR-TRK-2 logs meals "from suggested plan or freeform", and
+  /// the two need telling apart: a key gets translated for display, prose is
+  /// shown verbatim. Conflating them into `notes` made "poha" ambiguous between
+  /// a recipe and something someone wrote.
+  recipeKey String? @map("recipe_key")
+
   notes String?
 
   createdAt DateTime @default(now()) @map("created_at")

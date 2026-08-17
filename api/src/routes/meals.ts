@@ -75,6 +75,11 @@ export function createMealRouter(deps: {
             protein_g: suggestion.proteinG,
             minutes: suggestion.minutes,
             cautions: suggestion.cautions,
+            // No suggested meal is protein-free: a dish either clears its
+            // slot's target or names what to serve with it.
+            meets_protein: suggestion.meetsProtein,
+            pair_with: suggestion.pairWith,
+            protein_target_g: suggestion.proteinTargetG,
           })),
         });
       })

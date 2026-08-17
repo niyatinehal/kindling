@@ -44,7 +44,12 @@ const logBody = z.discriminatedUnion("type", [
     type: z.literal("meal"),
     logged_for: z.string(),
     status: z.enum(["completed", "skipped"]),
-    notes: z.string().max(200).nullable().default(null),
+    /// A library dish, when it was one. FR-TRK-2 logs meals "from suggested plan
+    /// or freeform", so exactly one of these two carries what was eaten.
+    recipe_key: z.string().max(60).nullable().default(null),
+    /// What the user typed, for a dish the library does not know. Trimmed and
+    /// length-capped; it is displayed verbatim, never translated.
+    notes: z.string().trim().min(1).max(200).nullable().default(null),
   }),
 ]);
 
@@ -76,6 +81,14 @@ export function createTrackingRouter(deps: {
 
     const body = parsed.data;
 
+    // A meal log with neither a dish nor a name records that someone ate
+    // something unspecified, which counts toward adherence while telling nobody
+    // anything. One of the two is required.
+    if (body.type === "meal" && body.recipe_key === null && body.notes === null) {
+      sendError(res, 400, "VALIDATION_FAILED", "A meal needs either a recipe_key or a name.");
+      return;
+    }
+
     recordLog(deps.prisma, {
       userId: user.id,
       type: body.type,
@@ -86,6 +99,7 @@ export function createTrackingRouter(deps: {
       value: body.type === "water" || body.type === "sleep" ? body.value : null,
       planExerciseId: body.type === "workout" ? body.plan_exercise_id : null,
       rating: body.type === "sleep" || body.type === "workout" ? body.rating : null,
+      recipeKey: body.type === "meal" ? body.recipe_key : null,
       notes: body.type === "meal" ? body.notes : null,
     })
       .then((log) => {

@@ -10,6 +10,7 @@ export type LogInput = {
   value: number | null;
   planExerciseId: string | null;
   rating: number | null;
+  recipeKey: string | null;
   notes: string | null;
 };
 
@@ -32,6 +33,7 @@ export async function recordLog(prisma: PrismaClient, input: LogInput): Promise<
     value: input.value,
     planExerciseId: input.planExerciseId,
     rating: input.rating,
+    recipeKey: input.recipeKey,
     notes: input.notes,
   };
 

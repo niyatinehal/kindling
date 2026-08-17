@@ -314,3 +314,95 @@ describe("GET /api/v1/tracking/summary", () => {
     expect((await request(app).get("/api/v1/tracking/summary")).status).toBe(401);
   });
 });
+
+// "There should be an option to add a dish as well if not mentioned, so it can be
+// tracked." FR-TRK-2 logs meals "from suggested plan or freeform" — these are the
+// two paths, and they stay distinguishable.
+describe("POST /api/v1/tracking/logs — meals", () => {
+  it("logs a library dish by key", async () => {
+    const token = await registered();
+
+    await log(token, {
+      type: "meal",
+      logged_for: today(),
+      status: "completed",
+      recipe_key: "dal_chawal",
+    }).expect(201);
+
+    const stored = await prisma.trackingLog.findFirstOrThrow({ where: { type: "meal" } });
+    expect(stored.recipeKey).toBe("dal_chawal");
+    expect(stored.notes).toBeNull();
+  });
+
+  it("logs a dish the library has never heard of", async () => {
+    const token = await registered();
+
+    await log(token, {
+      type: "meal",
+      logged_for: today(),
+      status: "completed",
+      notes: "Amma's avial",
+    }).expect(201);
+
+    const stored = await prisma.trackingLog.findFirstOrThrow({ where: { type: "meal" } });
+    // Null key, prose name — so a history view knows to show it verbatim rather
+    // than trying to translate it.
+    expect(stored.recipeKey).toBeNull();
+    expect(stored.notes).toBe("Amma's avial");
+  });
+
+  it("counts a custom dish toward the week exactly like a library one", async () => {
+    const token = await registered();
+
+    await log(token, { type: "meal", logged_for: today(), status: "completed", notes: "Avial" });
+    await log(token, {
+      type: "meal",
+      logged_for: today(),
+      status: "completed",
+      recipe_key: "poha",
+    });
+
+    const summary = await request(app).get("/api/v1/tracking/summary").set(auth(token));
+    expect((summary.body as SummaryBody).summary?.meals_logged).toBe(2);
+  });
+
+  // A meal log naming nothing records that someone ate something unspecified — it
+  // moves adherence while telling nobody anything.
+  it("refuses a meal that names neither a dish nor a description", async () => {
+    const token = await registered();
+
+    const response = await log(token, {
+      type: "meal",
+      logged_for: today(),
+      status: "completed",
+    });
+
+    expect(response.status).toBe(400);
+    expect(await prisma.trackingLog.count()).toBe(0);
+  });
+
+  it("refuses a blank name rather than storing whitespace", async () => {
+    const token = await registered();
+
+    expect(
+      (await log(token, { type: "meal", logged_for: today(), status: "completed", notes: "   " }))
+        .status,
+    ).toBe(400);
+  });
+
+  it("records a skipped meal too, so a planned dish can be declined", async () => {
+    const token = await registered();
+
+    await log(token, {
+      type: "meal",
+      logged_for: today(),
+      status: "skipped",
+      recipe_key: "upma",
+    }).expect(201);
+
+    const summary = await request(app).get("/api/v1/tracking/summary").set(auth(token));
+    // Logged either way: "I skipped this" is data, and adherence for meals is a
+    // later slice's job to compute from status.
+    expect((summary.body as SummaryBody).summary?.meals_logged).toBe(1);
+  });
+});
