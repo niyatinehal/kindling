@@ -1,3 +1,5 @@
+import "./globals.css";
+
 import { SerwistProvider } from "@serwist/turbopack/react";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
