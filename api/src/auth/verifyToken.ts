@@ -82,8 +82,25 @@ export function createTokenVerifier(options: {
       throw new InvalidTokenError("token has no subject");
     }
 
-    const email = typeof payload["email"] === "string" ? payload["email"] : undefined;
-    const phone = typeof payload["phone"] === "string" ? payload["phone"] : undefined;
+    // Supabase emits "" — not null, not an absent key — for an identity the
+    // account does not have; every anonymous user carries `"email": ""` and
+    // `"phone": ""`. Treating that as a present value writes an empty string
+    // into columns whose partial unique indexes (users_email_live_key,
+    // users_phone_live_key) exempt only NULL, so the SECOND account without a
+    // phone collides with the first and registration fails with a 500.
+    //
+    // An empty claim means "absent", which is exactly what the optional
+    // `email?` / `phone?` fields below already promise. Normalising here fixes
+    // it for every consumer — registration and the auth middleware alike —
+    // rather than at one call site.
+    const email =
+      typeof payload["email"] === "string" && payload["email"] !== ""
+        ? payload["email"]
+        : undefined;
+    const phone =
+      typeof payload["phone"] === "string" && payload["phone"] !== ""
+        ? payload["phone"]
+        : undefined;
 
     return {
       authUserId: sub,

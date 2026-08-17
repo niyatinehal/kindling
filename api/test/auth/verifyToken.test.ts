@@ -17,12 +17,16 @@ type MintOptions = {
   audience?: string;
   expiresIn?: string | undefined;
   email?: string;
+  phone?: string;
 };
 
 async function mint(options: MintOptions = {}): Promise<string> {
   const claims: Record<string, unknown> = {};
   if (options.email !== undefined) {
     claims["email"] = options.email;
+  }
+  if (options.phone !== undefined) {
+    claims["phone"] = options.phone;
   }
 
   let token = new SignJWT(claims)
@@ -77,6 +81,27 @@ describe("createTokenVerifier", () => {
 
     expect(result.email).toBeUndefined();
     expect(result.phone).toBeUndefined();
+  });
+
+  it("treats an empty email or phone claim as absent", async () => {
+    // Supabase emits "" — not null, not an absent key — for an identity the
+    // account does not have; every anonymous user's token carries
+    // `"email": ""` and `"phone": ""`. If verifyToken treated that as a
+    // present value, registerUser would write '' into columns whose partial
+    // unique indexes (users_email_live_key, users_phone_live_key) exempt only
+    // NULL, so the second account without a phone would collide with the
+    // first and registration would fail with a 500.
+    const result = await verify(await mint({ email: "", phone: "" }));
+
+    expect(result.email).toBeUndefined();
+    expect(result.phone).toBeUndefined();
+  });
+
+  it("still returns real, non-empty email and phone claims unchanged", async () => {
+    const result = await verify(await mint({ email: "meera@example.test", phone: "+15551234567" }));
+
+    expect(result.email).toBe("meera@example.test");
+    expect(result.phone).toBe("+15551234567");
   });
 
   it("rejects an expired token", async () => {
