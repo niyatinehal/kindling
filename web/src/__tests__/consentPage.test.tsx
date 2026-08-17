@@ -5,7 +5,7 @@ const mockPush = jest.fn();
 jest.mock("next/navigation", () => ({ useRouter: () => ({ push: mockPush }) }));
 
 import messages from "../../messages/en.json";
-import ConsentPage from "../../app/consent/page";
+import { ConsentClient } from "../../app/consent/ConsentClient";
 
 const originalFetch = global.fetch;
 
@@ -24,7 +24,7 @@ function response(status: number, body: unknown): Response {
 function renderPage() {
   render(
     <NextIntlClientProvider locale="en" messages={messages}>
-      <ConsentPage />
+      <ConsentClient />
     </NextIntlClientProvider>,
   );
 }

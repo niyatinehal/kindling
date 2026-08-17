@@ -18,7 +18,9 @@
     "body": "This app stores what you log — workouts, meals, water, sleep — and any health conditions you choose to share, so it can build a plan that fits you. You can export or delete this data at any time.",
     "nameLabel": "What should we call you?",
     "healthDataLabel": "I agree to the app storing my health data",
-    "submit": "Continue"
+    "submit": "Continue",
+    "guestName": "Guest",
+    "guestBody": "You're exploring as a guest. Everything you log is saved, and you can add an email later to keep it."
   },
   "home": {
     "title": "You're set up",

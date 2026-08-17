@@ -20,16 +20,22 @@ export function ConsentForm({
   policyVersion,
   error,
   submitting = false,
+  isGuest = false,
 }: {
   onSubmit: (submission: ConsentSubmission) => void;
   policyVersion: string;
   error?: string;
   /** True while a registration this form started is still in flight. */
   submitting?: boolean;
+  /** True when the session belongs to an anonymous user. */
+  isGuest?: boolean;
 }) {
   const t = useTranslations("consent");
   const tError = useTranslations("errors");
-  const [name, setName] = useState("");
+  // A guest asked for one tap, not a form. The name is seeded rather than
+  // forced — it is an ordinary editable field, and the consent below it is
+  // emphatically NOT pre-granted: a pre-ticked box is not consent.
+  const [name, setName] = useState(isGuest ? t("guestName") : "");
   const [agreed, setAgreed] = useState(false);
 
   const displayName = name.trim();
@@ -39,6 +45,7 @@ export function ConsentForm({
     <main>
       <h1>{t("title")}</h1>
       <p>{t("body")}</p>
+      {isGuest && <p>{t("guestBody")}</p>}
 
       {error !== undefined && (
         <p role="alert">{tError.has(error) ? tError(error) : tError("UNKNOWN")}</p>

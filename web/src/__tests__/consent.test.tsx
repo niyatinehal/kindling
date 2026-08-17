@@ -110,3 +110,43 @@ describe("consent form", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(messages.errors.UNKNOWN);
   });
 });
+
+describe("guest consent", () => {
+  it("pre-fills the name and explains guest mode", () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={messages}>
+        <ConsentForm onSubmit={jest.fn()} policyVersion="2026-08-15" isGuest />
+      </NextIntlClientProvider>,
+    );
+
+    expect(screen.getByLabelText(messages.consent.nameLabel)).toHaveValue(
+      messages.consent.guestName,
+    );
+    expect(screen.getByText(messages.consent.guestBody)).toBeInTheDocument();
+  });
+
+  it("shows neither for a normal sign-in", () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={messages}>
+        <ConsentForm onSubmit={jest.fn()} policyVersion="2026-08-15" />
+      </NextIntlClientProvider>,
+    );
+
+    expect(screen.getByLabelText(messages.consent.nameLabel)).toHaveValue("");
+    expect(screen.queryByText(messages.consent.guestBody)).not.toBeInTheDocument();
+  });
+
+  // The consent itself is never pre-granted. A pre-ticked box is not consent,
+  // and the API refuses a registration without health_data anyway.
+  it("never pre-agrees the health-data consent for a guest", () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={messages}>
+        <ConsentForm onSubmit={jest.fn()} policyVersion="2026-08-15" isGuest />
+      </NextIntlClientProvider>,
+    );
+
+    expect(
+      screen.getByRole("checkbox", { name: messages.consent.healthDataLabel }),
+    ).not.toBeChecked();
+  });
+});
