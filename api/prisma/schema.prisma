@@ -56,6 +56,7 @@ model User {
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
+  profile         Profile?
   createdFamilies Family[]           @relation("FamilyCreatedBy")
   memberships     FamilyMembership[]
   consents        ConsentRecord[]    @relation("UserConsents")
@@ -100,6 +101,126 @@ model FamilyMembership {
   @@unique([familyId, userId])
   @@index([familyId, role])
   @@map("family_memberships")
+}
+
+enum Sex {
+  male
+  female
+  other
+  prefer_not_to_say
+}
+
+enum FitnessGoal {
+  fat_loss
+  muscle_gain
+  general_fitness
+  mobility
+  endurance
+  strength
+}
+
+enum FitnessLevel {
+  beginner
+  intermediate
+  advanced
+}
+
+enum SpaceCategory {
+  small_room
+  large_room
+  outdoor
+  gym
+}
+
+enum Equipment {
+  none
+  resistance_band
+  dumbbells
+  kettlebell
+  pull_up_bar
+  yoga_mat
+  jump_rope
+  bench
+  treadmill
+  stationary_bike
+  full_gym
+}
+
+/// Body region, not a diagnosis. Overlaps MedicalCondition on purpose: a knee
+/// arthritis sufferer declares both, and each is a key into the workout
+/// contraindication table. Neither is authoritative alone.
+enum Injury {
+  knee
+  lower_back
+  shoulder
+  neck
+  wrist
+  ankle
+  hip
+}
+
+enum MedicalCondition {
+  type_2_diabetes
+  hypertension
+  heart_condition
+  asthma
+  arthritis
+  osteoporosis
+  pregnancy
+  thyroid_disorder
+}
+
+enum DietaryConstraint {
+  vegetarian
+  non_vegetarian
+  eggetarian
+  jain
+  vegan
+  no_dairy
+  no_gluten
+  no_nuts
+}
+
+/// The wellness profile behind every generated plan (PRD FR-PROF-1).
+///
+/// Separate from `User` rather than columns on it: `User` is the identity
+/// record, and keeping the wellness answers in one object gives the workout
+/// slice a single thing to snapshot onto a plan.
+///
+/// There is deliberately NO partial state. Every column a plan depends on is
+/// required, and the API rejects an empty `equipment` array, so "a row exists"
+/// is the whole completeness predicate — no draft rows, no half-answered
+/// profiles to defend against downstream.
+model Profile {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  userId String @unique @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id])
+
+  /// The birth YEAR, not an age. A stored age is wrong within a year and drifts
+  /// silently, and age feeds both the elderly track and the safety rules.
+  birthYear Int      @map("birth_year")
+  sex       Sex?
+  heightCm  Int?     @map("height_cm")
+  weightKg  Decimal? @map("weight_kg") @db.Decimal(5, 2)
+
+  goal  FitnessGoal
+  level FitnessLevel
+  space SpaceCategory
+
+  equipment  Equipment[]
+  injuries   Injury[]
+  conditions MedicalCondition[]
+  dietary    DietaryConstraint[]
+
+  /// Free text the user adds in their own words. Passed to the LLM as context;
+  /// it must never drive a hard exclusion, because prose is not a stable key.
+  notes String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("profiles")
 }
 
 enum ConsentType {

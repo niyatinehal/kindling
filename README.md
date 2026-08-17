@@ -251,10 +251,26 @@ required at boot (see `api/src/config/env.ts`), and `npm start` crashes immediat
 > **Creating new migrations:** `npx prisma migrate dev --create-only` currently fails against the
 > local Supabase database with `P4002`, because the schema has a foreign key into `auth.users`, a
 > table Supabase owns that the migration engine's diffing can't see across schemas. Until that's
-> resolved, hand-write new migration SQL under
-> `api/prisma/migrations/<timestamp>_<name>/migration.sql` (follow the existing migrations for the
-> pattern) and apply it with `( cd api && npx prisma migrate deploy )`, rather than running
-> `prisma migrate dev`.
+> resolved, write new migration SQL to
+> `api/prisma/migrations/<timestamp>_<name>/migration.sql` yourself and apply it with
+> `( cd api && npx prisma migrate deploy )`, rather than running `prisma migrate dev`.
+>
+> The SQL does not have to be written by hand. `migrate diff` takes the same route CI's drift check
+> takes — replaying the existing migrations onto an empty shadow database, which the `pg_catalog`
+> guard in `20260813185303_auth_fk_pg_catalog_guard` makes survivable without an `auth` schema — so
+> it can generate the file for you. Point it at the **test** Postgres, never the Supabase one:
+>
+> ```bash
+> cd api
+> export DIRECT_URL=postgresql://postgres:postgres@127.0.0.1:54329/wellness_test
+> export SHADOW_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54329/shadow
+> mkdir -p "prisma/migrations/$(date -u +%Y%m%d%H%M%S)_my_change"
+> npx prisma migrate diff --from-migrations prisma/migrations \
+>   --to-schema prisma/schema.prisma --script > prisma/migrations/<that dir>/migration.sql
+> ```
+>
+> Then `migrate deploy` against both databases — the Supabase one for local dev, and the test one so
+> the integration suite sees the new tables.
 
 ## Layout
 

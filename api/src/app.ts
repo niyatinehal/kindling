@@ -7,6 +7,7 @@ import { sendError } from "./http/errors.js";
 import { healthRouter } from "./routes/health.js";
 import { createReadyRouter } from "./routes/ready.js";
 import { createAuthRouter } from "./routes/auth.js";
+import { createProfileRouter } from "./routes/profiles.js";
 
 export type AppDeps = {
   checkDatabase: () => Promise<void>;
@@ -27,6 +28,7 @@ export function createApp(deps: AppDeps): Express {
   app.use(healthRouter);
   app.use(createReadyRouter(deps.checkDatabase));
   app.use("/api/v1/auth", createAuthRouter({ prisma: deps.prisma, verify: deps.verify }));
+  app.use("/api/v1/profiles", createProfileRouter({ prisma: deps.prisma, verify: deps.verify }));
 
   // Mounted last on purpose: Express only recognizes a 4-argument function as
   // an error handler, and only routes to it when it is the final middleware

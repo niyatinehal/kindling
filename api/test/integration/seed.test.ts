@@ -35,6 +35,7 @@ const fakeProvisioner = (email: string): Promise<string> => {
 };
 
 async function clearAll(): Promise<void> {
+  await prisma.profile.deleteMany();
   await prisma.familyMembership.deleteMany();
   await prisma.consentRecord.deleteMany();
   await prisma.family.deleteMany();
