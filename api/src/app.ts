@@ -10,6 +10,7 @@ import { createReadyRouter } from "./routes/ready.js";
 import { createAuthRouter } from "./routes/auth.js";
 import { createProfileRouter } from "./routes/profiles.js";
 import { createPlanRouter } from "./routes/plans.js";
+import { createFamilyRouter, createInviteRouter } from "./routes/families.js";
 
 export type AppDeps = {
   checkDatabase: () => Promise<void>;
@@ -32,6 +33,8 @@ export function createApp(deps: AppDeps): Express {
   app.use(createReadyRouter(deps.checkDatabase));
   app.use("/api/v1/auth", createAuthRouter({ prisma: deps.prisma, verify: deps.verify }));
   app.use("/api/v1/profiles", createProfileRouter({ prisma: deps.prisma, verify: deps.verify }));
+  app.use("/api/v1/families", createFamilyRouter({ prisma: deps.prisma, verify: deps.verify }));
+  app.use("/api/v1/invites", createInviteRouter({ prisma: deps.prisma, verify: deps.verify }));
   app.use(
     "/api/v1/plans",
     createPlanRouter({

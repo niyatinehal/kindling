@@ -44,6 +44,8 @@ async function expectUniqueConstraintViolation(
 }
 
 beforeAll(async () => {
+  await prisma.visibilitySetting.deleteMany();
+  await prisma.familyInvite.deleteMany();
   await prisma.workoutPlan.deleteMany();
   await prisma.profile.deleteMany();
   await prisma.familyMembership.deleteMany();

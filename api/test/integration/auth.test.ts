@@ -11,6 +11,8 @@ const connectionString =
 const prisma = createPrismaClient(connectionString);
 
 beforeEach(async () => {
+  await prisma.visibilitySetting.deleteMany();
+  await prisma.familyInvite.deleteMany();
   await prisma.workoutPlan.deleteMany();
   await prisma.profile.deleteMany();
   await prisma.familyMembership.deleteMany();

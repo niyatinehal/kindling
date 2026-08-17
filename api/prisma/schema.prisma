@@ -60,6 +60,8 @@ model User {
   workoutPlans    WorkoutPlan[]
   createdFamilies Family[]           @relation("FamilyCreatedBy")
   memberships     FamilyMembership[]
+  createdInvites  FamilyInvite[]     @relation("InviteCreatedBy")
+  acceptedInvites FamilyInvite[]     @relation("InviteAcceptedBy")
   consents        ConsentRecord[]    @relation("UserConsents")
   grantedConsents ConsentRecord[]    @relation("ConsentGrantedBy")
 
@@ -78,6 +80,7 @@ model Family {
   deletedAt DateTime? @map("deleted_at")
 
   memberships FamilyMembership[]
+  invites     FamilyInvite[]
 
   @@map("families")
 }
@@ -98,6 +101,8 @@ model FamilyMembership {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
+
+  visibilitySettings VisibilitySetting[]
 
   @@unique([familyId, userId])
   @@index([familyId, role])
@@ -290,6 +295,102 @@ model PlanExercise {
   @@unique([planId, dayOfWeek, position])
   @@index([planId, dayOfWeek])
   @@map("plan_exercises")
+}
+
+/// The roles an invite may confer. Deliberately NOT `FamilyRole`: the design doc
+/// requires that `admin` never be invite-assignable, and a separate enum makes
+/// privilege escalation by invite unrepresentable rather than merely validated.
+/// Promotion to admin goes through the role-change route, which is itself
+/// admin-guarded.
+enum InvitableRole {
+  adult
+  child
+  elderly
+}
+
+enum InviteStatus {
+  pending
+  accepted
+  expired
+  revoked
+}
+
+model FamilyInvite {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  familyId String @map("family_id") @db.Uuid
+  family   Family @relation(fields: [familyId], references: [id])
+
+  invitedRole InvitableRole @map("invited_role")
+
+  /// Generated from `crypto.randomBytes`, never `Math.random` — a guessable code
+  /// is a way into someone's family health data.
+  inviteCode String @unique @map("invite_code")
+
+  /// Who it was meant for, when the admin knew. Free text: an invite may be read
+  /// out loud rather than sent.
+  invitedContact String? @map("invited_contact")
+
+  status    InviteStatus @default(pending)
+  expiresAt DateTime     @map("expires_at")
+
+  createdByUserId String @map("created_by_user_id") @db.Uuid
+  createdBy       User   @relation("InviteCreatedBy", fields: [createdByUserId], references: [id])
+
+  acceptedByUserId String? @map("accepted_by_user_id") @db.Uuid
+  acceptedBy       User?   @relation("InviteAcceptedBy", fields: [acceptedByUserId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([familyId, status])
+  @@map("family_invites")
+}
+
+/// The categories a member can share or withhold (PRD FR-AUTH-5).
+enum DataCategory {
+  adherence_summary
+  weight
+  workout_detail
+  meal_detail
+  sleep
+  water
+  medical_conditions
+}
+
+enum Visibility {
+  visible
+  hidden
+}
+
+/// Per-member, per-category sharing rule.
+///
+/// Rows are created EAGERLY — one per category — in the same transaction as the
+/// membership, on both family creation and invite acceptance. A membership with
+/// no rows would leave a dashboard query undefined, and the design doc is
+/// explicit that there is no implicit fallback read at query time.
+///
+/// Defaults are asymmetric on purpose: `adherence_summary` starts `visible` so an
+/// admin dashboard has something to show, everything genuinely sensitive starts
+/// `hidden` so sharing is opt-in. `isLockedBySafetyFloor` constrains WRITES only
+/// — it means "this member may not hide this on their own", and never "an admin
+/// may read it anyway".
+model VisibilitySetting {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  membershipId String           @map("membership_id") @db.Uuid
+  membership   FamilyMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  dataCategory DataCategory @map("data_category")
+  visibility   Visibility
+
+  isLockedBySafetyFloor Boolean @default(false) @map("is_locked_by_safety_floor")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([membershipId, dataCategory])
+  @@map("visibility_settings")
 }
 
 enum ConsentType {
