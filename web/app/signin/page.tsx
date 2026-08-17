@@ -6,6 +6,12 @@ import { useState } from "react";
 
 import { readJsonBody } from "../../src/api/readJsonBody";
 import { nextStep } from "../../src/onboarding/nextStep";
+import { Alert } from "../../src/ui/Alert";
+import { Button } from "../../src/ui/Button";
+import { Card } from "../../src/ui/Card";
+import { Field } from "../../src/ui/Field";
+import { LinkButton } from "../../src/ui/LinkButton";
+import { Screen } from "../../src/ui/Screen";
 
 export default function SignInPage() {
   const t = useTranslations("signin");
@@ -66,58 +72,55 @@ export default function SignInPage() {
   }
 
   return (
-    <main>
-      <h1>{t("title")}</h1>
-      {error !== undefined && (
-        <p role="alert">{tError.has(error) ? tError(error) : tError("UNKNOWN")}</p>
-      )}
+    <Screen title={t("title")}>
+      {error !== undefined && <Alert>{tError.has(error) ? tError(error) : tError("UNKNOWN")}</Alert>}
 
-      <label>
-        {t("contactLabel")}
-        <input value={contact} onChange={(event) => setContact(event.target.value)} />
-      </label>
+      <Card>
+        <div className="flex flex-col gap-4">
+          <Field label={t("contactLabel")} value={contact} onChange={setContact} inputMode="tel" />
 
-      {!sent ? (
-        <button
-          type="button"
+          {!sent ? (
+            <Button
+              onClick={() => {
+                void requestCode();
+              }}
+            >
+              {t("sendCode")}
+            </Button>
+          ) : (
+            <>
+              <Field label={t("codeLabel")} value={code} onChange={setCode} inputMode="numeric" />
+              <Button
+                onClick={() => {
+                  void verifyCode();
+                }}
+              >
+                {t("verify")}
+              </Button>
+            </>
+          )}
+        </div>
+      </Card>
+
+      <div className="flex flex-col gap-3">
+        {/*
+            Points at the route that STARTS the OAuth flow, not at /auth/callback,
+            which is where Google comes back to. Linking to the callback directly
+            arrives with no `code` and is bounced straight to /?error=oauth.
+          */}
+        <LinkButton href="/api/auth/google" variant="secondary">
+          {t("google")}
+        </LinkButton>
+
+        <Button
+          variant="ghost"
           onClick={() => {
-            void requestCode();
+            void continueAsGuest();
           }}
         >
-          {t("sendCode")}
-        </button>
-      ) : (
-        <>
-          <label>
-            {t("codeLabel")}
-            <input value={code} onChange={(event) => setCode(event.target.value)} />
-          </label>
-          <button
-            type="button"
-            onClick={() => {
-              void verifyCode();
-            }}
-          >
-            {t("verify")}
-          </button>
-        </>
-      )}
-
-      {/*
-        Points at the route that STARTS the OAuth flow, not at /auth/callback,
-        which is where Google comes back to. Linking to the callback directly
-        arrives with no `code` and is bounced straight to /?error=oauth.
-      */}
-      <a href="/api/auth/google">{t("google")}</a>
-
-      <button
-        type="button"
-        onClick={() => {
-          void continueAsGuest();
-        }}
-      >
-        {t("guest")}
-      </button>
-    </main>
+          {t("guest")}
+        </Button>
+      </div>
+    </Screen>
   );
 }

@@ -3,6 +3,12 @@
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
+import { Alert } from "../../src/ui/Alert";
+import { Button } from "../../src/ui/Button";
+import { Card } from "../../src/ui/Card";
+import { Field } from "../../src/ui/Field";
+import { Screen } from "../../src/ui/Screen";
+
 /**
  * The API caps `display_name` at 120 characters (`api/src/routes/auth.ts`).
  * Enforcing the same limit here keeps a preventable rejection out of the
@@ -42,34 +48,39 @@ export function ConsentForm({
   const complete = displayName !== "" && agreed;
 
   return (
-    <main>
-      <h1>{t("title")}</h1>
-      <p>{t("body")}</p>
-      {isGuest && <p>{t("guestBody")}</p>}
+    <Screen title={t("title")}>
+      <p className="text-lg leading-relaxed text-muted">{t("body")}</p>
 
-      {error !== undefined && (
-        <p role="alert">{tError.has(error) ? tError(error) : tError("UNKNOWN")}</p>
-      )}
+      {isGuest && <p className="rounded-card bg-surface p-4 text-muted">{t("guestBody")}</p>}
 
-      <label>
-        {t("nameLabel")}
-        <input
-          type="text"
-          value={name}
-          maxLength={DISPLAY_NAME_MAX_LENGTH}
-          onChange={(event) => setName(event.target.value)}
-        />
-      </label>
+      {error !== undefined && <Alert>{tError.has(error) ? tError(error) : tError("UNKNOWN")}</Alert>}
 
-      <label>
-        <input
-          type="checkbox"
-          checked={agreed}
-          onChange={(event) => setAgreed(event.target.checked)}
-          aria-label={t("healthDataLabel")}
-        />
-        {t("healthDataLabel")}
-      </label>
+      <Card>
+        <div className="flex flex-col gap-5">
+          <Field
+            label={t("nameLabel")}
+            value={name}
+            onChange={setName}
+            maxLength={DISPLAY_NAME_MAX_LENGTH}
+          />
+
+          {/*
+              A big, plainly-worded checkbox, not a styled toggle. This is the
+              one consent decision in the product and it must read as exactly
+              what it is.
+            */}
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              checked={agreed}
+              onChange={(event) => setAgreed(event.target.checked)}
+              aria-label={t("healthDataLabel")}
+              className="mt-1 size-6 shrink-0 accent-accent"
+            />
+            <span className="text-ink">{t("healthDataLabel")}</span>
+          </label>
+        </div>
+      </Card>
 
       {/*
         `submitting` is not a nicety: without it the button stays enabled for
@@ -77,8 +88,7 @@ export function ConsentForm({
         survivable today only because the API's register is idempotent — this
         form must not be the thing relying on that.
       */}
-      <button
-        type="button"
+      <Button
         disabled={!complete || submitting}
         onClick={() => {
           onSubmit({
@@ -88,7 +98,7 @@ export function ConsentForm({
         }}
       >
         {t("submit")}
-      </button>
-    </main>
+      </Button>
+    </Screen>
   );
 }
