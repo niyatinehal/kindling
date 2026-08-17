@@ -4,7 +4,7 @@ import { NextIntlClientProvider } from "next-intl";
 import messages from "../../messages/en.json";
 import { HomeView } from "../../app/home/HomeView";
 
-function renderView(props: { isGuest?: boolean } = {}) {
+function renderView(props: { isGuest?: boolean; hasProfile?: boolean } = {}) {
   render(
     <NextIntlClientProvider locale="en" messages={messages}>
       <HomeView {...props} />
@@ -29,8 +29,13 @@ describe("HomeView", () => {
 
   // Claiming an account is not built. A button that does nothing is worse
   // than no button, so there must not be one.
+  //
+  // Rendered with a profile already saved on purpose: the intake CTA is the one
+  // link this screen ever shows, and it is not a claim action. Asserting "no
+  // links at all" only says something about claiming in the state where that
+  // CTA is absent.
   it("offers no claim action, because claiming is not built yet", () => {
-    renderView({ isGuest: true });
+    renderView({ isGuest: true, hasProfile: true });
 
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
@@ -38,11 +43,28 @@ describe("HomeView", () => {
 });
 
 describe("HomeView shell", () => {
-  it("shows the today card in its empty state", () => {
+  // Before intake the Today card is the way in, not a status message. This is
+  // the screen's only action, so if it stops being a link the journey dead-ends
+  // at "Welcome" with nothing to do — which is exactly what it used to do.
+  it("invites intake when there is no profile yet", () => {
     renderView();
 
     expect(screen.getByText(messages.home.todayLabel)).toBeInTheDocument();
-    expect(screen.getByText(messages.home.todayEmpty)).toBeInTheDocument();
+    expect(screen.getByText(messages.home.todayNoProfile)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: messages.home.startIntake })).toHaveAttribute(
+      "href",
+      "/onboarding/profile",
+    );
+  });
+
+  // And once it is saved it must not keep asking, nor claim a plan is coming:
+  // nothing generates one yet.
+  it("reports a saved profile without re-inviting or promising a plan", () => {
+    renderView({ hasProfile: true });
+
+    expect(screen.getByText(messages.home.todayProfileSet)).toBeInTheDocument();
+    expect(screen.queryByText(messages.home.todayNoProfile)).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: messages.home.startIntake })).not.toBeInTheDocument();
   });
 
   it("shows stat tiles with no values", () => {

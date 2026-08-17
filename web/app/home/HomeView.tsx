@@ -1,6 +1,7 @@
 import { useTranslations } from "next-intl";
 
 import { Card } from "../../src/ui/Card";
+import { LinkButton } from "../../src/ui/LinkButton";
 import { Screen } from "../../src/ui/Screen";
 
 /**
@@ -13,7 +14,13 @@ import { Screen } from "../../src/ui/Screen";
  * absent. Inventing a step count would be fiction rendered as fact, and a
  * test asserts this screen renders no digits at all.
  */
-export function HomeView({ isGuest = false }: { isGuest?: boolean }) {
+export function HomeView({
+  isGuest = false,
+  hasProfile = false,
+}: {
+  isGuest?: boolean;
+  hasProfile?: boolean;
+}) {
   const t = useTranslations("home");
 
   return (
@@ -35,11 +42,25 @@ export function HomeView({ isGuest = false }: { isGuest?: boolean }) {
 
       {isGuest && <p className="text-muted">{t("guestNote")}</p>}
 
+      {/*
+        The Today card is the one thing on this screen with something to say, so
+        it carries the only action. Before intake it asks for it; after intake it
+        reports the truth and nothing more. It deliberately does NOT claim a plan
+        is "on its way" — no code generates one yet, and a promise the product
+        cannot keep is the same failure as an invented step count below.
+      */}
       <Card tone="ink">
         <p className="text-sm font-semibold tracking-widest text-accent-glow uppercase">
           {t("todayLabel")}
         </p>
-        <p className="mt-2 text-lg leading-relaxed">{t("todayEmpty")}</p>
+        <p className="mt-2 text-lg leading-relaxed">
+          {hasProfile ? t("todayProfileSet") : t("todayNoProfile")}
+        </p>
+        {!hasProfile && (
+          <div className="mt-4">
+            <LinkButton href="/onboarding/profile">{t("startIntake")}</LinkButton>
+          </div>
+        )}
       </Card>
 
       <section>

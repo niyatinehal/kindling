@@ -18,10 +18,17 @@ jest.mock("../../../src/api/upstream", () => ({
 jest.mock("../../../src/onboarding/isGuestSession", () => ({
   isGuestSession: jest.fn(() => Promise.resolve(false)),
 }));
+// Stubbed as an intention rather than left to fall out of the `callApi` mock:
+// the page resolves guest status and profile status concurrently, and a single
+// mocked `Response` cannot have its body read twice.
+jest.mock("../../../src/onboarding/hasProfile", () => ({
+  hasProfile: jest.fn(() => Promise.resolve(false)),
+}));
 
 import { redirect } from "next/navigation";
 
 import { callApi } from "../../../src/api/upstream";
+import { hasProfile } from "../../../src/onboarding/hasProfile";
 import { isGuestSession } from "../../../src/onboarding/isGuestSession";
 import { createSupabaseServerClient } from "../../../src/supabase/server";
 import { HomeView } from "../HomeView";
@@ -66,6 +73,7 @@ beforeEach(() => {
   // Without this, the `true` set by the "marks the view as a guest" test
   // below would persist into every test that runs after it in file order.
   (isGuestSession as jest.Mock).mockResolvedValue(false);
+  (hasProfile as jest.Mock).mockResolvedValue(false);
 });
 
 afterEach(() => {
@@ -103,6 +111,16 @@ describe("/home", () => {
     const page = await HomePage();
 
     expect(page.props.isGuest).toBe(true);
+  });
+
+  it("tells the view whether intake is done", async () => {
+    signedIn();
+    mockCallApi.mockResolvedValue(json({ id: "u1", display_name: "Meera", family: null }, 200));
+    (hasProfile as jest.Mock).mockResolvedValue(true);
+
+    const page = await HomePage();
+
+    expect(page.props.hasProfile).toBe(true);
   });
 
   it("sends a caller with no session to sign in, without calling the API", async () => {

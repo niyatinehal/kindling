@@ -29,12 +29,111 @@
     "guestNote": "You're exploring as a guest. Add an email later to keep what you log.",
     "greeting": "Welcome",
     "todayLabel": "Today",
-    "todayEmpty": "Your first plan is on its way. Nothing to do yet — that's allowed.",
+    "todayNoProfile": "Tell us a little about you and we'll build a plan that fits.",
+    "todayProfileSet": "Your profile is saved. Nothing to do yet — that's allowed.",
+    "startIntake": "Get started",
     "statsLabel": "This week",
     "stepsLabel": "Steps",
     "waterLabel": "Water",
     "workoutsLabel": "Workouts",
     "empty": "—"
+  },
+  "onboarding": {
+    "title": "Build your plan",
+    "stepOf": "Step {current} of {total}",
+    "next": "Next",
+    "back": "Back",
+    "finish": "Save and finish",
+    "saving": "Saving…",
+    "disclaimer": "This isn't medical advice. We use this to leave out exercises that aren't right for you — if you're unsure about something, ask your doctor.",
+    "steps": {
+      "about": "About you",
+      "goal": "Your goal",
+      "space": "Where you train",
+      "health": "Health and safety",
+      "food": "Food"
+    },
+    "labels": {
+      "birthYear": "What year were you born?",
+      "sex": "Sex (optional)",
+      "heightCm": "Height in cm (optional)",
+      "weightKg": "Weight in kg (optional)",
+      "goal": "What matters most to you right now?",
+      "level": "How active are you at the moment?",
+      "space": "Where will you train?",
+      "equipment": "What do you have to train with?",
+      "injuries": "Any injuries or problem areas?",
+      "conditions": "Any medical conditions?",
+      "notes": "Anything else we should know? (optional)",
+      "dietary": "Any dietary preferences?"
+    },
+    "sex": {
+      "male": "Male",
+      "female": "Female",
+      "other": "Other",
+      "prefer_not_to_say": "Prefer not to say"
+    },
+    "goal": {
+      "fat_loss": "Lose fat",
+      "muscle_gain": "Build muscle",
+      "general_fitness": "Stay generally healthy",
+      "mobility": "Move more easily",
+      "endurance": "Build stamina",
+      "strength": "Get stronger"
+    },
+    "level": {
+      "beginner": "Just starting out",
+      "intermediate": "I train sometimes",
+      "advanced": "I train regularly"
+    },
+    "space": {
+      "small_room": "A small room",
+      "large_room": "A large room or hall",
+      "outdoor": "Outdoors",
+      "gym": "A gym"
+    },
+    "equipment": {
+      "none": "Nothing — just me",
+      "resistance_band": "Resistance band",
+      "dumbbells": "Dumbbells",
+      "kettlebell": "Kettlebell",
+      "pull_up_bar": "Pull-up bar",
+      "yoga_mat": "Yoga mat",
+      "jump_rope": "Jump rope",
+      "bench": "Bench",
+      "treadmill": "Treadmill",
+      "stationary_bike": "Stationary bike",
+      "full_gym": "A full gym"
+    },
+    "injury": {
+      "knee": "Knee",
+      "lower_back": "Lower back",
+      "shoulder": "Shoulder",
+      "neck": "Neck",
+      "wrist": "Wrist",
+      "ankle": "Ankle",
+      "hip": "Hip"
+    },
+    "condition": {
+      "type_2_diabetes": "Type 2 diabetes",
+      "hypertension": "High blood pressure",
+      "heart_condition": "A heart condition",
+      "asthma": "Asthma",
+      "arthritis": "Arthritis",
+      "osteoporosis": "Osteoporosis",
+      "pregnancy": "Pregnancy",
+      "thyroid_disorder": "A thyroid condition"
+    },
+    "dietary": {
+      "vegetarian": "Vegetarian",
+      "non_vegetarian": "Non-vegetarian",
+      "eggetarian": "Eggetarian",
+      "jain": "Jain",
+      "vegan": "Vegan",
+      "no_dairy": "No dairy",
+      "no_gluten": "No gluten",
+      "no_nuts": "No nuts"
+    }
   },
   "error": {
     "title": "Something went wrong",
@@ -51,6 +150,7 @@
     "OTP_REQUEST_FAILED": "We couldn't send that code. Please check the number or email and try again.",
     "UPSTREAM_UNAVAILABLE": "We couldn't reach the server. Please try again in a moment.",
     "GUEST_SIGNIN_FAILED": "We couldn't start a guest session. Please try again in a moment.",
+    "PROFILE_SAVE_FAILED": "We couldn't save your answers. They're still here — please try again.",
     "UNKNOWN": "Something went wrong. Please try again."
   }
 }
