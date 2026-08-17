@@ -1,6 +1,6 @@
 import { useTranslations } from "next-intl";
 
-import { Card } from "../../src/ui/Card";
+import { LinkButton } from "../../src/ui/LinkButton";
 import { Screen } from "../../src/ui/Screen";
 
 /**
@@ -15,11 +15,17 @@ export default function ErrorPage() {
   return (
     <Screen title={t("title")}>
       <p className="text-lg text-muted">{tError("UNKNOWN")}</p>
-      <Card>
-        <a href="/" className="font-semibold text-accent">
-          {t("back")}
-        </a>
-      </Card>
+      {/*
+        LinkButton, not a bare <a>: it carries min-h-12 and full-width padding
+        for free, which a hand-styled anchor would otherwise have to
+        re-implement to clear the 48px tap-target floor. `secondary` because
+        this is a recovery action on an error screen, not the shouting green
+        of a forward-progress CTA -- it is still the screen's only action, so
+        size (not colour) is what makes it unmistakably tappable.
+      */}
+      <LinkButton href="/" variant="secondary">
+        {t("back")}
+      </LinkButton>
     </Screen>
   );
 }
