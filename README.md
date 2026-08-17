@@ -88,6 +88,21 @@ from the Supabase dashboard (or the admin API) is rejected by the database with 
 violation — this is deliberate, not a bug. Account deletion is an explicit application flow: soft
 delete or anonymise the domain `users` row first, then remove the auth account.
 
+**Guest sign-in** requires `enable_anonymous_sign_ins = true` — set in
+`supabase/config.toml` for local development, and on the Auth settings page of
+the dashboard for a hosted project. It is per-environment: an environment
+without it answers `POST /api/auth/guest` with a 502 `GUEST_SIGNIN_FAILED`
+rather than failing at boot.
+
+An anonymous user is a real `auth.users` row, so a guest is a normal user
+everywhere downstream — same JWT verification, same `users` row, same consent
+record. Claiming the account later (`updateUser`/`linkIdentity`) keeps the same
+`auth.users.id`, so nothing logged as a guest is lost.
+
+Anonymous accounts accumulate and are not yet cleaned up. Because
+`users.auth_user_id` is `ON DELETE RESTRICT`, removing one means soft-deleting
+or anonymising the domain `users` row **first**, then deleting the auth account.
+
 ## Run it in a container
 
 `docker-compose.yml` runs **only** the `app` service — Task 2 retired the Postgres container that
