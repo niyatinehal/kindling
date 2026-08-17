@@ -1471,7 +1471,10 @@ sleep 4
 # The class must be in the served HTML...
 curl -s localhost:3001/ | grep -o 'bg-accent[^"]*'
 # ...and the generated stylesheet must contain the token, proving @theme compiled.
-css=$(curl -s localhost:3001/ | grep -o '/_next/static/css/[^"]*\.css' | head -1)
+# Next 16 under Turbopack serves built CSS from /_next/static/chunks/, NOT
+# /_next/static/css/ as earlier Next versions did. Matching the wrong path
+# yields an empty result and a false negative on this check.
+css=$(curl -s localhost:3001/ | grep -o '/_next/static/chunks/[^"]*\.css' | head -1)
 curl -s "localhost:3001${css}" | grep -o '#15803d'
 # The service worker must still be served — Tailwind must not have broken precaching.
 curl -s -o /dev/null -w 'sw:%{http_code}\n' localhost:3001/serwist/sw.js
