@@ -71,13 +71,12 @@ export function ConsentForm({
               one consent decision in the product and it must read as exactly
               what it is.
             */}
-          <label className="flex cursor-pointer items-start gap-3">
+          <label className="flex min-h-12 cursor-pointer items-center gap-3">
             <input
               type="checkbox"
               checked={agreed}
               onChange={(event) => setAgreed(event.target.checked)}
-              aria-label={t("healthDataLabel")}
-              className="mt-1 size-6 shrink-0 accent-accent"
+              className="size-6 shrink-0 accent-accent"
             />
             <span className="text-ink">{t("healthDataLabel")}</span>
           </label>

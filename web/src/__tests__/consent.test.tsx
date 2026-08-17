@@ -90,6 +90,15 @@ describe("consent form", () => {
     expect(submitButton()).toBeDisabled();
   });
 
+  // The 48px floor applies here too: this is the single most consequential
+  // decision in the product, and the checkbox is a fourth interactive control
+  // that must not be smaller than Button, LinkButton or Field's min-h-12.
+  it("meets the minimum touch target for the consent checkbox", () => {
+    renderForm();
+
+    expect(consentCheckbox().closest("label")?.className).toContain("min-h-12");
+  });
+
   it("renders the error envelope's code rather than a raw failure", () => {
     render(
       <NextIntlClientProvider locale="en" messages={messages}>
