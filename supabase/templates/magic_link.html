@@ -1,0 +1,26 @@
+<!--
+  Overrides GoTrue's built-in magic-link template, which renders only
+  `{{ .ConfirmationURL }}`. The sign-in screen asks the user to type a numeric
+  code, so an email carrying just a link is a dead end there — `{{ .Token }}`
+  is what makes that field fillable.
+
+  `[auth.email]` in config.toml sets the code to 6 digits (`otp_length`). Both
+  routes into the app are offered deliberately: the code for the sign-in form,
+  the link for anyone reading this on the device they are signing in on.
+
+  Email clients ignore stylesheets and <style> blocks, hence the inline styles.
+  Pinned by api/test/config/authEmailTemplate.test.ts.
+-->
+<h2>Your sign-in code</h2>
+
+<p>Enter this code to finish signing in:</p>
+
+<p style="font-size: 28px; font-weight: 700; letter-spacing: 0.15em; margin: 24px 0">
+  {{ .Token }}
+</p>
+
+<p>This code can only be used once.</p>
+
+<p style="color: #666666; font-size: 14px">
+  Or <a href="{{ .ConfirmationURL }}">sign in with this link</a> instead.
+</p>

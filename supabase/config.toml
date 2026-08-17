@@ -248,6 +248,15 @@ otp_expiry = 3600
 # subject = "You have been invited"
 # content_path = "./supabase/templates/invite.html"
 
+# `signInWithOtp` sends this one. GoTrue's built-in version renders only the
+# confirmation link, but the sign-in screen asks for a typed code — so without
+# this override the email cannot be acted on there. See the auth section of the
+# README; the CLI only reads this file at stack start, so editing it needs a
+# `npm run stop && npm run dev`.
+[auth.email.template.magic_link]
+subject = "Your sign-in code"
+content_path = "./supabase/templates/magic_link.html"
+
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
 # enabled = true

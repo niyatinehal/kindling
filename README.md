@@ -115,6 +115,38 @@ Anonymous accounts accumulate and are not yet cleaned up. Because
 `users.auth_user_id` is `ON DELETE RESTRICT`, removing one means soft-deleting
 or anonymising the domain `users` row **first**, then deleting the auth account.
 
+### Sign-in emails
+
+**Local development never delivers email to a real inbox, and this is not a
+bug.** `[local_smtp]` in `config.toml` points Auth's SMTP host at the Mailpit
+container (`GOTRUE_SMTP_HOST=supabase_inbucket_<project>`, port 1025), which
+accepts every message and forwards none. A sign-in request answers `{"sent":
+true}` and the mail is waiting at **http://127.0.0.1:54324** — waiting on Gmail
+instead is the trap. Real delivery needs the `[auth.email.smtp]` block filled in
+with an actual provider.
+
+**The sign-in screen wants a typed code, so the email template is overridden.**
+`signInWithOtp` sends the `magic_link` mail type, whose built-in GoTrue template
+renders `{{ .ConfirmationURL }}` and nothing else — a link, no code, and so
+nothing that can be entered into the code field on `/signin`.
+`supabase/templates/magic_link.html` adds `{{ .Token }}` (6 digits, per
+`otp_length`) and keeps the link as a fallback. `api/test/config/authEmailTemplate.test.ts`
+pins that the template still renders the code; it cannot check that a running
+stack loaded it, because `config.toml` is read only at stack start — a template
+or config edit needs `npm run stop && npm run dev`.
+
+The code is accepted even though `auth.one_time_tokens` stores its hash with a
+`pkce_` prefix (the `@supabase/ssr` client defaults to the PKCE flow). No
+`flowType` override is needed, and adding one is not the fix for a rejected
+code.
+
+**`email_sent = 2` is the local cap, per hour.** A third sign-in request within
+the hour is refused by Auth, which `POST /api/auth/otp` reports as a generic
+`502 OTP_REQUEST_FAILED` — identical to the response for a genuinely broken
+mailer. When sign-in stops working after a couple of test runs, check
+`[auth.rate_limit]` before debugging anything else; restarting the stack clears
+the counter.
+
 ## Run it in a container
 
 `docker-compose.yml` runs **only** the `app` service — Task 2 retired the Postgres container that
