@@ -94,6 +94,17 @@ the dashboard for a hosted project. It is per-environment: an environment
 without it answers `POST /api/auth/guest` with a 502 `GUEST_SIGNIN_FAILED`
 rather than failing at boot.
 
+The Supabase CLI only reads `config.toml` when a stack starts, so a `config.toml`
+edit on an already-running stack (one started before pulling this change, for
+example) has no effect until it is restarted: `npm run stop && npm run dev`. Trying
+the guest button again against the still-running stack will not work — it needs the
+restart.
+
+A hosted Supabase project also needs the anonymous sign-in **rate limit**
+configured, not just the flag. Locally, `supabase/config.toml` caps this at
+`anonymous_users = 30` per hour per IP; a hosted project has no such cap unless
+one is set on the Auth rate limits settings page.
+
 An anonymous user is a real `auth.users` row, so a guest is a normal user
 everywhere downstream — same JWT verification, same `users` row, same consent
 record. Claiming the account later (`updateUser`/`linkIdentity`) is the designed-for
@@ -147,7 +158,7 @@ Stop the container with `docker compose down`.
 ## Run the tests
 
 ```bash
-npm test   # unit — 40 tests, no Docker required
+npm test   # unit — 42 tests, no Docker required
 ```
 
 Integration tests exercise the database invariants directly, so the test database needs its
@@ -156,7 +167,7 @@ schema before they run:
 ```bash
 npm run test:db:up          # start the disposable test Postgres on 127.0.0.1:54329
 ( cd api && DIRECT_URL=postgresql://postgres:postgres@127.0.0.1:54329/wellness_test npx prisma migrate deploy )
-npm run test:integration    # 23 tests, serialized via --runInBand (see the note in jest.config.js)
+npm run test:integration    # 24 tests, serialized via --runInBand (see the note in jest.config.js)
 npm run test:db:down
 ```
 
@@ -176,8 +187,8 @@ at the root, because `web/` will need it too.
 | `npm run stop`             | root only             | `supabase stop`                                                                                                 |
 | `npm run build`            | root → api (delegate) | Compiles `api/src/` to `api/dist/` (`tsconfig.build.json`)                                                      |
 | `npm start`                | root → api (delegate) | Runs `node dist/src/server.js` from `api/` — **no** `--env-file`; see note below                                |
-| `npm test`                 | root → api (delegate) | Jest unit project — 40 tests, no Docker required                                                                |
-| `npm run test:integration` | root → api (delegate) | Jest integration project — 23 tests, serialized via `--runInBand` (see jest.config.js), needs the test database |
+| `npm test`                 | root → api (delegate) | Jest unit project — 42 tests, no Docker required                                                                |
+| `npm run test:integration` | root → api (delegate) | Jest integration project — 24 tests, serialized via `--runInBand` (see jest.config.js), needs the test database |
 | `npm run test:all`         | root → api (delegate) | Both Jest projects in one run                                                                                   |
 | `npm run typecheck`        | root → api (delegate) | `prisma generate`, then `tsc --noEmit` over `api/src/`, `api/test/` and `api/prisma/`                           |
 | `npm run lint`             | root → api (delegate) | ESLint, type-aware; fails on warnings                                                                           |
