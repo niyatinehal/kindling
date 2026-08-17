@@ -374,6 +374,13 @@
       "rajma_chawal": "Rajma chawal",
       "roti_sabzi": "Roti with aloo sabzi",
       "upma": "Upma"
-    }
+    },
+    "proteinOk": "Good protein on its own",
+    "pairWith": "Light on protein — serve it with {dish}",
+    "customTitle": "Ate something else?",
+    "customHint": "Anything not on the list — your own recipe, a family dish, something you ate out.",
+    "customLabel": "What did you eat?",
+    "customLog": "Log this meal",
+    "customLogged": "Logged"
   }
 }

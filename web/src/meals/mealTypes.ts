@@ -12,6 +12,11 @@ export type MealSuggestion = {
   protein_g: number;
   minutes: number;
   cautions: string[];
+  /** Whether the dish alone clears its slot's protein target. */
+  meets_protein: boolean;
+  /** What to serve alongside when it does not. Null when it stands alone. */
+  pair_with: string | null;
+  protein_target_g: number;
 };
 
 /**

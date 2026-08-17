@@ -10,6 +10,7 @@ import { Alert } from "../../src/ui/Alert";
 import { Button } from "../../src/ui/Button";
 import { Card } from "../../src/ui/Card";
 import { ChoiceGroup } from "../../src/ui/ChoiceGroup";
+import { Field } from "../../src/ui/Field";
 import { Screen } from "../../src/ui/Screen";
 
 const SLOTS = ["breakfast", "lunch", "dinner", "snack"] as const;
@@ -42,6 +43,7 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
   const [suggestions, setSuggestions] = useState<MealSuggestion[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [logged, setLogged] = useState<string[]>([]);
+  const [customDish, setCustomDish] = useState("");
   const [error, setError] = useState<string | undefined>(undefined);
 
   const label = (key: string) => (tIngredient.has(key) ? tIngredient(key) : key);
@@ -70,9 +72,17 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
     setSuggestions(parsed);
   }
 
-  /** Marks a dish eaten — a meal tracking log, so it counts toward adherence. */
-  async function markEaten(recipeKey: string): Promise<void> {
-    setLogged([...logged, recipeKey]);
+  /**
+   * Logs a meal, from the library or from the user's own kitchen.
+   *
+   * Exactly one of the two is sent: a `recipe_key` for a suggested dish, or a
+   * freeform `name` for anything else. Keeping them apart is what lets a history
+   * view translate the first and show the second verbatim — stuffing a typed name
+   * into the key field would make "poha" ambiguous between the two.
+   */
+  async function logMeal(dish: { recipeKey: string } | { name: string }): Promise<void> {
+    const marker = "recipeKey" in dish ? dish.recipeKey : dish.name;
+    setLogged([...logged, marker]);
 
     const response = await fetch("/api/tracking", {
       method: "POST",
@@ -81,13 +91,18 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
         type: "meal",
         logged_for: today(),
         status: "completed",
-        notes: recipeKey,
+        recipe_key: "recipeKey" in dish ? dish.recipeKey : null,
+        notes: "name" in dish ? dish.name : null,
       }),
     });
 
     if (!response.ok) {
-      setLogged((current) => current.filter((key) => key !== recipeKey));
+      setLogged((current) => current.filter((key) => key !== marker));
       setError("TRACKING_FAILED");
+      return;
+    }
+    if ("name" in dish) {
+      setCustomDish("");
     }
   }
 
@@ -193,6 +208,25 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
               </p>
             )}
 
+            {/*
+              No suggested meal is left protein-free. A dish that clears its slot's
+              target says so; one that does not names what to serve with it, rather
+              than being dropped — a side dish is not a mistake.
+            */}
+            {suggestion.meets_protein ? (
+              <p className="text-sm text-muted">{t("proteinOk")}</p>
+            ) : (
+              suggestion.pair_with !== null && (
+                <p className="text-sm text-muted">
+                  {t("pairWith", {
+                    dish: tRecipe.has(suggestion.pair_with)
+                      ? tRecipe(suggestion.pair_with)
+                      : suggestion.pair_with,
+                  })}
+                </p>
+              )
+            )}
+
             <div className="mt-1">
               {logged.includes(suggestion.recipe_key) ? (
                 <span className="text-sm font-semibold text-accent">{t("eaten")}</span>
@@ -200,7 +234,7 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
                 <Button
                   variant="secondary"
                   onClick={() => {
-                    void markEaten(suggestion.recipe_key);
+                    void logMeal({ recipeKey: suggestion.recipe_key });
                   }}
                 >
                   {t("markEaten")}
@@ -210,6 +244,40 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
           </div>
         </Card>
       ))}
+
+      {/*
+        Anything the library has never heard of. Always available, not hidden
+        behind a search that came up empty — most of what a family actually eats
+        is not in a twenty-dish list, and a tracker that can only record dishes it
+        already knows is a tracker nobody's week fits into.
+      */}
+      <Card>
+        <div className="flex flex-col gap-3">
+          <div>
+            <h2 className="text-sm font-semibold tracking-widest text-muted uppercase">
+              {t("customTitle")}
+            </h2>
+            <p className="mt-1 text-sm text-muted">{t("customHint")}</p>
+          </div>
+          <Field
+            label={t("customLabel")}
+            value={customDish}
+            onChange={setCustomDish}
+            maxLength={200}
+          />
+          <Button
+            disabled={customDish.trim() === ""}
+            onClick={() => {
+              void logMeal({ name: customDish.trim() });
+            }}
+          >
+            {t("customLog")}
+          </Button>
+          {logged.some((entry) => !entry.includes("_")) && (
+            <p className="text-sm font-semibold text-accent">{t("customLogged")}</p>
+          )}
+        </div>
+      </Card>
 
       {suggestions !== null && <p className="text-sm text-muted">{t("disclaimer")}</p>}
     </Screen>

@@ -24,6 +24,9 @@ const cookable: MealSuggestion = {
   protein_g: 14,
   minutes: 30,
   cautions: [],
+  meets_protein: true,
+  pair_with: null,
+  protein_target_g: 12,
 };
 
 const needsShopping: MealSuggestion = {
@@ -35,6 +38,24 @@ const needsShopping: MealSuggestion = {
   protein_g: 18,
   minutes: 30,
   cautions: [],
+  meets_protein: true,
+  pair_with: null,
+  protein_target_g: 12,
+};
+
+/** Thin on protein — the case the pairing rule exists for. */
+const thin: MealSuggestion = {
+  recipe_key: "cabbage_poriyal",
+  slot: "lunch",
+  uses_on_hand: ["cabbage"],
+  missing: [],
+  approx_kcal: 160,
+  protein_g: 4,
+  minutes: 20,
+  cautions: [],
+  meets_protein: false,
+  pair_with: "dal_chawal",
+  protein_target_g: 12,
 };
 
 const flagged: MealSuggestion = {
@@ -46,6 +67,9 @@ const flagged: MealSuggestion = {
   protein_g: 5,
   minutes: 20,
   cautions: ["type_2_diabetes"],
+  meets_protein: false,
+  pair_with: "dal_chawal",
+  protein_target_g: 12,
 };
 
 function renderMeals(hasProfile = true) {
@@ -185,10 +209,14 @@ describe("meals screen — suggestions", () => {
     const trackingCall = (global.fetch as jest.Mock).mock.calls.find(
       (call) => call[0] === "/api/tracking",
     ) as [string, { body: string }];
+    // A library dish travels as a KEY with a null name. It used to go into
+    // `notes`, which made "poha" ambiguous between a recipe and something someone
+    // typed — the two paths FR-TRK-2 names have to stay distinguishable.
     expect(JSON.parse(trackingCall[1].body)).toMatchObject({
       type: "meal",
       status: "completed",
-      notes: "dal_chawal",
+      recipe_key: "dal_chawal",
+      notes: null,
     });
   });
 
@@ -217,5 +245,113 @@ describe("meals screen — suggestions", () => {
       expect(screen.getByRole("alert")).toHaveTextContent(messages.errors.MEAL_SUGGEST_FAILED);
     });
     expect(screen.queryByText(messages.meals.noneFound)).not.toBeInTheDocument();
+  });
+});
+
+// "There should be at least one source of protein for every meal."
+describe("meals screen — protein", () => {
+  it("says so when a dish carries its own protein", async () => {
+    renderMeals();
+    fireEvent.click(suggestButton());
+
+    await waitFor(() => {
+      expect(screen.getByText(messages.meals.recipes.dal_chawal)).toBeInTheDocument();
+    });
+    expect(screen.getAllByText(messages.meals.proteinOk).length).toBeGreaterThan(0);
+  });
+
+  // Named, not dropped: cabbage poriyal is a side people cook, not an error.
+  it("names what to serve alongside a thin dish rather than hiding it", async () => {
+    global.fetch = jest.fn(() =>
+      Promise.resolve(response(200, { suggestions: [thin] })),
+    ) as unknown as typeof fetch;
+
+    renderMeals();
+    fireEvent.click(suggestButton());
+
+    await waitFor(() => {
+      expect(screen.getByText(messages.meals.recipes.cabbage_poriyal)).toBeInTheDocument();
+    });
+    expect(
+      screen.getByText(
+        messages.meals.pairWith.replace("{dish}", messages.meals.recipes.dal_chawal),
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(messages.meals.proteinOk)).not.toBeInTheDocument();
+  });
+});
+
+// "There should be an option to add a dish as well if not mentioned."
+describe("meals screen — a dish of your own", () => {
+  it("offers the field before any suggestion is asked for", () => {
+    renderMeals();
+
+    expect(screen.getByText(messages.meals.customTitle)).toBeInTheDocument();
+    expect(screen.getByLabelText(messages.meals.customLabel)).toBeInTheDocument();
+  });
+
+  it("will not log an empty or whitespace-only name", () => {
+    renderMeals();
+
+    expect(screen.getByRole("button", { name: messages.meals.customLog })).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText(messages.meals.customLabel), {
+      target: { value: "   " },
+    });
+    expect(screen.getByRole("button", { name: messages.meals.customLog })).toBeDisabled();
+  });
+
+  // A typed dish goes in `notes` with a null `recipe_key`, so a history view knows
+  // to show it verbatim instead of trying to translate it.
+  it("logs a typed dish as freeform, not as a library key", async () => {
+    renderMeals();
+
+    fireEvent.change(screen.getByLabelText(messages.meals.customLabel), {
+      target: { value: "  Amma's avial  " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: messages.meals.customLog }));
+
+    await waitFor(() => {
+      expect(screen.getByText(messages.meals.customLogged)).toBeInTheDocument();
+    });
+    const call = (global.fetch as jest.Mock).mock.calls.find(
+      (entry) => entry[0] === "/api/tracking",
+    ) as [string, { body: string }];
+    expect(JSON.parse(call[1].body)).toMatchObject({
+      type: "meal",
+      status: "completed",
+      recipe_key: null,
+      notes: "Amma's avial",
+    });
+  });
+
+  it("clears the field after logging, ready for the next meal", async () => {
+    renderMeals();
+
+    fireEvent.change(screen.getByLabelText(messages.meals.customLabel), {
+      target: { value: "Avial" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: messages.meals.customLog }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(messages.meals.customLabel)).toHaveValue("");
+    });
+  });
+
+  it("keeps the typed name when the write fails", async () => {
+    global.fetch = jest.fn(() =>
+      Promise.resolve(response(502, { error: { code: "UPSTREAM_UNAVAILABLE" } })),
+    ) as unknown as typeof fetch;
+
+    renderMeals();
+    fireEvent.change(screen.getByLabelText(messages.meals.customLabel), {
+      target: { value: "Avial" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: messages.meals.customLog }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(messages.errors.TRACKING_FAILED);
+    });
+    expect(screen.getByLabelText(messages.meals.customLabel)).toHaveValue("Avial");
   });
 });
