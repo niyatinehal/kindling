@@ -10,7 +10,8 @@
     "sendCode": "Send me a code",
     "codeLabel": "Enter the code",
     "verify": "Continue",
-    "google": "Continue with Google"
+    "google": "Continue with Google",
+    "guest": "Continue as a guest"
   },
   "consent": {
     "title": "Before we start",
@@ -32,6 +33,7 @@
     "REGISTRATION_REQUIRED": "One more step before you can continue.",
     "OTP_REQUEST_FAILED": "We couldn't send that code. Please check the number or email and try again.",
     "UPSTREAM_UNAVAILABLE": "We couldn't reach the server. Please try again in a moment.",
+    "GUEST_SIGNIN_FAILED": "We couldn't start a guest session. Please try again in a moment.",
     "UNKNOWN": "Something went wrong. Please try again."
   }
 }

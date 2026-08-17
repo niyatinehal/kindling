@@ -50,6 +50,21 @@ export default function SignInPage() {
     router.push(nextStep(me.status, await readJsonBody(me)));
   }
 
+  async function continueAsGuest() {
+    const response = await fetch("/api/auth/guest", { method: "POST" });
+
+    if (!response.ok) {
+      setError("GUEST_SIGNIN_FAILED");
+      return;
+    }
+
+    // Deliberately identical to what verifyCode does after a successful
+    // verification. A guest is a user who signed in differently, so the
+    // journey after sign-in is the same journey, resolved by the same call.
+    const me = await fetch("/api/me");
+    router.push(nextStep(me.status, await readJsonBody(me)));
+  }
+
   return (
     <main>
       <h1>{t("title")}</h1>
@@ -94,6 +109,15 @@ export default function SignInPage() {
         arrives with no `code` and is bounced straight to /?error=oauth.
       */}
       <a href="/api/auth/google">{t("google")}</a>
+
+      <button
+        type="button"
+        onClick={() => {
+          void continueAsGuest();
+        }}
+      >
+        {t("guest")}
+      </button>
     </main>
   );
 }
