@@ -1,0 +1,57 @@
+/**
+ * Meal shapes — pure data, no transport, so a component test can import them
+ * without pulling in `next/server`. Same split as `plan/planTypes.ts` and
+ * `tracking/summaryTypes.ts`.
+ */
+export type MealSuggestion = {
+  recipe_key: string;
+  slot: string;
+  uses_on_hand: string[];
+  missing: string[];
+  approx_kcal: number;
+  protein_g: number;
+  minutes: number;
+  cautions: string[];
+};
+
+/**
+ * The pantry the intake screen offers, grouped so a list of 38 keys reads as a
+ * kitchen rather than a wall of checkboxes. Grouping is presentation only — the
+ * API's vocabulary is the source of truth and is derived from the recipes.
+ */
+export const PANTRY_GROUPS: readonly { group: string; items: readonly string[] }[] = [
+  { group: "grains", items: ["rice", "atta", "poha", "semolina", "oats", "besan"] },
+  { group: "pulses", items: ["toor_dal", "moong_dal", "chana_dal", "rajma", "chickpeas"] },
+  { group: "protein", items: ["paneer", "curd", "milk", "egg", "chicken", "fish"] },
+  {
+    group: "vegetables",
+    items: [
+      "potato",
+      "onion",
+      "tomato",
+      "spinach",
+      "cauliflower",
+      "okra",
+      "bottle_gourd",
+      "carrot",
+      "peas",
+      "cabbage",
+      "brinjal",
+    ],
+  },
+  {
+    group: "basics",
+    items: [
+      "oil",
+      "ghee",
+      "spices",
+      "ginger",
+      "garlic",
+      "green_chilli",
+      "lemon",
+      "coriander",
+      "coconut",
+      "peanuts",
+    ],
+  },
+];

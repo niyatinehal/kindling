@@ -66,9 +66,14 @@ export function HomeView({
         <p className="mt-2 text-lg leading-relaxed">
           {hasProfile ? t("todayPlanReady") : t("todayNoProfile")}
         </p>
-        <div className="mt-4">
+        <div className="mt-4 flex flex-col gap-2">
           {hasProfile ? (
-            <LinkButton href="/plan">{t("viewPlan")}</LinkButton>
+            <>
+              <LinkButton href="/plan">{t("viewPlan")}</LinkButton>
+              <LinkButton href="/meals" variant="secondary">
+                {t("mealsCta")}
+              </LinkButton>
+            </>
           ) : (
             <LinkButton href="/onboarding/profile">{t("startIntake")}</LinkButton>
           )}
