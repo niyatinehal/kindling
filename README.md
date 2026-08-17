@@ -96,8 +96,9 @@ rather than failing at boot.
 
 An anonymous user is a real `auth.users` row, so a guest is a normal user
 everywhere downstream — same JWT verification, same `users` row, same consent
-record. Claiming the account later (`updateUser`/`linkIdentity`) keeps the same
-`auth.users.id`, so nothing logged as a guest is lost.
+record. Claiming the account later (`updateUser`/`linkIdentity`) is the designed-for
+upgrade path — not yet a route or screen in this repo — and it keeps the same
+`auth.users.id`, so nothing logged as a guest would be lost.
 
 Anonymous accounts accumulate and are not yet cleaned up. Because
 `users.auth_user_id` is `ON DELETE RESTRICT`, removing one means soft-deleting

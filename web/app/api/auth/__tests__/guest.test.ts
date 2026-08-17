@@ -47,6 +47,13 @@ describe("POST /api/auth/guest", () => {
     expect(await response.json()).toEqual({ authenticated: true });
   });
 
+  // NOT the HttpOnly security test: the `httpOnly: true` asserted below is
+  // hardcoded in this file's own `signInAnonymously` stub, so it says nothing
+  // about `route.ts` — which has no request body and touches cookie options
+  // even less than `/api/auth/verify` does. What this proves is that the
+  // route lets the Supabase client's cookie write reach the adapter
+  // unmodified. The real HttpOnly guarantee lives in `secureCookieOptions`
+  // and is enforced by `web/src/supabase/__tests__/secureCookieOptions.test.ts`.
   it("lets the client's cookie write proceed untouched", async () => {
     (createSupabaseServerClient as jest.Mock).mockResolvedValue(stubClient({ error: null }));
 
