@@ -86,8 +86,19 @@ export function HomeView({
         </div>
       </section>
 
+      {/*
+        Family setup exists now, so this card stops being a notice and becomes a
+        way in. It carries no member preview: the family screen resolves that
+        itself, and duplicating it here would mean a second pair of upstream hops
+        on every /home render.
+      */}
       <Card>
         <p className="text-muted">{t("noFamily")}</p>
+        <div className="mt-4">
+          <LinkButton href="/family" variant="secondary">
+            {t("setUpFamily")}
+          </LinkButton>
+        </div>
       </Card>
     </Screen>
   );

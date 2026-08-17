@@ -30,18 +30,17 @@ describe("HomeView", () => {
   // Claiming an account is not built. A button that does nothing is worse
   // than no button, so there must not be one.
   //
-  // The screen now always carries exactly one link — the Today card's next step —
-  // so "no links at all" no longer expresses this. What still holds, and is what
-  // the test is for, is that the only link goes to the journey and never to a
+  // "No links at all" stopped expressing this once the cards started carrying the
+  // journey's next steps. What the test is actually for — and what still holds —
+  // is that every link on this screen goes somewhere real, and none of them is a
   // claim flow that does not exist.
   it("offers no claim action, because claiming is not built yet", () => {
     renderView({ isGuest: true, hasProfile: true });
 
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
 
-    const links = screen.getAllByRole("link");
-    expect(links).toHaveLength(1);
-    expect(links[0]).toHaveAttribute("href", "/plan");
+    const destinations = screen.getAllByRole("link").map((link) => link.getAttribute("href"));
+    expect(destinations).toEqual(["/plan", "/family"]);
   });
 });
 

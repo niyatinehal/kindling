@@ -24,7 +24,7 @@
   },
   "home": {
     "title": "You're set up",
-    "noFamily": "You're not in a family yet. Family setup arrives soon.",
+    "noFamily": "You're not in a family yet.",
     "guestChip": "Guest",
     "guestNote": "You're exploring as a guest. Add an email later to keep what you log.",
     "greeting": "Welcome",
@@ -37,7 +37,8 @@
     "stepsLabel": "Steps",
     "waterLabel": "Water",
     "workoutsLabel": "Workouts",
-    "empty": "—"
+    "empty": "—",
+    "setUpFamily": "Set up a family"
   },
   "onboarding": {
     "title": "Build your plan",
@@ -237,6 +238,36 @@
     "PROFILE_SAVE_FAILED": "We couldn't save your answers. They're still here — please try again.",
     "PROFILE_REQUIRED": "We need a few details about you before we can build a plan.",
     "PLAN_GENERATE_FAILED": "We couldn't build your plan. Please try again in a moment.",
-    "UNKNOWN": "Something went wrong. Please try again."
+    "UNKNOWN": "Something went wrong. Please try again.",
+    "ALREADY_IN_FAMILY": "You're already in a family. Leave that one first.",
+    "INVITE_EXPIRED": "That code doesn't work any more. Ask for a fresh one.",
+    "NOT_IN_FAMILY": "You need to be in a family to do that.",
+    "FORBIDDEN_ROLE": "Your role in the family doesn't allow that.",
+    "FAMILY_ACTION_FAILED": "That didn't work. Please try again in a moment."
+  },
+  "family": {
+    "title": "Your family",
+    "noFamilyBody": "You're not in a family yet. Start one and invite the people you live with, or join with a code someone gave you.",
+    "createTitle": "Start a family",
+    "nameLabel": "What should we call it?",
+    "create": "Create family",
+    "joinTitle": "Join a family",
+    "joinHint": "Ask whoever set it up for a code. It's 10 characters and works once.",
+    "codeLabel": "Invite code",
+    "join": "Join",
+    "membersTitle": "Members",
+    "removed": "removed",
+    "inviteTitle": "Invite someone",
+    "inviteRoleLabel": "What should they be able to do?",
+    "invite": "Create an invite code",
+    "inviteIssued": "Share this code with them:",
+    "inviteOnce": "It works once, and expires in 7 days. We won't show it again.",
+    "working": "Working…",
+    "roles": {
+      "admin": "Admin — manages the family",
+      "adult": "Adult — full access to their own plan",
+      "child": "Child — guarded account",
+      "elderly": "Elderly — simplified, gently monitored"
+    }
   }
 }
