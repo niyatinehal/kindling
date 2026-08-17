@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { currentStep } from "../../src/onboarding/currentStep";
 import { hasProfile } from "../../src/onboarding/hasProfile";
 import { currentPlan } from "../../src/plan/currentPlan";
+import { trackingState } from "../../src/tracking/summary";
 import { PlanClient } from "./PlanClient";
 
 /**
@@ -22,7 +23,11 @@ export default async function PlanPage() {
   }
 
   // Concurrent: neither answer depends on the other, and both are round trips.
-  const [profileExists, plan] = await Promise.all([hasProfile(), currentPlan()]);
+  const [profileExists, plan, tracking] = await Promise.all([
+    hasProfile(),
+    currentPlan(),
+    trackingState(),
+  ]);
 
-  return <PlanClient initialPlan={plan} hasProfile={profileExists} />;
+  return <PlanClient initialPlan={plan} hasProfile={profileExists} initialTicks={tracking.today} />;
 }

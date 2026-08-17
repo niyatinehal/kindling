@@ -26,17 +26,25 @@ const DAY_KEYS = ["1", "2", "3", "4", "5", "6", "7"] as const;
 export function PlanClient({
   initialPlan,
   hasProfile,
+  initialTicks = [],
 }: {
   initialPlan: PlanView | null;
   hasProfile: boolean;
+  initialTicks?: { plan_exercise_id: string; status: string }[];
 }) {
   const t = useTranslations("plan");
   const tError = useTranslations("errors");
   const tExercise = useTranslations("plan.exercises");
   const tDay = useTranslations("plan.days");
   const tReason = useTranslations("plan.reasons");
+  const tTrack = useTranslations("tracking");
 
   const [plan, setPlan] = useState<PlanView | null>(initialPlan);
+  // Today's ticks, keyed by exercise. Seeded from the server so a reload shows
+  // what is already done rather than an unticked day.
+  const [ticks, setTicks] = useState<Record<string, string>>(
+    Object.fromEntries(initialTicks.map((tick) => [tick.plan_exercise_id, tick.status])),
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
 
@@ -61,6 +69,41 @@ export function PlanClient({
 
     setPlan(readPlan(body));
     setBusy(false);
+  }
+
+  /**
+   * Ticks one exercise. Optimistic, then corrected: the row shows the new state
+   * immediately and reverts if the write failed, because a tick that silently did
+   * not save is worse than one that visibly did not.
+   */
+  async function tick(planExerciseId: string, status: "completed" | "skipped"): Promise<void> {
+    const previous = ticks[planExerciseId];
+    setTicks({ ...ticks, [planExerciseId]: status });
+
+    const response = await fetch("/api/tracking", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        type: "workout",
+        logged_for: new Date().toISOString().slice(0, 10),
+        plan_exercise_id: planExerciseId,
+        status,
+        rating: null,
+      }),
+    });
+
+    if (!response.ok) {
+      setTicks((current) => {
+        const reverted = { ...current };
+        if (previous === undefined) {
+          delete reverted[planExerciseId];
+        } else {
+          reverted[planExerciseId] = previous;
+        }
+        return reverted;
+      });
+      setError("TRACKING_FAILED");
+    }
   }
 
   const exclusions = plan?.profile_snapshot?.applied_exclusions ?? [];
@@ -101,6 +144,9 @@ export function PlanClient({
       {plan !== null &&
         DAY_KEYS.map((dayKey) => {
           const day = scheduled.get(Number(dayKey));
+          // ISO weekday: getUTCDay() is 0 for Sunday, the API uses 7.
+          const isoToday = new Date().getUTCDay() === 0 ? 7 : new Date().getUTCDay();
+          const isToday = Number(dayKey) === isoToday;
           return (
             <Card key={dayKey}>
               <h2 className="text-sm font-semibold tracking-widest text-muted uppercase">
@@ -112,19 +158,55 @@ export function PlanClient({
               ) : (
                 <ul className="mt-3 flex flex-col gap-3">
                   {day.exercises.map((exercise) => (
-                    <li key={exercise.exercise_key} className="flex flex-col">
-                      <span className="text-[1.0625rem] font-medium text-ink">
-                        {tExercise.has(exercise.exercise_key)
-                          ? tExercise(exercise.exercise_key)
-                          : exercise.exercise_key}
-                      </span>
-                      <span className="text-sm text-muted">
-                        {exercise.sets !== null && exercise.reps !== null
-                          ? t("setsReps", { sets: exercise.sets, reps: exercise.reps })
-                          : t("duration", { seconds: exercise.duration_seconds ?? 0 })}
-                        {exercise.rest_seconds !== null &&
-                          ` · ${t("restBetween", { seconds: exercise.rest_seconds })}`}
-                      </span>
+                    <li key={exercise.id} className="flex flex-col gap-2">
+                      <div className="flex flex-col">
+                        <span className="text-[1.0625rem] font-medium text-ink">
+                          {tExercise.has(exercise.exercise_key)
+                            ? tExercise(exercise.exercise_key)
+                            : exercise.exercise_key}
+                        </span>
+                        <span className="text-sm text-muted">
+                          {exercise.sets !== null && exercise.reps !== null
+                            ? t("setsReps", { sets: exercise.sets, reps: exercise.reps })
+                            : t("duration", { seconds: exercise.duration_seconds ?? 0 })}
+                          {exercise.rest_seconds !== null &&
+                            ` · ${t("restBetween", { seconds: exercise.rest_seconds })}`}
+                        </span>
+                      </div>
+
+                      {/*
+                        Only today's day gets buttons. Ticking Thursday off on a
+                        Monday would be logging something that has not happened.
+                      */}
+                      {isToday && (
+                        <div className="flex items-center gap-2">
+                          {ticks[exercise.id] === "completed" ? (
+                            <span className="text-sm font-semibold text-accent">
+                              {tTrack("done")}
+                            </span>
+                          ) : ticks[exercise.id] === "skipped" ? (
+                            <span className="text-sm text-muted">{tTrack("skipped")}</span>
+                          ) : (
+                            <>
+                              <Button
+                                onClick={() => {
+                                  void tick(exercise.id, "completed");
+                                }}
+                              >
+                                {tTrack("markDone")}
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                onClick={() => {
+                                  void tick(exercise.id, "skipped");
+                                }}
+                              >
+                                {tTrack("markSkipped")}
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>

@@ -26,6 +26,7 @@ const plan: PlanView = {
       day_of_week: 1,
       exercises: [
         {
+          id: "pe-1",
           exercise_key: "band_row",
           sets: 2,
           reps: 12,
@@ -33,6 +34,7 @@ const plan: PlanView = {
           rest_seconds: 60,
         },
         {
+          id: "pe-2",
           exercise_key: "plank",
           sets: null,
           reps: null,

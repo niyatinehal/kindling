@@ -33,11 +33,6 @@
     "todayPlanReady": "Your profile is saved. Your workout plan is ready when you are.",
     "startIntake": "Get started",
     "viewPlan": "See my plan",
-    "statsLabel": "This week",
-    "stepsLabel": "Steps",
-    "waterLabel": "Water",
-    "workoutsLabel": "Workouts",
-    "empty": "—",
     "setUpFamily": "Set up a family"
   },
   "onboarding": {
@@ -243,7 +238,8 @@
     "INVITE_EXPIRED": "That code doesn't work any more. Ask for a fresh one.",
     "NOT_IN_FAMILY": "You need to be in a family to do that.",
     "FORBIDDEN_ROLE": "Your role in the family doesn't allow that.",
-    "FAMILY_ACTION_FAILED": "That didn't work. Please try again in a moment."
+    "FAMILY_ACTION_FAILED": "That didn't work. Please try again in a moment.",
+    "TRACKING_FAILED": "We couldn't save that. Please try again in a moment."
   },
   "family": {
     "title": "Your family",
@@ -269,5 +265,21 @@
       "child": "Child — guarded account",
       "elderly": "Elderly — simplified, gently monitored"
     }
+  },
+  "tracking": {
+    "thisWeek": "This week",
+    "water": "Water",
+    "sleep": "Sleep",
+    "workouts": "Workouts",
+    "nightly": "a night",
+    "ofScheduled": "of {scheduled}",
+    "logWaterLabel": "Had a glass of water?",
+    "addGlass": "Add {ml}ml",
+    "logSleepLabel": "How long did you sleep?",
+    "logSleep": "Log last night",
+    "markDone": "Done",
+    "markSkipped": "Skip",
+    "done": "Done",
+    "skipped": "Skipped"
   }
 }

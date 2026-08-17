@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { currentStep } from "../../src/onboarding/currentStep";
 import { hasProfile } from "../../src/onboarding/hasProfile";
 import { isGuestSession } from "../../src/onboarding/isGuestSession";
+import { trackingState } from "../../src/tracking/summary";
 import { HomeView } from "./HomeView";
 
 /**
@@ -26,7 +27,11 @@ export default async function HomePage() {
   // Resolved only after the guard has decided this request belongs here, so a
   // redirected caller never pays for either call. Concurrent because neither
   // answer depends on the other, and both are round trips.
-  const [isGuest, profileExists] = await Promise.all([isGuestSession(), hasProfile()]);
+  const [isGuest, profileExists, tracking] = await Promise.all([
+    isGuestSession(),
+    hasProfile(),
+    trackingState(),
+  ]);
 
-  return <HomeView isGuest={isGuest} hasProfile={profileExists} />;
+  return <HomeView isGuest={isGuest} hasProfile={profileExists} summary={tracking.summary} />;
 }

@@ -1,25 +1,35 @@
 import { useTranslations } from "next-intl";
 
+import type { TrackingSummary } from "../../src/tracking/summaryTypes";
 import { Card } from "../../src/ui/Card";
 import { LinkButton } from "../../src/ui/LinkButton";
 import { Screen } from "../../src/ui/Screen";
+import { TrackingTiles } from "./TrackingTiles";
 
 /**
  * The home screen. It is a separate component because `page.tsx` has to be
  * `async` to run the onboarding guard, and `useTranslations` is a hook — it
  * cannot be called from an async component.
  *
- * Everything here is an EMPTY state, deliberately. There is no tracking
- * endpoint yet (Epics 4–6), so the structure is real and the numbers are
- * absent. Inventing a step count would be fiction rendered as fact, and a
- * test asserts this screen renders no digits at all.
+ * The numbers here are real now. They were absent for as long as there was no
+ * tracking endpoint, and the rule that kept them absent still holds: every
+ * figure on this screen comes from something the user logged. Nothing is
+ * inferred, estimated, or filled in to make the layout look complete.
+ *
+ * There is no Steps tile, and that is deliberate rather than unfinished. No Web
+ * API reports step count, a PWA cannot count them in the background, and PRD §5's
+ * MVP logging list never included them — so the tile could only ever have shown a
+ * dash until wearable sync arrives in v2. Sleep took its place because it is one
+ * of the four categories FR-TRK-3 actually computes adherence for.
  */
 export function HomeView({
   isGuest = false,
   hasProfile = false,
+  summary,
 }: {
   isGuest?: boolean;
   hasProfile?: boolean;
+  summary: TrackingSummary;
 }) {
   const t = useTranslations("home");
 
@@ -65,26 +75,7 @@ export function HomeView({
         </div>
       </Card>
 
-      <section>
-        <h2 className="mb-2 text-sm font-semibold tracking-widest text-muted uppercase">
-          {t("statsLabel")}
-        </h2>
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: t("stepsLabel") },
-            { label: t("waterLabel") },
-            { label: t("workoutsLabel") },
-          ].map((stat) => (
-            <div
-              key={stat.label}
-              className="rounded-card border border-line bg-surface p-4 text-center"
-            >
-              <div className="text-2xl font-bold text-muted">{t("empty")}</div>
-              <div className="mt-1 text-xs text-muted">{stat.label}</div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <TrackingTiles initial={summary} />
 
       {/*
         Family setup exists now, so this card stops being a notice and becomes a

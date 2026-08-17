@@ -3,6 +3,8 @@
  * rather than a domain type, and renaming it here would only hide the seam.
  */
 export type PlanExerciseView = {
+  /** The `PlanExercise` row id — what a workout tracking log points at. */
+  id: string;
   exercise_key: string;
   sets: number | null;
   reps: number | null;
