@@ -10,7 +10,16 @@ export class ProfileRequiredError extends Error {
 }
 
 export type PlanWithExercises = WorkoutPlan & {
-  exercises: { dayOfWeek: number; position: number; exerciseKey: string }[];
+  exercises: {
+    id: string;
+    dayOfWeek: number;
+    position: number;
+    exerciseKey: string;
+    sets: number | null;
+    reps: number | null;
+    durationSeconds: number | null;
+    restSeconds: number;
+  }[];
 };
 
 /**

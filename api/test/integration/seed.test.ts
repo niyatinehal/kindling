@@ -35,6 +35,7 @@ const fakeProvisioner = (email: string): Promise<string> => {
 };
 
 async function clearAll(): Promise<void> {
+  await prisma.trackingLog.deleteMany();
   await prisma.visibilitySetting.deleteMany();
   await prisma.familyInvite.deleteMany();
   await prisma.workoutPlan.deleteMany();

@@ -58,6 +58,7 @@ model User {
 
   profile         Profile?
   workoutPlans    WorkoutPlan[]
+  trackingLogs    TrackingLog[]
   createdFamilies Family[]           @relation("FamilyCreatedBy")
   memberships     FamilyMembership[]
   createdInvites  FamilyInvite[]     @relation("InviteCreatedBy")
@@ -292,6 +293,8 @@ model PlanExercise {
 
   createdAt DateTime @default(now()) @map("created_at")
 
+  trackingLogs TrackingLog[]
+
   @@unique([planId, dayOfWeek, position])
   @@index([planId, dayOfWeek])
   @@map("plan_exercises")
@@ -391,6 +394,70 @@ model VisibilitySetting {
 
   @@unique([membershipId, dataCategory])
   @@map("visibility_settings")
+}
+
+/// What a log entry is about (PRD FR-TRK-3's four categories).
+///
+/// `steps` is deliberately absent. There is no Web API for step count, no
+/// background sensor access in a PWA, and PRD §5's MVP logging list does not
+/// include it — steps arrive with wearable sync in v2, if at all.
+enum TrackingType {
+  workout
+  meal
+  water
+  sleep
+}
+
+enum TrackingStatus {
+  completed
+  skipped
+  logged
+}
+
+/// One tracking entry (PRD §14's `TrackingLog`).
+///
+/// Deliberately one generic table rather than four typed ones: every consumer —
+/// the tiles, the adherence rollup, the future family dashboard — wants "this
+/// member's entries for this period" across categories, and four tables would
+/// make that a union in every query. `value` and `rating` carry different units
+/// per type, which is documented per field and enforced in the request schema.
+model TrackingLog {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id])
+
+  type   TrackingType
+  status TrackingStatus
+
+  /// The DAY this counts toward, not the instant it was recorded. A workout
+  /// finished at 11pm belongs to that day, and sleep logged on waking belongs to
+  /// the night before — so the caller says which day it is for.
+  loggedFor DateTime @map("logged_for") @db.Date
+
+  /// water: millilitres. sleep: minutes. workout and meal: null — completion is
+  /// carried by `status`, and a made-up number would be fiction.
+  value Int?
+
+  /// Which scheduled exercise this completes. Present only on workout logs, and
+  /// what makes adherence "completed ÷ scheduled" rather than a guess.
+  planExerciseId String?       @map("plan_exercise_id") @db.Uuid
+  planExercise   PlanExercise? @relation(fields: [planExerciseId], references: [id], onDelete: SetNull)
+
+  /// 1–5. Perceived difficulty on a workout (FR-TRK-1), sleep quality on sleep
+  /// (FR-TRK-2). Optional on both.
+  rating Int?
+
+  notes String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// One entry per scheduled exercise per day: a double-tapped "done" must not
+  /// count twice, and the service upserts on this.
+  @@unique([userId, planExerciseId, loggedFor])
+  @@index([userId, type, loggedFor])
+  @@map("tracking_logs")
 }
 
 enum ConsentType {

@@ -37,11 +37,14 @@ function toPlanView(plan: PlanWithExercises) {
       .map(([dayOfWeek, exercises]) => ({
         day_of_week: dayOfWeek,
         exercises: exercises.map((exercise) => ({
+          // The id is what a workout tracking log points at, so it has to reach
+          // the client — without it the plan is readable but not tickable.
+          id: exercise.id,
           exercise_key: exercise.exerciseKey,
-          sets: "sets" in exercise ? exercise.sets : null,
-          reps: "reps" in exercise ? exercise.reps : null,
-          duration_seconds: "durationSeconds" in exercise ? exercise.durationSeconds : null,
-          rest_seconds: "restSeconds" in exercise ? exercise.restSeconds : null,
+          sets: exercise.sets,
+          reps: exercise.reps,
+          duration_seconds: exercise.durationSeconds,
+          rest_seconds: exercise.restSeconds,
         })),
       })),
   };

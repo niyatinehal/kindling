@@ -39,6 +39,8 @@ beforeEach(async () => {
     }),
   });
 
+  await prisma.trackingLog.deleteMany();
+
   await prisma.visibilitySetting.deleteMany();
 
   await prisma.familyInvite.deleteMany();
