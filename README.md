@@ -252,8 +252,14 @@ Run from your machine, against the new database. `DIRECT_URL` (port 5432, not th
 pooler) is what the schema engine needs:
 
 ```bash
-cd api && DIRECT_URL='<supabase direct connection string>' npx prisma migrate deploy
+cd api && DIRECT_URL='<session-mode pooler string>?sslmode=no-verify' npx prisma migrate deploy
 ```
+
+**Use the pooler, not the direct host.** `db.<ref>.supabase.co` resolves to an
+AAAA record only — new free-tier projects have no IPv4 for direct connections —
+so anything without IPv6 cannot reach it at all. Session mode
+(`...pooler.supabase.com:5432`) is IPv4 and supports the statements a migration
+issues; transaction mode (`:6543`) does not.
 
 **Never run `npm run db:seed` against production.** It provisions
 `admin@demo.test` and `adult@demo.test` as real auth accounts — known addresses
