@@ -10,7 +10,6 @@ import { Alert } from "../../src/ui/Alert";
 import { Button } from "../../src/ui/Button";
 import { Card } from "../../src/ui/Card";
 import { Field } from "../../src/ui/Field";
-import { LinkButton } from "../../src/ui/LinkButton";
 import { Screen } from "../../src/ui/Screen";
 
 export default function SignInPage() {
@@ -105,15 +104,6 @@ export default function SignInPage() {
       </Card>
 
       <div className="flex flex-col gap-3">
-        {/*
-            Points at the route that STARTS the OAuth flow, not at /auth/callback,
-            which is where Google comes back to. Linking to the callback directly
-            arrives with no `code` and is bounced straight to /?error=oauth.
-          */}
-        <LinkButton href="/api/auth/google" variant="secondary">
-          {t("google")}
-        </LinkButton>
-
         <Button
           variant="ghost"
           onClick={() => {

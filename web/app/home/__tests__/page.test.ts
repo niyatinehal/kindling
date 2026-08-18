@@ -81,11 +81,11 @@ afterEach(() => {
 });
 
 describe("/home", () => {
-  // The regression this guard exists for. A first-time Google user finishes
-  // OAuth with a Supabase session and no `users` row, no ConsentRecord and no
-  // display name, and /auth/callback drops them here. If /home renders for
-  // them, the health-data consent is never collected at all and every
-  // authenticated call afterwards is a 403 nothing is listening for.
+  // The regression this guard exists for. Someone following a sign-in link for
+  // the first time arrives with a Supabase session and no `users` row, no
+  // ConsentRecord and no display name, and /auth/callback drops them here. If
+  // /home renders for them, the health-data consent is never collected at all
+  // and every authenticated call afterwards is a 403 nothing is listening for.
   it("sends a signed-in user who has not registered to consent", async () => {
     signedIn();
     mockCallApi.mockResolvedValue(json({ error: { code: "REGISTRATION_REQUIRED" } }, 403));

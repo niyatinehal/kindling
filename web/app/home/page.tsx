@@ -8,10 +8,11 @@ import { HomeView } from "./HomeView";
 
 /**
  * The guard for the whole journey, and the reason it lives HERE rather than in
- * `/auth/callback`: a first-time Google user arrives at /home with a Supabase
- * session but no `users` row, no consent record and no display name, and so
- * does anyone who simply types the URL. Redirecting from the callback would
- * close only the first of those. Guarding the destination closes both.
+ * `/auth/callback`: someone following a sign-in link arrives at /home with a
+ * Supabase session but no `users` row, no consent record and no display name,
+ * and so does a guest, and so does anyone who simply types the URL.
+ * Redirecting from the callback would close only the first of those. Guarding
+ * the destination closes all three.
  *
  * Nothing is caught around `redirect()` on purpose: it signals the redirect by
  * throwing, and `currentStep` already resolves every failure to a destination,

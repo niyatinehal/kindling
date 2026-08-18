@@ -10,7 +10,6 @@
     "sendCode": "Send me a code",
     "codeLabel": "Enter the code",
     "verify": "Continue",
-    "google": "Continue with Google",
     "guest": "Continue as a guest"
   },
   "consent": {

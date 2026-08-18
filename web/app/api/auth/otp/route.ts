@@ -21,9 +21,8 @@ export async function POST(request: Request) {
           // Where the link in the email comes back to. Left unset, Supabase
           // falls back to the project's Site URL — the site root, which has no
           // way to exchange the `code` the link carries. /auth/callback is the
-          // only route that can, and it is the same one the Google flow returns
-          // to. Naming it here also means the link stops depending on a
-          // dashboard setting this repo cannot pin or test.
+          // only route that can. Naming it here also means the link stops
+          // depending on a dashboard setting this repo cannot pin or test.
           options: { emailRedirectTo: new URL("/auth/callback", origin).toString() },
         }
       : { phone: parsed.data.contact },
