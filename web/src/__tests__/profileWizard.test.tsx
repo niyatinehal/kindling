@@ -9,10 +9,10 @@ jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: (destination: string) => push(destination) }),
 }));
 
-function renderWizard() {
+function renderWizard(props: Parameters<typeof Wizard>[0] = {}) {
   render(
     <NextIntlClientProvider locale="en" messages={messages}>
-      <Wizard />
+      <Wizard {...props} />
     </NextIntlClientProvider>,
   );
 }
@@ -200,5 +200,102 @@ describe("intake wizard", () => {
     fireEvent.click(screen.getByRole("button", { name: messages.onboarding.back }));
 
     expect(screen.getByLabelText(messages.onboarding.labels.birthYear)).toHaveValue("1990");
+  });
+});
+
+const storedProfile = {
+  birth_year: 1963,
+  sex: "male",
+  height_cm: 170,
+  weight_kg: 78.5,
+  goal: "general_fitness",
+  level: "beginner",
+  space: "small_room",
+  equipment: ["resistance_band", "yoga_mat"],
+  injuries: ["knee"],
+  conditions: ["arthritis"],
+  dietary: ["vegetarian"],
+  notes: "knee aches on stairs",
+};
+
+/**
+ * Editing an existing profile. This is the same form as intake — FR-PROF-2 wants
+ * the details editable at any time, and a second form would be a second place for
+ * the validation rules to drift.
+ */
+describe("editing saved details", () => {
+  it("opens with the saved answers already filled in", () => {
+    renderWizard({ existing: storedProfile });
+
+    expect(screen.getByLabelText(messages.onboarding.labels.birthYear)).toHaveValue("1963");
+    expect(screen.getByLabelText(messages.onboarding.labels.heightCm)).toHaveValue("170");
+    expect(screen.getByLabelText(messages.onboarding.sex.male)).toBeChecked();
+  });
+
+  it("carries the saved choices through every step", () => {
+    renderWizard({ existing: storedProfile });
+    fireEvent.click(next());
+
+    expect(screen.getByLabelText(messages.onboarding.goal.general_fitness)).toBeChecked();
+    expect(screen.getByLabelText(messages.onboarding.level.beginner)).toBeChecked();
+    fireEvent.click(next());
+    expect(screen.getByLabelText(messages.onboarding.space.small_room)).toBeChecked();
+    expect(screen.getByLabelText(messages.onboarding.equipment.yoga_mat)).toBeChecked();
+    fireEvent.click(next());
+    expect(screen.getByLabelText(messages.onboarding.injury.knee)).toBeChecked();
+    expect(screen.getByLabelText(messages.onboarding.condition.arthritis)).toBeChecked();
+  });
+
+  // A draft only exists because intake was abandoned. Once a profile is stored the
+  // draft is older than the truth, and restoring it would silently revert an edit
+  // the user already completed.
+  it("prefers the saved profile over a leftover draft", () => {
+    sessionStorage.setItem(
+      "wellness.profile.draft",
+      JSON.stringify({ birthYear: "1990", goal: ["fat_loss"] }),
+    );
+
+    renderWizard({ existing: storedProfile });
+
+    expect(screen.getByLabelText(messages.onboarding.labels.birthYear)).toHaveValue("1963");
+  });
+
+  // Arriving from "rebuild my plan": editing the details IS the rebuild, so the
+  // regeneration happens here rather than sending the user back to press a second
+  // button on the plan screen.
+  it("regenerates the plan and returns to it when it came from the plan screen", async () => {
+    renderWizard({ existing: storedProfile, rebuildPlan: true });
+
+    expect(screen.getByRole("link", { name: messages.onboarding.backPlan })).toHaveAttribute(
+      "href",
+      "/plan",
+    );
+
+    fireEvent.click(next());
+    fireEvent.click(next());
+    fireEvent.click(next());
+    fireEvent.click(screen.getByRole("button", { name: messages.onboarding.next }));
+    fireEvent.click(screen.getByRole("button", { name: messages.onboarding.saveAndRebuild }));
+
+    await waitFor(() => {
+      expect(push).toHaveBeenCalledWith("/plan");
+    });
+    expect(global.fetch).toHaveBeenCalledWith("/api/plan", { method: "POST" });
+  });
+
+  // Intake, by contrast, has no plan to go back to yet.
+  it("goes home after a plain edit", async () => {
+    renderWizard({ existing: storedProfile });
+
+    fireEvent.click(next());
+    fireEvent.click(next());
+    fireEvent.click(next());
+    fireEvent.click(screen.getByRole("button", { name: messages.onboarding.next }));
+    fireEvent.click(finish());
+
+    await waitFor(() => {
+      expect(push).toHaveBeenCalledWith("/home");
+    });
+    expect(global.fetch).not.toHaveBeenCalledWith("/api/plan", { method: "POST" });
   });
 });

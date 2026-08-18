@@ -7,6 +7,7 @@ import { readJsonBody } from "../../src/api/readJsonBody";
 import { readPlan } from "../../src/plan/planTypes";
 import type { PlanView } from "../../src/plan/planTypes";
 import { Alert } from "../../src/ui/Alert";
+import { BackLink } from "../../src/ui/BackLink";
 import { Button } from "../../src/ui/Button";
 import { Card } from "../../src/ui/Card";
 import { LinkButton } from "../../src/ui/LinkButton";
@@ -111,6 +112,8 @@ export function PlanClient({
 
   return (
     <Screen title={t("title")}>
+      <BackLink href="/home">{t("backHome")}</BackLink>
+
       {error !== undefined && (
         <Alert>{tError.has(error) ? tError(error) : tError("UNKNOWN")}</Alert>
       )}
@@ -130,14 +133,28 @@ export function PlanClient({
             </Card>
           )}
 
-          <Button
-            disabled={busy}
-            onClick={() => {
-              void generate();
-            }}
-          >
-            {busy ? t("generating") : plan === null ? t("generate") : t("regenerate")}
-          </Button>
+          {plan === null ? (
+            <Button
+              disabled={busy}
+              onClick={() => {
+                void generate();
+              }}
+            >
+              {busy ? t("generating") : t("generate")}
+            </Button>
+          ) : (
+            /*
+              Rebuilding goes through the details first. A plan is derived entirely
+              from the profile, so regenerating without a change would return the
+              same plan — the deterministic engine has no randomness to shake loose.
+              The only way a rebuild produces something different is if something
+              about the person changed, so the button asks what changed.
+            */
+            <>
+              <LinkButton href="/onboarding/profile?next=plan">{t("regenerate")}</LinkButton>
+              <p className="text-sm text-muted">{t("regenerateHint")}</p>
+            </>
+          )}
         </>
       )}
 

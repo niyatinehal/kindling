@@ -126,8 +126,14 @@ describe("plan screen", () => {
       expect(screen.getByText(messages.plan.exercises.band_row)).toBeInTheDocument();
     });
     expect(global.fetch).toHaveBeenCalledWith("/api/plan", { method: "POST" });
-    // Once a plan exists the action becomes a rebuild, not a first build.
-    expect(screen.getByRole("button", { name: messages.plan.regenerate })).toBeInTheDocument();
+    // Once a plan exists, rebuilding goes through the details rather than
+    // re-running the same deterministic engine on the same inputs — so it is a
+    // link to the editor, not a button that would return the identical plan.
+    expect(screen.getByRole("link", { name: messages.plan.regenerate })).toHaveAttribute(
+      "href",
+      "/onboarding/profile?next=plan",
+    );
+    expect(screen.queryByRole("button", { name: messages.plan.generate })).not.toBeInTheDocument();
   });
 
   // A 403 here is the intake seam, not a fault, and saying so is the difference

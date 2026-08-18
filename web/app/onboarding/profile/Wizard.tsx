@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Alert } from "../../../src/ui/Alert";
+import { BackLink } from "../../../src/ui/BackLink";
 import { Button } from "../../../src/ui/Button";
 import { Card } from "../../../src/ui/Card";
 import { ChoiceGroup } from "../../../src/ui/ChoiceGroup";
@@ -114,7 +115,49 @@ function readDraft(): Draft {
   }
 }
 
-export function Wizard() {
+/**
+ * The profile as the API returns it, when there is one to edit.
+ */
+export type ExistingProfile = {
+  birth_year: number;
+  sex: string | null;
+  height_cm: number | null;
+  weight_kg: number | null;
+  goal: string;
+  level: string;
+  space: string;
+  equipment: string[];
+  injuries: string[];
+  conditions: string[];
+  dietary: string[];
+  notes: string | null;
+};
+
+/** Turns a stored profile back into the form's own shape. */
+function draftFrom(profile: ExistingProfile): Draft {
+  return {
+    birthYear: String(profile.birth_year),
+    sex: profile.sex === null ? [] : [profile.sex],
+    heightCm: profile.height_cm === null ? "" : String(profile.height_cm),
+    weightKg: profile.weight_kg === null ? "" : String(profile.weight_kg),
+    goal: [profile.goal],
+    level: [profile.level],
+    space: [profile.space],
+    equipment: profile.equipment,
+    injuries: profile.injuries,
+    conditions: profile.conditions,
+    dietary: profile.dietary,
+    notes: profile.notes ?? "",
+  };
+}
+
+export function Wizard({
+  existing = null,
+  rebuildPlan = false,
+}: {
+  existing?: ExistingProfile | null;
+  rebuildPlan?: boolean;
+}) {
   const t = useTranslations("onboarding");
   const tError = useTranslations("errors");
   // One translator per option group rather than one `t` with an interpolated
@@ -133,16 +176,25 @@ export function Wizard() {
   const router = useRouter();
 
   const [step, setStep] = useState(0);
-  const [draft, setDraft] = useState<Draft>(EMPTY);
+  // Seeded synchronously from the server-supplied profile so an edit opens with
+  // the current answers already in place rather than blank-then-populated.
+  const [draft, setDraft] = useState<Draft>(existing === null ? EMPTY : draftFrom(existing));
   const [error, setError] = useState<string | undefined>(undefined);
   const [saving, setSaving] = useState(false);
 
   // Restored after mount, never during render: `sessionStorage` does not exist
   // on the server, and reading it in the initial state would make the first
   // client render disagree with the server's HTML.
+  //
+  // A saved profile wins over a leftover draft. The draft only exists because
+  // someone abandoned intake mid-way; once a profile is stored, that draft is
+  // older than the truth, and restoring it would silently revert an edit the user
+  // already completed.
   useEffect(() => {
-    setDraft(readDraft());
-  }, []);
+    if (existing === null) {
+      setDraft(readDraft());
+    }
+  }, [existing]);
 
   function update(patch: Partial<Draft>): void {
     const next = { ...draft, ...patch };
@@ -205,11 +257,26 @@ export function Wizard() {
     } catch {
       // Nothing to do: the profile is saved either way.
     }
+
+    // Arrived from "rebuild my plan": editing the details WAS the rebuild, so
+    // regenerate and land on the plan rather than dropping the user back home to
+    // press a second button. A failed regeneration still routes to /plan, where
+    // the build button is — the profile is saved either way, and stranding them
+    // in the wizard would hide that.
+    if (rebuildPlan) {
+      await fetch("/api/plan", { method: "POST" });
+      router.push("/plan");
+      return;
+    }
     router.push("/home");
   }
 
   return (
-    <Screen title={t("title")}>
+    <Screen title={existing === null ? t("title") : t("editTitle")}>
+      <BackLink href={rebuildPlan ? "/plan" : "/home"}>
+        {rebuildPlan ? t("backPlan") : t("backHome")}
+      </BackLink>
+
       {error !== undefined && (
         <Alert>{tError.has(error) ? tError(error) : tError("UNKNOWN")}</Alert>
       )}
@@ -335,7 +402,7 @@ export function Wizard() {
               void submit();
             }}
           >
-            {saving ? t("saving") : t("finish")}
+            {saving ? t("saving") : rebuildPlan ? t("saveAndRebuild") : t("finish")}
           </Button>
         ) : (
           <Button

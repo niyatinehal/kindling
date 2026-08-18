@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { currentStep } from "../../../src/onboarding/currentStep";
+import { currentProfile } from "../../../src/onboarding/currentProfile";
 import { Wizard } from "./Wizard";
 
 /**
@@ -14,12 +15,21 @@ import { Wizard } from "./Wizard";
  * how FR-PROF-2's "editable at any time" works, and PUT replaces rather than
  * duplicating.
  */
-export default async function ProfileOnboardingPage() {
+export default async function ProfileOnboardingPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const step = await currentStep();
 
   if (step !== "/home") {
     redirect(step);
   }
 
-  return <Wizard />;
+  // `?next=plan` marks arrival from "rebuild my plan": the same form, but saving
+  // regenerates and returns to the plan rather than going home.
+  const params = await searchParams;
+  const existing = await currentProfile();
+
+  return <Wizard existing={existing} rebuildPlan={params["next"] === "plan"} />;
 }
