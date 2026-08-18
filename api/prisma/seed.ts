@@ -1,4 +1,5 @@
 import { loadEnv } from "../src/config/env.js";
+import { defaultVisibilityFor } from "../src/families/visibilityDefaults.js";
 import { createPrismaClient, disconnect } from "../src/db/prisma.js";
 import type { PrismaClient } from "../generated/prisma/client.js";
 
@@ -86,9 +87,10 @@ async function ensureMembership(
   });
 
   if (existing === null) {
-    await prisma.familyMembership.create({
+    const created = await prisma.familyMembership.create({
       data: { familyId, userId, role, joinedAt: new Date() },
     });
+    await ensureVisibility(prisma, created.id, role);
     return;
   }
 
@@ -98,6 +100,31 @@ async function ensureMembership(
       data: { deletedAt: null, status: "active" },
     });
   }
+
+  await ensureVisibility(prisma, existing.id, role);
+}
+
+/**
+ * The visibility rows that belong with every membership.
+ *
+ * Separate from the membership create so a seed run against a database whose
+ * memberships predate visibility settings backfills them, rather than leaving
+ * rows the join path treats as "shares nothing". A membership without these rows
+ * is not a private member — it is a member the family dashboard cannot describe
+ * at all, which is the more misleading of the two.
+ *
+ * `createMany` with `skipDuplicates` rather than an upsert: an existing row is a
+ * choice the member made, and a seed must never quietly reset it to the default.
+ */
+async function ensureVisibility(
+  prisma: PrismaClient,
+  membershipId: string,
+  role: "admin" | "adult",
+) {
+  await prisma.visibilitySetting.createMany({
+    data: defaultVisibilityFor(role).map((setting) => ({ membershipId, ...setting })),
+    skipDuplicates: true,
+  });
 }
 
 /**

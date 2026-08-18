@@ -80,6 +80,58 @@ describe("seed", () => {
     expect(await prisma.family.count()).toBe(1);
     expect(await prisma.user.count()).toBe(2);
     expect(await prisma.familyMembership.count()).toBe(2);
+    expect(await prisma.visibilitySetting.count()).toBe(14);
+  });
+
+  // Without these the family dashboard describes a seeded member as sharing
+  // nothing, which is not what the product default says — `adherence_summary`
+  // starts visible and everything sensitive starts hidden.
+  it("gives every seeded membership its default visibility rows", async () => {
+    await seed(prisma, fakeProvisioner);
+
+    const memberships = await prisma.familyMembership.findMany({
+      include: { visibilitySettings: true },
+    });
+
+    for (const membership of memberships) {
+      expect(membership.visibilitySettings).toHaveLength(7);
+      expect(
+        membership.visibilitySettings
+          .filter((setting) => setting.visibility === "visible")
+          .map((setting) => setting.dataCategory),
+      ).toEqual(["adherence_summary"]);
+    }
+  });
+
+  // A membership created before visibility settings existed has none. The seed is
+  // the repair path for the demo data, and it must fill them in rather than
+  // leaving a member the dashboard cannot describe.
+  it("backfills visibility rows onto a membership that has none", async () => {
+    await seed(prisma, fakeProvisioner);
+    await prisma.visibilitySetting.deleteMany();
+
+    await seed(prisma, fakeProvisioner);
+
+    expect(await prisma.visibilitySetting.count()).toBe(14);
+  });
+
+  // But it must never reset a choice the member already made. A seed that
+  // overwrote a hidden category would silently re-share it.
+  it("leaves an existing visibility choice alone", async () => {
+    await seed(prisma, fakeProvisioner);
+    const setting = await prisma.visibilitySetting.findFirstOrThrow({
+      where: { dataCategory: "adherence_summary" },
+    });
+    await prisma.visibilitySetting.update({
+      where: { id: setting.id },
+      data: { visibility: "hidden" },
+    });
+
+    await seed(prisma, fakeProvisioner);
+
+    expect(
+      (await prisma.visibilitySetting.findUniqueOrThrow({ where: { id: setting.id } })).visibility,
+    ).toBe("hidden");
   });
 
   it("re-seeds successfully after the demo family is soft-deleted", async () => {

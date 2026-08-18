@@ -7,6 +7,7 @@ import { createAuthMiddleware } from "../auth/middleware.js";
 import { requireRole } from "../auth/requireRole.js";
 import type { VerifiedToken } from "../auth/verifyToken.js";
 import { sendError } from "../http/errors.js";
+import { familyDashboard } from "../services/familyDashboard.js";
 import {
   acceptInvite,
   AlreadyInFamilyError,
@@ -134,6 +135,30 @@ export function createFamilyRouter(deps: {
         });
     },
   );
+
+  /**
+   * FR-FAM-1. Admin-only, and every member's own visibility settings still apply —
+   * being the admin grants the view, never the right to read a hidden category.
+   */
+  router.get("/:id/dashboard", authenticate, requireRole("admin"), (req, res, next) => {
+    const user = req.user;
+    if (user === undefined || !sameFamily(req)) {
+      sendError(res, 403, "FORBIDDEN_ROLE", "Your role does not allow this action.");
+      return;
+    }
+
+    familyDashboard(deps.prisma, {
+      familyId: req.params["id"] as string,
+      viewerUserId: user.id,
+      now: new Date(),
+    })
+      .then((members) => {
+        res.status(200).json({ members });
+      })
+      .catch((error: unknown) => {
+        next(error);
+      });
+  });
 
   router.patch(
     "/:id/members/:userId/role",

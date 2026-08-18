@@ -426,3 +426,156 @@ describe("membership management", () => {
     expect(response.status).toBe(200);
   });
 });
+
+// FR-FAM-1 plus §17's structural bar: the dashboard filters at the data layer, and
+// being the admin grants the view, never the right to read a hidden category.
+describe("GET /api/v1/families/:id/dashboard", () => {
+  /** Meera as admin with Ramesh (elderly) joined; returns both tokens. */
+  const familyOfTwo = async () => {
+    const meera = await member("Meera");
+    const familyId = await familyFor(meera);
+    const ramesh = await member("Ramesh");
+    await request(app)
+      .post(`/api/v1/invites/${await inviteFor(meera, familyId, "elderly")}/accept`)
+      .set(auth(ramesh));
+    return { meera, ramesh, familyId };
+  };
+
+  type Panel = {
+    display_name: string;
+    role: string;
+    shared: string[];
+    adherence_summary?: { days_logged: number };
+    water?: { water_ml: number };
+    sleep?: unknown;
+    workout_detail?: unknown;
+    meal_detail?: unknown;
+  };
+  type DashboardBody = { members?: Panel[] };
+
+  it("lists every active member", async () => {
+    const { meera, familyId } = await familyOfTwo();
+
+    const response = await request(app)
+      .get(`/api/v1/families/${familyId}/dashboard`)
+      .set(auth(meera));
+
+    expect(response.status).toBe(200);
+    const names = ((response.body as DashboardBody).members ?? []).map((m) => m.display_name);
+    expect(names).toEqual(expect.arrayContaining(["Meera", "Ramesh"]));
+  });
+
+  // The default is engagement only: "did they log anything", nothing about what.
+  it("shows another member's adherence but not their detail", async () => {
+    const { meera, familyId } = await familyOfTwo();
+
+    const response = await request(app)
+      .get(`/api/v1/families/${familyId}/dashboard`)
+      .set(auth(meera));
+
+    const ramesh = (response.body as DashboardBody).members?.find(
+      (m) => m.display_name === "Ramesh",
+    );
+    expect(ramesh?.adherence_summary).toBeDefined();
+    expect(ramesh?.shared).toEqual(["adherence_summary"]);
+  });
+
+  // Absent, not present-and-null. A null field would tell the admin "there is a
+  // number here you may not see", which is itself a disclosure.
+  it("omits hidden categories entirely rather than nulling them", async () => {
+    const { meera, familyId } = await familyOfTwo();
+
+    const response = await request(app)
+      .get(`/api/v1/families/${familyId}/dashboard`)
+      .set(auth(meera));
+
+    const ramesh = (response.body as DashboardBody).members?.find(
+      (m) => m.display_name === "Ramesh",
+    );
+    expect(ramesh).not.toHaveProperty("water");
+    expect(ramesh).not.toHaveProperty("sleep");
+    expect(ramesh).not.toHaveProperty("workout_detail");
+    expect(ramesh).not.toHaveProperty("meal_detail");
+  });
+
+  // The trust model PRD §12 is explicit about: an admin does not override hidden.
+  it("still hides a category from the admin after the member logs data in it", async () => {
+    const { meera, ramesh, familyId } = await familyOfTwo();
+    await request(app)
+      .post("/api/v1/tracking/logs")
+      .set(auth(ramesh))
+      .send({ type: "water", logged_for: new Date().toISOString().slice(0, 10), value: 500 });
+
+    const response = await request(app)
+      .get(`/api/v1/families/${familyId}/dashboard`)
+      .set(auth(meera));
+
+    const panel = (response.body as DashboardBody).members?.find(
+      (m) => m.display_name === "Ramesh",
+    );
+    expect(panel).not.toHaveProperty("water");
+    // The coarse signal still moves — that is the whole point of the floor.
+    expect(panel?.adherence_summary?.days_logged).toBe(1);
+  });
+
+  // Hiding your own data from yourself is meaningless and would look broken.
+  it("shows the viewer their own row in full", async () => {
+    const { meera, familyId } = await familyOfTwo();
+    await request(app)
+      .post("/api/v1/tracking/logs")
+      .set(auth(meera))
+      .send({ type: "water", logged_for: new Date().toISOString().slice(0, 10), value: 750 });
+
+    const response = await request(app)
+      .get(`/api/v1/families/${familyId}/dashboard`)
+      .set(auth(meera));
+
+    const own = (response.body as DashboardBody).members?.find((m) => m.display_name === "Meera");
+    expect(own?.water?.water_ml).toBe(750);
+    expect(own?.sleep).toBeDefined();
+  });
+
+  it("reveals a category once the member shares it", async () => {
+    const { meera, familyId } = await familyOfTwo();
+    await prisma.visibilitySetting.updateMany({
+      where: {
+        dataCategory: "water",
+        membership: { user: { displayName: "Ramesh" } },
+      },
+      data: { visibility: "visible" },
+    });
+
+    const response = await request(app)
+      .get(`/api/v1/families/${familyId}/dashboard`)
+      .set(auth(meera));
+
+    const panel = (response.body as DashboardBody).members?.find(
+      (m) => m.display_name === "Ramesh",
+    );
+    expect(panel?.water).toBeDefined();
+    expect(panel?.shared).toEqual(expect.arrayContaining(["adherence_summary", "water"]));
+  });
+
+  it("refuses a non-admin member", async () => {
+    const { ramesh, familyId } = await familyOfTwo();
+
+    const response = await request(app)
+      .get(`/api/v1/families/${familyId}/dashboard`)
+      .set(auth(ramesh));
+
+    expect(response.status).toBe(403);
+    expect((response.body as ErrorBody).error?.code).toBe("FORBIDDEN_ROLE");
+  });
+
+  it("refuses an admin of a different family", async () => {
+    const { familyId } = await familyOfTwo();
+    const priya = await member("Priya");
+    await familyFor(priya, "The Sharmas");
+
+    const response = await request(app)
+      .get(`/api/v1/families/${familyId}/dashboard`)
+      .set(auth(priya));
+
+    expect(response.status).toBe(403);
+  });
+});

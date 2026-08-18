@@ -7,8 +7,10 @@ import { useState } from "react";
 import { readJsonBody } from "../../src/api/readJsonBody";
 import type { FamilySummary } from "../../src/family/currentFamily";
 import { Alert } from "../../src/ui/Alert";
+import { BackLink } from "../../src/ui/BackLink";
 import { Button } from "../../src/ui/Button";
 import { Card } from "../../src/ui/Card";
+import { LinkButton } from "../../src/ui/LinkButton";
 import { ChoiceGroup } from "../../src/ui/ChoiceGroup";
 import { Field } from "../../src/ui/Field";
 import { Screen } from "../../src/ui/Screen";
@@ -67,6 +69,8 @@ export function FamilyClient({ initialFamily }: { initialFamily: FamilySummary |
 
   return (
     <Screen title={t("title")}>
+      <BackLink href="/home">{t("backHome")}</BackLink>
+
       {error !== undefined && (
         <Alert>{tError.has(error) ? tError(error) : tError("UNKNOWN")}</Alert>
       )}
@@ -138,6 +142,19 @@ export function FamilyClient({ initialFamily }: { initialFamily: FamilySummary |
                 </li>
               ))}
             </ul>
+
+            {/*
+              Admin-only, mirroring the endpoint. What the admin then sees is still
+              each member's choice — the link opens a view of shared categories, not
+              a bypass of them.
+            */}
+            {isAdmin && (
+              <div className="mt-4">
+                <LinkButton href="/family/dashboard" variant="secondary">
+                  {t("viewDashboard")}
+                </LinkButton>
+              </div>
+            )}
           </Card>
 
           {/*
