@@ -46,7 +46,10 @@ describe("supabase auth redirect configuration", () => {
     const found = /^additional_redirect_urls\s*=\s*\[([^\]]*)\]$/m.exec(config);
     expect(found).not.toBeNull();
 
-    const entries = [...(found?.[1] ?? "").matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+    // flatMap over `?? []` rather than `map`: a match always has group 1, but
+    // `noUncheckedIndexedAccess` cannot know that, and dropping the impossible
+    // case keeps the array `string[]` without asserting.
+    const entries = [...(found?.[1] ?? "").matchAll(/"([^"]+)"/g)].flatMap((m) => m[1] ?? []);
 
     // A scheme or port that disagrees with site_url matches nothing, which is
     // indistinguishable from having no allow-list at all.
