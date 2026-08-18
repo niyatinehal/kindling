@@ -13,7 +13,10 @@ COPY api/package.json ./api/package.json
 RUN npm ci
 
 COPY api ./api
-RUN npm run prisma:generate -w api
+# No separate generate step: `build` generates the Prisma client itself, the
+# same way `typecheck` does, so a fresh checkout compiles without one. Splitting
+# it out bought nothing here anyway — the COPY above invalidates every layer
+# below it, so both would rebuild on any source change.
 RUN npm run build -w api
 
 # Drop devDependencies. With workspaces these are hoisted to the root
