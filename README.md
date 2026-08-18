@@ -117,28 +117,26 @@ or anonymising the domain `users` row **first**, then deleting the auth account.
 
 ### Sign-in emails
 
-**By default local development never delivers email to a real inbox, and this is
-not a bug.** With `[auth.email.smtp]` disabled, Auth's SMTP host points at the
-Mailpit container (`GOTRUE_SMTP_HOST=supabase_inbucket_<project>`, port 1025),
-which accepts every message and forwards none. A sign-in request answers
-`{"sent": true}` and the mail is waiting at **http://127.0.0.1:54324** — waiting
-on Gmail instead is the trap.
+**`[auth.email.smtp]` is enabled, so the SMTP variables are required, not
+optional.** `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `SMTP_SENDER_EMAIL` and
+`SMTP_SENDER_NAME` must be set in the root `.env` — the Supabase CLI reads that
+file itself, so they need no exporting. Both `.env` and `config.toml` are read
+only at stack start, so editing either needs `npx supabase stop && npx supabase
+start`.
 
-**To deliver real mail, three things must be true together.** Doing only the
-first changes nothing; doing only the second breaks sending outright.
+**With them missing, sign-in fails in a way that names nothing.** The CLI passes
+the literal string `env(SMTP_HOST)` through to GoTrue, and every send dies with a
+bare `500 unexpected_failure`. On a fresh clone or a new machine, that is the
+first thing to check. The port is a literal `587` rather than an env var because
+the CLI rejects `env()` on an integer field; 587 is what every mainstream relay
+accepts.
 
-1. `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `SMTP_SENDER_EMAIL` and
-   `SMTP_SENDER_NAME` are set in the root `.env` — the Supabase CLI reads that
-   file itself, so they do not need exporting.
-2. `enabled = true` in `[auth.email.smtp]` in `config.toml`.
-3. `npx supabase stop && npx supabase start`. Both files are read only at stack
-   start.
-
-`enabled = true` with the variables unset is the one combination to avoid: the
-CLI passes the literal string `env(SMTP_HOST)` through to GoTrue, and every send
-then fails with a bare `500 unexpected_failure` that names nothing. The port is a
-literal `587` rather than an env var because the CLI rejects `env()` on an
-integer field; 587 is what every mainstream relay accepts.
+**Set `enabled = false` to go back to capturing mail locally.** Auth's SMTP host
+then points at the Mailpit container (`GOTRUE_SMTP_HOST=supabase_inbucket_<project>`,
+port 1025), which accepts every message and forwards none — a sign-in request
+answers `{"sent": true}` and the mail waits at **http://127.0.0.1:54324**. Worth
+doing for any work that is not specifically about delivery, because with a real
+relay wired up every test sign-in emails a real person and spends a real quota.
 
 `api/test/config/authEmailTemplate.test.ts` does not pin whether SMTP is on —
 that is a local choice — only that the credentials come from the environment

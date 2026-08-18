@@ -239,28 +239,25 @@ otp_expiry = 3600
 
 # A real SMTP relay, so sign-in codes reach real inboxes.
 #
-# `enabled = false` is the committed default and it is not a placeholder: with
-# SMTP off, GoTrue delivers to the stack's bundled Mailpit inbox at
-# http://127.0.0.1:54324 and nothing leaves the machine. That is the right
-# default twice over — a local stack pointed at a real relay emails real people
-# every time anyone tests a sign-in and spends the daily quota doing it, and a
-# fresh clone has no credentials to offer.
+# Enabled, which makes SMTP_* in the environment REQUIRED rather than optional.
+# There is no graceful degradation: with these unset, the CLI passes the literal
+# string "env(SMTP_HOST)" through to GoTrue, and every sign-in then dies with a
+# bare 500 `unexpected_failure` naming nothing. Verified the hard way — if
+# sign-in starts failing that way on a fresh clone or a new machine, missing
+# SMTP credentials is the first thing to check.
 #
-# It must stay `false` unless SMTP_* are actually set. There is no graceful
-# degradation here: with `enabled = true` and the variables unset, the CLI passes
-# the literal string "env(SMTP_HOST)" through to GoTrue, which then fails every
-# send with a bare 500 `unexpected_failure` and no hint as to why. Verified the
-# hard way.
+# Set `enabled = false` to fall back to the stack's bundled Mailpit inbox at
+# http://127.0.0.1:54324, where mail is captured and never forwarded. Worth doing
+# for any work that isn't specifically about delivery: with a real relay wired up,
+# every test sign-in emails a real person and spends a real daily quota.
 #
-# To send real mail: fill in SMTP_* in the root `.env` (see `.env.example` for
-# which provider to pick and why), flip this to true, then restart the stack —
-# `npx supabase stop && npx supabase start`. The CLI reads both this file and
-# `.env` only at startup, so nothing short of a restart picks up either change.
+# The CLI reads both this file and `.env` only at startup, so changing either
+# needs `npx supabase stop && npx supabase start` — a reload will not do.
 #
 # Every value below is read from the environment, which is what makes this safe
 # to commit: no vendor is hardcoded, and no credential ever lands in git.
 [auth.email.smtp]
-enabled = false
+enabled = true
 host = "env(SMTP_HOST)"
 # A literal, not an env var: this field is typed as an integer and the CLI
 # refuses an env() string here. 587 (submission with STARTTLS) is the port every
