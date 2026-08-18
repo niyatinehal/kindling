@@ -15,6 +15,16 @@ export type TrackingSummary = {
   workouts_scheduled: number;
   workout_adherence: number | null;
   meals_logged: number;
+  days: TrackingDay[];
+};
+
+/** One calendar day's totals — the series behind the dashboard charts. */
+export type TrackingDay = {
+  date: string;
+  water_ml: number;
+  sleep_minutes: number;
+  workouts_completed: number;
+  meals_logged: number;
 };
 
 export type TodayTick = { plan_exercise_id: string; status: string };
@@ -33,4 +43,5 @@ export const EMPTY_SUMMARY: TrackingSummary = {
   workouts_scheduled: 0,
   workout_adherence: null,
   meals_logged: 0,
+  days: [],
 };

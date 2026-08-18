@@ -43,6 +43,7 @@ describe("HomeView", () => {
     expect(screen.getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
       "/plan",
       "/meals",
+      "/dashboard",
       "/family",
     ]);
     expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual([

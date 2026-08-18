@@ -111,6 +111,15 @@ type SummaryBody = {
     workouts_scheduled?: number;
     workout_adherence?: number | null;
     meals_logged?: number;
+    from?: string;
+    to?: string;
+    days?: {
+      date: string;
+      water_ml: number;
+      sleep_minutes: number;
+      workouts_completed: number;
+      meals_logged: number;
+    }[];
   };
   today?: { plan_exercise_id: string; status: string }[];
 };
@@ -404,5 +413,88 @@ describe("POST /api/v1/tracking/logs — meals", () => {
     // Logged either way: "I skipped this" is data, and adherence for meals is a
     // later slice's job to compute from status.
     expect((summary.body as SummaryBody).summary?.meals_logged).toBe(1);
+  });
+});
+
+/**
+ * The dense daily series the dashboard charts read.
+ *
+ * These tests exist because the failure mode is silent: a series built from the
+ * logs rather than from the window still renders, still adds up, and still looks
+ * like a chart — it just compresses the week and puts every bar on the wrong day.
+ */
+describe("GET /api/v1/tracking/summary — the daily series", () => {
+  const summaryFor = async (token: string) => {
+    const response = await request(app).get("/api/v1/tracking/summary").set(auth(token));
+    return (response.body as SummaryBody).summary;
+  };
+
+  it("returns one entry per day of the window even with nothing logged", async () => {
+    const token = await registered();
+
+    const summary = await summaryFor(token);
+
+    expect(summary?.days).toHaveLength(7);
+    expect(summary?.days?.every((day) => day.water_ml === 0)).toBe(true);
+  });
+
+  it("runs oldest first and ends on today, so a chart reads left to right", async () => {
+    const token = await registered();
+
+    const summary = await summaryFor(token);
+    const dates = summary?.days?.map((day) => day.date) ?? [];
+
+    expect(dates[0]).toBe(summary?.from);
+    expect(dates[dates.length - 1]).toBe(summary?.to);
+    expect(dates[dates.length - 1]).toBe(today());
+    expect([...dates].sort()).toEqual(dates);
+  });
+
+  // A day with no logs is a real zero, not a gap. Dropping it is what makes a
+  // four-day week look like a full one.
+  it("keeps unlogged days as zeroes rather than omitting them", async () => {
+    const token = await registered();
+    await log(token, { type: "water", logged_for: today(), value: 500 }).expect(201);
+
+    const summary = await summaryFor(token);
+    const days = summary?.days ?? [];
+
+    expect(days).toHaveLength(7);
+    expect(days[days.length - 1]?.water_ml).toBe(500);
+    expect(days.slice(0, -1).every((day) => day.water_ml === 0)).toBe(true);
+  });
+
+  it("lands each measure on its own day, in its own unit", async () => {
+    const token = await registered();
+    await log(token, { type: "water", logged_for: today(), value: 250 }).expect(201);
+    await log(token, { type: "water", logged_for: today(), value: 250 }).expect(201);
+    await log(token, { type: "sleep", logged_for: today(), value: 420 }).expect(201);
+    await log(token, {
+      type: "meal",
+      logged_for: today(),
+      status: "completed",
+      recipe_key: "upma",
+    }).expect(201);
+
+    const todaysEntry = (await summaryFor(token))?.days?.find((day) => day.date === today());
+
+    // Water sums across the day; sleep is one night; a meal is a count of one.
+    expect(todaysEntry).toMatchObject({
+      water_ml: 500,
+      sleep_minutes: 420,
+      meals_logged: 1,
+      workouts_completed: 0,
+    });
+  });
+
+  // The series never leaks another household member's week into this one.
+  it("counts only the caller's own logs", async () => {
+    const mine = await registered();
+    const theirs = await registered();
+    await log(theirs, { type: "water", logged_for: today(), value: 2000 }).expect(201);
+
+    const summary = await summaryFor(mine);
+
+    expect(summary?.days?.every((day) => day.water_ml === 0)).toBe(true);
   });
 });

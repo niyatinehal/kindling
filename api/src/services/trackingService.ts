@@ -71,6 +71,15 @@ export async function recordLog(prisma: PrismaClient, input: LogInput): Promise<
   return prisma.trackingLog.create({ data });
 }
 
+/** One calendar day's totals — the series behind the dashboard charts. */
+export type TrackingDay = {
+  date: string;
+  water_ml: number;
+  sleep_minutes: number;
+  workouts_completed: number;
+  meals_logged: number;
+};
+
 export type TrackingSummary = {
   from: string;
   to: string;
@@ -81,6 +90,8 @@ export type TrackingSummary = {
   workouts_scheduled: number;
   workout_adherence: number | null;
   meals_logged: number;
+  /** Exactly `days` entries, oldest first, zero-filled. */
+  days: TrackingDay[];
 };
 
 /**
@@ -122,6 +133,39 @@ export async function summarise(
   const perWeek = activePlan?.exercises.length ?? 0;
   const scheduled = Math.round((perWeek * days) / 7);
 
+  // Zero-filled and dense: a day with no logs is a real zero, and a chart that
+  // silently omits it would compress the week and misplace every bar. The series
+  // is built from the window, then filled from the logs — never the reverse.
+  const series = new Map<string, TrackingDay>();
+  for (let offset = 0; offset < days; offset += 1) {
+    const day = new Date(from);
+    day.setUTCDate(day.getUTCDate() + offset);
+    const date = day.toISOString().slice(0, 10);
+    series.set(date, {
+      date,
+      water_ml: 0,
+      sleep_minutes: 0,
+      workouts_completed: 0,
+      meals_logged: 0,
+    });
+  }
+
+  for (const log of logs) {
+    const entry = series.get(log.loggedFor.toISOString().slice(0, 10));
+    if (entry === undefined) {
+      continue;
+    }
+    if (log.type === "water") {
+      entry.water_ml += log.value ?? 0;
+    } else if (log.type === "sleep") {
+      entry.sleep_minutes += log.value ?? 0;
+    } else if (log.type === "workout" && log.status === "completed") {
+      entry.workouts_completed += 1;
+    } else if (log.type === "meal") {
+      entry.meals_logged += 1;
+    }
+  }
+
   return {
     from: from.toISOString().slice(0, 10),
     to: to.toISOString().slice(0, 10),
@@ -133,6 +177,7 @@ export async function summarise(
     workout_adherence:
       scheduled === 0 ? null : Math.min(100, Math.round((completed.length / scheduled) * 100)),
     meals_logged: logs.filter((log) => log.type === "meal").length,
+    days: [...series.values()],
   };
 }
 

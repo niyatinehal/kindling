@@ -73,6 +73,9 @@ export function HomeView({
               <LinkButton href="/meals" variant="secondary">
                 {t("mealsCta")}
               </LinkButton>
+              <LinkButton href="/dashboard" variant="secondary">
+                {t("viewDashboard")}
+              </LinkButton>
             </>
           ) : (
             <LinkButton href="/onboarding/profile">{t("startIntake")}</LinkButton>
