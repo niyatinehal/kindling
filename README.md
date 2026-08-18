@@ -241,6 +241,12 @@ auth, which does NOT come from this repo:
   your machine. The callback entry is the load-bearing one: the app names that
   destination itself (`web/app/api/auth/otp/route.ts`), and GoTrue drops a
   `redirect_to` it has not been told to allow.
+- **Authentication → Sessions**: set an inactivity timeout of 1 week, to match
+  `[auth.sessions]` in `supabase/config.toml`. Left at the default a session
+  never expires at all, because the middleware refreshes it on every request.
+  Use the inactivity setting rather than the time-box: a time-box signs the
+  whole family out every seventh day regardless of use, and each of those
+  sign-ins spends an email from the daily quota.
 - **Authentication → Emails → SMTP**: the same Brevo values as the local `.env`.
   `supabase/config.toml` is read by the CLI only — a hosted project never sees it.
 - **Authentication → Emails → Templates → Magic Link**: paste the contents of
