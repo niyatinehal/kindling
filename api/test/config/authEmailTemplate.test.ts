@@ -34,3 +34,45 @@ describe("supabase magic-link email template", () => {
     expect(block).toMatch(/content_path\s*=\s*"[^"]*templates\/magic_link\.html"/);
   });
 });
+
+/**
+ * The SMTP block is the one place in this repo where a credential could plausibly
+ * get committed: it is a config file, it lives in git, and the fastest way to make
+ * mail work is to paste the key straight in. So the test does not check that SMTP
+ * is on or off — a developer flips that locally, legitimately — it checks that
+ * however it is set, the secrets still come from the environment.
+ */
+describe("supabase SMTP configuration", () => {
+  const smtpBlock = (): string => {
+    const config = repoFile("supabase/config.toml");
+    const start = config.indexOf("[auth.email.smtp]");
+    expect(start).toBeGreaterThan(-1);
+    // To the next top-level table, so a later section's values cannot leak in.
+    const rest = config.slice(start + 1);
+    const end = rest.indexOf("\n[");
+    return end === -1 ? rest : rest.slice(0, end);
+  };
+
+  it("takes every credential from the environment, never a literal", () => {
+    const block = smtpBlock();
+
+    for (const field of ["host", "user", "pass", "admin_email", "sender_name"]) {
+      expect(block).toMatch(new RegExp(`^${field}\\s*=\\s*"env\\([A-Z_]+\\)"$`, "m"));
+    }
+  });
+
+  it("keeps the port a literal, because the CLI rejects env() on an integer field", () => {
+    expect(smtpBlock()).toMatch(/^port\s*=\s*\d+$/m);
+  });
+
+  // 2/hour is the CLI default and it only starts applying once real SMTP is on.
+  // A household signing in over one breakfast is not abusive traffic, and the
+  // symptom of hitting it is a sign-in that silently stops emailing anyone.
+  it("allows a household's worth of sign-in emails per hour", () => {
+    const config = repoFile("supabase/config.toml");
+    const limit = /^email_sent\s*=\s*(\d+)$/m.exec(config);
+
+    expect(limit).not.toBeNull();
+    expect(Number(limit?.[1])).toBeGreaterThanOrEqual(10);
+  });
+});

@@ -196,7 +196,11 @@ password_requirements = ""
 
 [auth.rate_limit]
 # Number of emails that can be sent per hour. Requires auth.email.smtp to be enabled.
-email_sent = 2
+# 2/hour is the CLI default and it only starts applying once real SMTP is
+# configured. A household is not abusive traffic: five people signing in over
+# one breakfast is five emails, and re-requesting a code that landed in spam is
+# normal behaviour. 30 leaves room for that while still capping a runaway loop.
+email_sent = 30
 # Number of SMS messages that can be sent per hour. Requires auth.sms to be enabled.
 sms_sent = 30
 # Number of anonymous sign-ins that can be made per hour per IP address. Requires enable_anonymous_sign_ins = true.
@@ -233,15 +237,42 @@ otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).
 otp_expiry = 3600
 
-# Use a production-ready SMTP server
-# [auth.email.smtp]
-# enabled = true
-# host = "smtp.sendgrid.net"
-# port = 587
-# user = "apikey"
-# pass = "env(SENDGRID_API_KEY)"
-# admin_email = "admin@email.com"
-# sender_name = "Admin"
+# A real SMTP relay, so sign-in codes reach real inboxes.
+#
+# `enabled = false` is the committed default and it is not a placeholder: with
+# SMTP off, GoTrue delivers to the stack's bundled Mailpit inbox at
+# http://127.0.0.1:54324 and nothing leaves the machine. That is the right
+# default twice over — a local stack pointed at a real relay emails real people
+# every time anyone tests a sign-in and spends the daily quota doing it, and a
+# fresh clone has no credentials to offer.
+#
+# It must stay `false` unless SMTP_* are actually set. There is no graceful
+# degradation here: with `enabled = true` and the variables unset, the CLI passes
+# the literal string "env(SMTP_HOST)" through to GoTrue, which then fails every
+# send with a bare 500 `unexpected_failure` and no hint as to why. Verified the
+# hard way.
+#
+# To send real mail: fill in SMTP_* in the root `.env` (see `.env.example` for
+# which provider to pick and why), flip this to true, then restart the stack —
+# `npx supabase stop && npx supabase start`. The CLI reads both this file and
+# `.env` only at startup, so nothing short of a restart picks up either change.
+#
+# Every value below is read from the environment, which is what makes this safe
+# to commit: no vendor is hardcoded, and no credential ever lands in git.
+[auth.email.smtp]
+enabled = false
+host = "env(SMTP_HOST)"
+# A literal, not an env var: this field is typed as an integer and the CLI
+# refuses an env() string here. 587 (submission with STARTTLS) is the port every
+# mainstream relay accepts — Brevo, Resend, SES, Mailgun, Postmark — so there is
+# nothing to vary per environment.
+port = 587
+user = "env(SMTP_USER)"
+pass = "env(SMTP_PASS)"
+# The From: address. Providers reject mail from an address they have not
+# verified, so this is not a free-text label.
+admin_email = "env(SMTP_SENDER_EMAIL)"
+sender_name = "env(SMTP_SENDER_NAME)"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]

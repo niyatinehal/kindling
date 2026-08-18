@@ -117,13 +117,42 @@ or anonymising the domain `users` row **first**, then deleting the auth account.
 
 ### Sign-in emails
 
-**Local development never delivers email to a real inbox, and this is not a
-bug.** `[local_smtp]` in `config.toml` points Auth's SMTP host at the Mailpit
-container (`GOTRUE_SMTP_HOST=supabase_inbucket_<project>`, port 1025), which
-accepts every message and forwards none. A sign-in request answers `{"sent":
-true}` and the mail is waiting at **http://127.0.0.1:54324** — waiting on Gmail
-instead is the trap. Real delivery needs the `[auth.email.smtp]` block filled in
-with an actual provider.
+**By default local development never delivers email to a real inbox, and this is
+not a bug.** With `[auth.email.smtp]` disabled, Auth's SMTP host points at the
+Mailpit container (`GOTRUE_SMTP_HOST=supabase_inbucket_<project>`, port 1025),
+which accepts every message and forwards none. A sign-in request answers
+`{"sent": true}` and the mail is waiting at **http://127.0.0.1:54324** — waiting
+on Gmail instead is the trap.
+
+**To deliver real mail, three things must be true together.** Doing only the
+first changes nothing; doing only the second breaks sending outright.
+
+1. `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `SMTP_SENDER_EMAIL` and
+   `SMTP_SENDER_NAME` are set in the root `.env` — the Supabase CLI reads that
+   file itself, so they do not need exporting.
+2. `enabled = true` in `[auth.email.smtp]` in `config.toml`.
+3. `npx supabase stop && npx supabase start`. Both files are read only at stack
+   start.
+
+`enabled = true` with the variables unset is the one combination to avoid: the
+CLI passes the literal string `env(SMTP_HOST)` through to GoTrue, and every send
+then fails with a bare `500 unexpected_failure` that names nothing. The port is a
+literal `587` rather than an env var because the CLI rejects `env()` on an
+integer field; 587 is what every mainstream relay accepts.
+
+`api/test/config/authEmailTemplate.test.ts` does not pin whether SMTP is on —
+that is a local choice — only that the credentials come from the environment
+however it is set. A key pasted inline to make mail work quickly is the failure
+this guards.
+
+**Choosing a provider depends on whether you own a domain.** Without one, Brevo
+verifies a single sender address (a personal Gmail works) and will then deliver
+to anyone, ~300/day free. With one, Resend or Postmark give better
+deliverability — but note Resend's free tier delivers only to your own account
+address until a domain is verified, which makes it useless for testing with
+family. Either way, add the provider's SPF and DKIM records: a six-digit code
+from an unauthenticated brand-new sender goes to spam, which looks exactly like
+mail that was never sent.
 
 **The sign-in screen wants a typed code, so the email template is overridden.**
 `signInWithOtp` sends the `magic_link` mail type, whose built-in GoTrue template
@@ -140,10 +169,11 @@ The code is accepted even though `auth.one_time_tokens` stores its hash with a
 `flowType` override is needed, and adding one is not the fix for a rejected
 code.
 
-**`email_sent = 2` is the local cap, per hour.** A third sign-in request within
-the hour is refused by Auth, which `POST /api/auth/otp` reports as a generic
-`502 OTP_REQUEST_FAILED` — identical to the response for a genuinely broken
-mailer. When sign-in stops working after a couple of test runs, check
+**`email_sent` caps sign-in emails per hour, and only once real SMTP is on.**
+The CLI ships `2`, which a single household exhausts over one breakfast; this
+repo sets `30`. Past the cap Auth refuses the request and `POST /api/auth/otp`
+reports a generic `502 OTP_REQUEST_FAILED` — identical to the response for a
+genuinely broken mailer. When sign-in stops working after a few test runs, check
 `[auth.rate_limit]` before debugging anything else; restarting the stack clears
 the counter.
 
