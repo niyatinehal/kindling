@@ -236,8 +236,11 @@ database password, and the pooled and direct connection strings. Then configure
 auth, which does NOT come from this repo:
 
 - **Authentication → URL Configuration**: set Site URL to the Vercel URL from
-  step 4, and add it to Redirect URLs. Left at the default, every sign-in link
-  points at `localhost` and nothing works away from your machine.
+  step 4, and add `<vercel-url>/auth/callback` to Redirect URLs. Left at the
+  default, every sign-in link points at `localhost` and nothing works away from
+  your machine. The callback entry is the load-bearing one: the app names that
+  destination itself (`web/app/api/auth/otp/route.ts`), and GoTrue drops a
+  `redirect_to` it has not been told to allow.
 - **Authentication → Emails → SMTP**: the same Brevo values as the local `.env`.
   `supabase/config.toml` is read by the CLI only — a hosted project never sees it.
 - **Authentication → Emails → Templates → Magic Link**: paste the contents of

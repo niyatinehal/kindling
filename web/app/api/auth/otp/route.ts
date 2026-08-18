@@ -13,8 +13,20 @@ export async function POST(request: Request) {
 
   const supabase = await createSupabaseServerClient();
   const isEmail = parsed.data.contact.includes("@");
+  const origin = new URL(request.url).origin;
   const { error } = await supabase.auth.signInWithOtp(
-    isEmail ? { email: parsed.data.contact } : { phone: parsed.data.contact },
+    isEmail
+      ? {
+          email: parsed.data.contact,
+          // Where the link in the email comes back to. Left unset, Supabase
+          // falls back to the project's Site URL — the site root, which has no
+          // way to exchange the `code` the link carries. /auth/callback is the
+          // only route that can, and it is the same one the Google flow returns
+          // to. Naming it here also means the link stops depending on a
+          // dashboard setting this repo cannot pin or test.
+          options: { emailRedirectTo: new URL("/auth/callback", origin).toString() },
+        }
+      : { phone: parsed.data.contact },
   );
 
   if (error) {
