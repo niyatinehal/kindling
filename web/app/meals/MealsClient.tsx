@@ -7,6 +7,7 @@ import { readJsonBody } from "../../src/api/readJsonBody";
 import { PANTRY_GROUPS } from "../../src/meals/mealTypes";
 import type { MealSuggestion } from "../../src/meals/mealTypes";
 import { Alert } from "../../src/ui/Alert";
+import { BackLink } from "../../src/ui/BackLink";
 import { Button } from "../../src/ui/Button";
 import { Card } from "../../src/ui/Card";
 import { ChoiceGroup } from "../../src/ui/ChoiceGroup";
@@ -108,6 +109,8 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
 
   return (
     <Screen title={t("title")}>
+      <BackLink href="/home">{t("backHome")}</BackLink>
+
       {error !== undefined && (
         <Alert>{tError.has(error) ? tError(error) : tError("UNKNOWN")}</Alert>
       )}

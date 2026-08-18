@@ -34,7 +34,8 @@
     "startIntake": "Get started",
     "viewPlan": "See my plan",
     "setUpFamily": "Set up a family",
-    "mealsCta": "Plan a meal"
+    "mealsCta": "Plan a meal",
+    "viewDashboard": "See my week"
   },
   "onboarding": {
     "title": "Build your plan",
@@ -131,12 +132,16 @@
       "no_dairy": "No dairy",
       "no_gluten": "No gluten",
       "no_nuts": "No nuts"
-    }
+    },
+    "backHome": "Back to home",
+    "editTitle": "Your details",
+    "backPlan": "Back to my plan",
+    "saveAndRebuild": "Save and rebuild my plan"
   },
   "plan": {
     "title": "Your plan",
     "generate": "Build my plan",
-    "regenerate": "Rebuild my plan",
+    "regenerate": "Edit my details and rebuild",
     "generating": "Building…",
     "empty": "You don't have a plan yet. Build one from your profile — it takes a second.",
     "restLabel": "Rest day",
@@ -214,7 +219,9 @@
       "jump_rope": "Jump rope",
       "treadmill_walk": "Treadmill walk",
       "stationary_bike": "Stationary bike"
-    }
+    },
+    "backHome": "Back to home",
+    "regenerateHint": "Your plan comes from your details, so change what's different and we'll build a new one."
   },
   "error": {
     "title": "Something went wrong",
@@ -266,7 +273,9 @@
       "adult": "Adult — full access to their own plan",
       "child": "Child — guarded account",
       "elderly": "Elderly — simplified, gently monitored"
-    }
+    },
+    "backHome": "Back to home",
+    "viewDashboard": "See how everyone's doing"
   },
   "tracking": {
     "thisWeek": "This week",
@@ -381,6 +390,57 @@
     "customHint": "Anything not on the list — your own recipe, a family dish, something you ate out.",
     "customLabel": "What did you eat?",
     "customLog": "Log this meal",
-    "customLogged": "Logged"
+    "customLogged": "Logged",
+    "backHome": "Back to home"
+  },
+  "dashboard": {
+    "title": "Your week",
+    "back": "Back to home",
+    "empty": "Nothing logged yet. Add a glass of water or tick off a workout and this fills in.",
+    "waterTotal": "Water",
+    "sleepAverage": "Sleep a night",
+    "workoutsDone": "Workouts",
+    "adherenceLabel": "Workouts completed",
+    "adherenceCaption": "{done} of {scheduled} · {percent}%",
+    "waterChart": "Water each day",
+    "waterChartHint": "The line is a {litres}L daily goal.",
+    "sleepChart": "Sleep each night",
+    "sleepChartHint": "The line is seven hours.",
+    "workoutChart": "Exercises completed",
+    "workoutChartHint": "One bar per day, counting the exercises you ticked off.",
+    "mealChart": "Meals logged",
+    "mealChartHint": "Every dish you recorded, from the planner or your own kitchen.",
+    "noneLogged": "nothing logged",
+    "exercisesDone": "{count} exercises",
+    "mealsLoggedCount": "{count} meals",
+    "footnote": "The last seven days, including today. Hover or long-press a bar for its exact figure."
+  },
+  "familyDashboard": {
+    "title": "How everyone's doing",
+    "back": "Back to family",
+    "intro": "Only what each person has chosen to share with the family appears here.",
+    "notAdmin": "This is for the person who set up the family. Ask them to share what you need.",
+    "sharesNothing": "Keeping their tracking private.",
+    "nothingYet": "Nothing logged yet",
+    "water": "Water this week",
+    "waterValue": "{litres}L",
+    "sleep": "Sleep",
+    "sleepValue": "{hours}h a night over {nights} nights",
+    "workouts": "Workouts",
+    "workoutValue": "{done} of {scheduled} done",
+    "meals": "Meals logged",
+    "mealValue": "{count}",
+    "adherence": "Keeping up with their plan",
+    "adherenceCaption": "Based on {days, plural, one {# day} other {# days}} logged",
+    "sharedNote": "Sharing {count, plural, one {# category} other {# categories}} with the family.",
+    "footnote": "The last seven days. Each person controls what shows up here from their own family settings.",
+    "roles": {
+      "admin": "Admin",
+      "adult": "Adult",
+      "child": "Child",
+      "elderly": "Elderly"
+    },
+    "noPlanYet": "No plan yet · logged on {days, plural, one {# day} other {# days}} this week",
+    "noPlanScheduled": "No plan yet"
   }
 }
