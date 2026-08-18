@@ -9,6 +9,20 @@ export const metadata = {
   title: "Family Wellness Platform",
   description: "One app a whole family opens.",
   manifest: "/manifest.webmanifest",
+  // The manifest covers Android and desktop. iOS reads none of it: Safari takes
+  // the home-screen icon from `apple-touch-icon` and standalone display from
+  // the meta tag `appleWebApp` emits, so without these an install on an iPhone
+  // gets a screenshot of the page for an icon and opens in a browser tab.
+  icons: {
+    icon: "/icon-192.png",
+    apple: "/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    title: "Wellness",
+    // `default` keeps the status bar legible against `--color-canvas`.
+    // `black-translucent` would draw the page under the clock and battery.
+    statusBarStyle: "default",
+  },
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
