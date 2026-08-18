@@ -215,6 +215,105 @@ but since these steps come after creating `.env`, pass it explicitly.)
 
 Stop the container with `docker compose down`.
 
+## Deploy it
+
+Three services, and the order matters: each one needs a value the previous one
+produces.
+
+Everything below is the free tier, which has two consequences worth knowing
+before anyone in the family is told the URL. Render's free instance sleeps after
+15 minutes idle and takes roughly 50 seconds to wake, and a free Supabase project
+pauses after 7 days with no queries. Both are fixed by the same thing — a keep-warm
+ping, step 5.
+
+### 1. Supabase Cloud — database, auth, email
+
+Create a project in **ap-south-1 (Mumbai)**: every request makes at least one
+database round trip, and this is health data belonging to people in India.
+
+From Project Settings collect four things — the project ref, the anon key, the
+database password, and the pooled and direct connection strings. Then configure
+auth, which does NOT come from this repo:
+
+- **Authentication → URL Configuration**: set Site URL to the Vercel URL from
+  step 4, and add it to Redirect URLs. Left at the default, every sign-in link
+  points at `localhost` and nothing works away from your machine.
+- **Authentication → Emails → SMTP**: the same Brevo values as the local `.env`.
+  `supabase/config.toml` is read by the CLI only — a hosted project never sees it.
+- **Authentication → Emails → Templates → Magic Link**: paste the contents of
+  `supabase/templates/magic_link.html`. This is the easiest step to skip and the
+  failure is subtle: the built-in template renders a link and no code, so the
+  code field on `/signin` becomes impossible to fill in. That is the exact bug
+  this template exists to fix locally.
+
+### 2. Migrations
+
+Run from your machine, against the new database. `DIRECT_URL` (port 5432, not the
+pooler) is what the schema engine needs:
+
+```bash
+cd api && DIRECT_URL='<supabase direct connection string>' npx prisma migrate deploy
+```
+
+**Never run `npm run db:seed` against production.** It provisions
+`admin@demo.test` and `adult@demo.test` as real auth accounts — known addresses
+with working sign-in links. `render.yaml` deliberately omits
+`SUPABASE_SERVICE_ROLE_KEY` so a stray attempt fails rather than succeeds.
+
+### 3. Render — the API
+
+`render.yaml` is a blueprint: point Render at this repo and it reads the service's
+region, health check and variable list from there. Set the three `sync: false`
+values in the dashboard:
+
+| Variable       | Value                                                   |
+| -------------- | ------------------------------------------------------- |
+| `DATABASE_URL` | Supabase **pooled** string (port 6543)                  |
+| `DIRECT_URL`   | Supabase **direct** string (port 5432)                  |
+| `SUPABASE_URL` | `https://<project-ref>.supabase.co` — no trailing slash |
+
+`PORT` is injected by Render and must not be set. The resulting URL —
+`https://wellness-api.onrender.com` — is what step 4 needs.
+
+### 4. Vercel — the web app
+
+Import the repo and set **Root Directory** to `web`. This is an npm workspace, so
+Vercel installs from the repo root; that setting is what tells it which workspace
+to build. Then three variables:
+
+| Variable                        | Value                               |
+| ------------------------------- | ----------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | `https://<project-ref>.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | the anon key — public by design     |
+| `API_BASE_URL`                  | the Render URL from step 3          |
+
+`API_BASE_URL` has no `NEXT_PUBLIC_` prefix on purpose. Only this app's route
+handlers call the API, always server-side, so the browser never learns where it
+lives. The service-role key is never set here.
+
+Take the resulting URL back to step 1 and set it as the Supabase Site URL.
+
+### 5. Keep it awake
+
+Point a free external monitor — UptimeRobot at 5-minute intervals, or
+cron-job.org — at `https://wellness-api.onrender.com/healthz`. That single ping
+solves both free-tier problems at once: it keeps Render's instance from sleeping,
+and because `/healthz` checks the database, it counts as activity that stops the
+Supabase project pausing.
+
+Do not use a GitHub Actions schedule for this. Actions bills a minimum of one
+minute per run, so a 10-minute ping costs ~4,300 minutes a month against a
+private repo's 2,000-minute allowance. An external monitor costs nothing.
+
+Staying awake uses roughly 730 of Render's 750 free instance-hours per month, so
+one always-on free service fits — a second one would not.
+
+### What is not automated
+
+There is no deploy job in CI. Render and Vercel both build on push to `main`, and
+migrations are run by hand, deliberately: `prisma migrate deploy` against a
+database holding real health data is not something to trigger by merging.
+
 ## Run the tests
 
 ```bash

@@ -1,0 +1,48 @@
+# Render blueprint for the Express API.
+#
+# Committed rather than configured by hand in the dashboard so the service's
+# shape — region, health check, which variables exist — is reviewable and
+# reproducible. Secrets are NOT here: every `sync: false` variable is set once in
+# the Render dashboard and never travels through git.
+#
+# The web app is not in this file. It runs on Vercel, which reads the repo
+# directly and needs no blueprint.
+services:
+  - type: web
+    name: wellness-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    # Closest Render region to India. Latency to Supabase's ap-south-1 is the
+    # part that matters, since every request makes at least one database round
+    # trip.
+    region: singapore
+    # Render ignores the Dockerfile's HEALTHCHECK and uses this instead. Pointing
+    # it at /healthz — which checks the database, not just the process — means a
+    # deploy that cannot reach Postgres fails the rollout rather than serving
+    # 500s.
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # PORT is injected by Render and deliberately absent here. The Dockerfile's
+      # ENV PORT=3000 is a local default; a runtime variable overrides it, and
+      # hardcoding one would make the service unreachable.
+      #
+      # Pooled connection (Supabase's pooler, port 6543) — every runtime query.
+      - key: DATABASE_URL
+        sync: false
+      # Direct connection (port 5432). The request path never opens it, but
+      # src/config/env.ts requires it at boot, so its absence crash-loops the
+      # container rather than degrading.
+      - key: DIRECT_URL
+        sync: false
+      # Drives the JWT issuer and the JWKS endpoint. No trailing slash.
+      - key: SUPABASE_URL
+        sync: false
+      # SUPABASE_SERVICE_ROLE_KEY is deliberately NOT set. Only the seed's
+      # auth-user provisioner reads it, the request path never does, and
+      # production must never be seeded — the demo accounts are known addresses
+      # with working sign-in links. Leaving the key out means a stray `db seed`
+      # against production fails instead of succeeding.
