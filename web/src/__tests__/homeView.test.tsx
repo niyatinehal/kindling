@@ -1,6 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 
+// HomeView now contains a client island that calls `useRouter`, which throws
+// outside a mounted app router. Nothing here drives it — this only lets the
+// screen render.
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: jest.fn(), refresh: jest.fn() }),
+}));
+
 import messages from "../../messages/en.json";
 import { EMPTY_SUMMARY } from "../tracking/summaryTypes";
 import { HomeView } from "../../app/home/HomeView";
@@ -51,6 +58,10 @@ describe("HomeView", () => {
       "−",
       "+",
       messages.tracking.logSleep,
+      // Signing out is a session control, not an account action: it ends the
+      // anonymous session rather than claiming or upgrading it, so a guest is
+      // offered it on the same terms as anyone else.
+      messages.home.signOut,
     ]);
   });
 });

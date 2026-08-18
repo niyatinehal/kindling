@@ -4,6 +4,7 @@ import type { TrackingSummary } from "../../src/tracking/summaryTypes";
 import { Card } from "../../src/ui/Card";
 import { LinkButton } from "../../src/ui/LinkButton";
 import { Screen } from "../../src/ui/Screen";
+import { SignOutButton } from "./SignOutButton";
 import { TrackingTiles } from "./TrackingTiles";
 
 /**
@@ -99,6 +100,13 @@ export function HomeView({
           </LinkButton>
         </div>
       </Card>
+
+      {/*
+        Last on the screen and the quietest variant on it, because signing out
+        is the one control here nobody is looking for until they want it — and
+        on a shared family device, one they must be able to find.
+      */}
+      <SignOutButton />
     </Screen>
   );
 }

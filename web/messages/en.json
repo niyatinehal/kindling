@@ -34,7 +34,8 @@
     "viewPlan": "See my plan",
     "setUpFamily": "Set up a family",
     "mealsCta": "Plan a meal",
-    "viewDashboard": "See my week"
+    "viewDashboard": "See my week",
+    "signOut": "Sign out"
   },
   "onboarding": {
     "title": "Build your plan",
@@ -247,7 +248,8 @@
     "FORBIDDEN_ROLE": "Your role in the family doesn't allow that.",
     "FAMILY_ACTION_FAILED": "That didn't work. Please try again in a moment.",
     "TRACKING_FAILED": "We couldn't save that. Please try again in a moment.",
-    "MEAL_SUGGEST_FAILED": "We couldn't put suggestions together. Please try again in a moment."
+    "MEAL_SUGGEST_FAILED": "We couldn't put suggestions together. Please try again in a moment.",
+    "SIGN_OUT_FAILED": "We couldn't sign you out. Please try again in a moment."
   },
   "family": {
     "title": "Your family",
