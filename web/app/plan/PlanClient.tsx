@@ -119,7 +119,7 @@ export function PlanClient({
       )}
 
       {!hasProfile ? (
-        <Card tone="ink">
+        <Card tone="emphasis">
           <p className="text-lg leading-relaxed">{t("noProfile")}</p>
           <div className="mt-4">
             <LinkButton href="/onboarding/profile">{t("goToProfile")}</LinkButton>
@@ -128,7 +128,7 @@ export function PlanClient({
       ) : (
         <>
           {plan === null && (
-            <Card tone="ink">
+            <Card tone="emphasis">
               <p className="text-lg leading-relaxed">{t("empty")}</p>
             </Card>
           )}

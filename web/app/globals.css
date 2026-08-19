@@ -1,31 +1,130 @@
 @import "tailwindcss";
 
 /*
- * The palette, once. Names are SEMANTIC — `accent`, not `green-600` — so that
- * changing the colour scheme never means touching a component.
+ * The palette, twice — once per theme. Names are SEMANTIC (`accent`, not
+ * `green-600`) so that changing the colour scheme never means touching a
+ * component, and now so that changing the whole THEME does not either.
  *
- * The contrast figures are measured, not estimated, and they are why there are
- * three accents rather than one:
+ * Raw values live on `--c-*`; `@theme inline` below maps each `--color-*` to
+ * one. `inline` is load-bearing: it makes Tailwind emit `var(--c-ink)` into
+ * every utility instead of baking the hex, so flipping `data-theme` on <html>
+ * re-points the entire app at once.
  *
- *   ink on canvas ............ 11.3:1  passes AAA
- *   white on accent .......... 5.02:1  passes AA
- *   white on accent-bright ... 3.30:1  FAILS AA for normal text
+ * The contrast figures are measured, not estimated:
  *
- * So `accent` is the only colour that ever carries white text. `accent-bright`
- * and `accent-glow` are for large accents, progress fills and non-text only.
+ *                              light          dark
+ *   ink on canvas ......... 11.29:1 AAA   14.18:1 AAA
+ *   muted on canvas ........ 4.83:1 AA     7.82:1 AAA
+ *   white/dark on accent ... 5.02:1 AA     7.63:1 AAA
+ *   emphasis label ......... 7.00:1 AAA    6.23:1 AA
+ *
+ * Two rules survive from the light-only palette and still hold. `accent` is
+ * the only colour that ever carries `surface` text. `accent-bright` and
+ * `accent-glow` are for large accents, progress fills and non-text only —
+ * accent-glow measures 1.74:1 on a white card, so it may never sit on one.
+ * It exists for `emphasis-label`, where the ground is dark in both themes.
+ *
+ * Pinned by `src/theme/__tests__/palette.test.ts`, which recomputes every
+ * figure above and fails the build if one drops below its threshold.
  */
-@theme {
-  --color-ink: #0b3d2e;
-  --color-canvas: #f4f7f2;
-  --color-surface: #ffffff;
-  --color-accent: #15803d;
-  --color-accent-bright: #16a34a;
-  --color-accent-glow: #4ade80;
-  --color-muted: #5d7166;
-  --color-line: #dde7de;
+:root {
+  --c-ink: #0b3d2e;
+  --c-canvas: #f4f7f2;
+  --c-surface: #ffffff;
+  --c-accent: #15803d;
+  --c-accent-bright: #16a34a;
+  --c-accent-glow: #4ade80;
+  --c-muted: #5d7166;
+  --c-line: #dde7de;
+
+  /*
+   * The emphasis card gets its own three, rather than reusing `ink` as a
+   * ground. `ink` means "the darkest colour" when it is text and "the card you
+   * should look at" when it is a background, and those two meanings point in
+   * opposite directions the moment a theme swaps: remapping `ink` to a light
+   * value turns the card inside out and puts the glow label on near-white at
+   * 1.55:1.
+   */
+  --c-emphasis: #0b3d2e;
+  --c-on-emphasis: #f4f7f2;
+  --c-emphasis-label: #4ade80;
+
+  --c-shadow-card: 0 1px 2px rgb(11 61 46 / 0.04), 0 8px 24px -12px rgb(11 61 46 / 0.18);
+}
+
+/*
+ * Dark, twice, and the two blocks MUST stay identical.
+ *
+ * They cannot be merged: one is reached through a media query and the other
+ * through an attribute selector, and CSS has no way to say "either of these".
+ * `palette.test.ts` asserts the two declare the same values, so the
+ * duplication cannot rot.
+ *
+ * The `:not([data-theme="light"])` guard is what lets an explicit light choice
+ * beat a dark system preference.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --c-ink: #eaf4ee;
+    --c-canvas: #07271d;
+    --c-surface: #0f3629;
+    --c-accent: #4ade80;
+    --c-accent-bright: #22c55e;
+    --c-accent-glow: #4ade80;
+    --c-muted: #9dbdab;
+    --c-line: #24614a;
+
+    --c-emphasis: #164534;
+    --c-on-emphasis: #eaf4ee;
+    --c-emphasis-label: #4ade80;
+
+    /*
+     * Not a darker shadow — no shadow. A shadow is a darkening, and there is
+     * nothing left to darken against #07271d. The border takes over the job of
+     * separating a card from the page, which is why `--c-line` steps up here
+     * rather than merely being recoloured.
+     */
+    --c-shadow-card: none;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --c-ink: #eaf4ee;
+  --c-canvas: #07271d;
+  --c-surface: #0f3629;
+  --c-accent: #4ade80;
+  --c-accent-bright: #22c55e;
+  --c-accent-glow: #4ade80;
+  --c-muted: #9dbdab;
+  --c-line: #24614a;
+
+  --c-emphasis: #164534;
+  --c-on-emphasis: #eaf4ee;
+  --c-emphasis-label: #4ade80;
+
+  --c-shadow-card: none;
+}
+
+@theme inline {
+  --color-ink: var(--c-ink);
+  --color-canvas: var(--c-canvas);
+  --color-surface: var(--c-surface);
+  --color-accent: var(--c-accent);
+  --color-accent-bright: var(--c-accent-bright);
+  --color-accent-glow: var(--c-accent-glow);
+  --color-muted: var(--c-muted);
+  --color-line: var(--c-line);
+
+  --color-emphasis: var(--c-emphasis);
+  --color-on-emphasis: var(--c-on-emphasis);
+  --color-emphasis-label: var(--c-emphasis-label);
 
   --radius-card: 1rem;
-  --shadow-card: 0 1px 2px rgb(11 61 46 / 0.04), 0 8px 24px -12px rgb(11 61 46 / 0.18);
+  --shadow-card: var(--c-shadow-card);
 }
 
 /*

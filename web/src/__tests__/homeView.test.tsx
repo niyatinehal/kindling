@@ -54,6 +54,9 @@ describe("HomeView", () => {
       "/family",
     ]);
     expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual([
+      // The frame's theme toggle, which every screen now carries. Labelled by
+      // `aria-label`, so its textContent is the glyph.
+      "☾",
       messages.tracking.addGlass.replace("{ml}", "250"),
       "−",
       "+",

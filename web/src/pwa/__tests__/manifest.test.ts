@@ -30,10 +30,17 @@ type Manifest = {
 
 const manifest = (): Manifest => JSON.parse(readPublic("manifest.webmanifest")) as Manifest;
 
-/** The single source of the palette, so the manifest cannot drift from the app. */
+/**
+ * The single source of the palette, so the manifest cannot drift from the app.
+ *
+ * Reads `--c-canvas` rather than `--color-canvas`: since the app gained a second
+ * theme the `--color-*` tokens hold `var()` references and the literal values
+ * live on `:root`. The first match is the light one, which is the right one —
+ * a manifest carries a single colour and the install splash is always light.
+ */
 const canvasColour = (): string => {
   const css = readFileSync(join(webRoot, "app", "globals.css"), "utf8");
-  const found = /--color-canvas:\s*(#[0-9a-fA-F]{6})/.exec(css);
+  const found = /--c-canvas:\s*(#[0-9a-fA-F]{6})/.exec(css);
   expect(found).not.toBeNull();
   return (found?.[1] ?? "").toLowerCase();
 };

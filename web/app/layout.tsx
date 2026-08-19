@@ -1,9 +1,13 @@
 import "./globals.css";
 
 import { SerwistProvider } from "@serwist/turbopack/react";
+import type { Viewport } from "next";
+import { cookies } from "next/headers";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import type { ReactNode } from "react";
+
+import { CHROME_COLOUR, THEME_COOKIE, isTheme, type Theme } from "../src/theme/theme";
 
 export const metadata = {
   title: "Family Wellness Platform",
@@ -25,12 +29,55 @@ export const metadata = {
   },
 };
 
+/**
+ * The explicit choice, if one has been made. `undefined` means nobody has
+ * chosen and the system preference should decide — which CSS handles on its
+ * own, so the attribute is left off entirely rather than guessed at here.
+ */
+async function storedTheme(): Promise<Theme | undefined> {
+  const value = (await cookies()).get(THEME_COOKIE)?.value;
+  return isTheme(value) ? value : undefined;
+}
+
+/**
+ * Browser chrome follows the theme.
+ *
+ * With no stored choice this hands over both colours and lets the browser pick
+ * by system preference. With a choice it names a single colour, because the
+ * media queries would otherwise contradict a user who picked dark on a light
+ * machine — the page would be dark and the address bar would not.
+ */
+export async function generateViewport(): Promise<Viewport> {
+  const theme = await storedTheme();
+
+  return {
+    themeColor:
+      theme === undefined
+        ? [
+            { media: "(prefers-color-scheme: light)", color: CHROME_COLOUR.light },
+            { media: "(prefers-color-scheme: dark)", color: CHROME_COLOUR.dark },
+          ]
+        : CHROME_COLOUR[theme],
+  };
+}
+
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const locale = await getLocale();
   const messages = await getMessages();
+  const theme = await storedTheme();
 
   return (
-    <html lang={locale}>
+    /*
+      `data-theme` is rendered here, on the server, from the cookie — so the
+      correct palette is in the first byte of HTML. That is what makes the
+      flash of the wrong theme impossible rather than merely unlikely: there is
+      no moment where the document exists with the other theme applied, and no
+      script racing the first paint to correct it.
+
+      Absent a cookie the attribute is omitted, and `globals.css` falls through
+      to `prefers-color-scheme`.
+    */
+    <html lang={locale} {...(theme !== undefined && { "data-theme": theme })}>
       <body>
         {/*
           The worker is served from /serwist/sw.js, so its *default* scope would

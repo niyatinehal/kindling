@@ -69,7 +69,7 @@ export function DashboardView({ summary }: { summary: TrackingSummary }) {
       <BackLink href="/home">{t("back")}</BackLink>
 
       {nothingLogged && (
-        <Card tone="ink">
+        <Card tone="emphasis">
           <p className="text-lg leading-relaxed">{t("empty")}</p>
         </Card>
       )}

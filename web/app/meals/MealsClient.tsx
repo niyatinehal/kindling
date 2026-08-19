@@ -116,7 +116,7 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
       )}
 
       {!hasProfile && (
-        <Card tone="ink">
+        <Card tone="emphasis">
           {/*
             Suggestions still work without a profile — an unconstrained pantry
             match is a reasonable answer. But without one there are no dietary

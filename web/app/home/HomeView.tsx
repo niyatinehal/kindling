@@ -60,7 +60,7 @@ export function HomeView({
         still promises nothing it cannot deliver — the stat tiles below stay
         empty because no tracking endpoint exists yet.
       */}
-      <Card tone="ink">
+      <Card tone="emphasis">
         <p className="text-sm font-semibold tracking-widest text-accent-glow uppercase">
           {t("todayLabel")}
         </p>

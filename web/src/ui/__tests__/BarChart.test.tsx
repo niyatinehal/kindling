@@ -59,7 +59,10 @@ describe("BarChart", () => {
 
     const line = container.querySelector("line");
     expect(Number(line?.getAttribute("y1"))).toBeGreaterThanOrEqual(0);
-    expect(line?.getAttribute("stroke")).toBe("var(--color-accent-glow)");
+    // `accent`, not `accent-glow`. The target is the reference the whole chart
+    // is read against, and glow measures 1.74:1 on a white card — under the 3:1
+    // floor for non-text UI, so it was very nearly invisible.
+    expect(line?.getAttribute("stroke")).toBe("var(--color-accent)");
   });
 
   // A week of nothing still has to render. The axis is arbitrary at that point,

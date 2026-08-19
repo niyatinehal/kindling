@@ -29,7 +29,7 @@ export function FamilyDashboardView({ members }: { members: MemberPanel[] | null
       <BackLink href="/family">{t("back")}</BackLink>
 
       {members === null ? (
-        <Card tone="ink">
+        <Card tone="emphasis">
           <p className="text-lg leading-relaxed">{t("notAdmin")}</p>
         </Card>
       ) : (

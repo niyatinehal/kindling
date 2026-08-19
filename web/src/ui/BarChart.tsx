@@ -73,7 +73,10 @@ export function BarChart({
           x2={width}
           y1={VALUE_BAND + PLOT_HEIGHT - scale(target)}
           y2={VALUE_BAND + PLOT_HEIGHT - scale(target)}
-          stroke="var(--color-accent-glow)"
+          // 5.02:1 on a light card, 7.63:1 on a dark one. This was
+          // `accent-glow`, which measures 1.74:1 on white — the line the whole
+          // chart is read against, all but invisible.
+          stroke="var(--color-accent)"
           strokeWidth={1}
         />
       )}

@@ -443,5 +443,9 @@
     },
     "noPlanYet": "No plan yet · logged on {days, plural, one {# day} other {# days}} this week",
     "noPlanScheduled": "No plan yet"
+  },
+  "theme": {
+    "switchToDark": "Switch to dark theme",
+    "switchToLight": "Switch to light theme"
   }
 }

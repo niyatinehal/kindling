@@ -77,7 +77,7 @@ export function FamilyClient({ initialFamily }: { initialFamily: FamilySummary |
 
       {family === null ? (
         <>
-          <Card tone="ink">
+          <Card tone="emphasis">
             <p className="text-lg leading-relaxed">{t("noFamilyBody")}</p>
           </Card>
 
