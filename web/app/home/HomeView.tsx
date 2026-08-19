@@ -1,9 +1,11 @@
 import { useTranslations } from "next-intl";
 
 import type { TrackingSummary } from "../../src/tracking/summaryTypes";
+import { WATER_TARGET_ML } from "../../src/tracking/targets";
 import { Card } from "../../src/ui/Card";
 import { LinkButton } from "../../src/ui/LinkButton";
 import { Screen } from "../../src/ui/Screen";
+import { WeekStrip } from "../../src/ui/WeekStrip";
 import { SignOutButton } from "./SignOutButton";
 import { TrackingTiles } from "./TrackingTiles";
 
@@ -36,20 +38,22 @@ export function HomeView({
 
   return (
     <Screen>
-      <header className="flex items-center justify-between gap-3">
-        <h1 className="text-3xl font-bold tracking-tight text-ink">{t("greeting")}</h1>
-        {/*
-          A chip and a note, deliberately not a "claim your account" button:
-          claiming is not built. The note can promise nothing is lost because a
-          guest is a real anonymous user — linking an identity later keeps the
-          same auth.users.id, and therefore the same domain row.
-        */}
-        {isGuest && (
-          <span className="rounded-full border border-line bg-surface px-3 py-1 text-sm font-semibold text-muted">
-            {t("guestChip")}
-          </span>
-        )}
-      </header>
+      {/*
+        The greeting and the chip are handed to the hero rather than rendered
+        here: the rings beside them own live tracking state, and a heading that
+        lived outside that component would sit above numbers it could not keep
+        in step.
+
+        The chip is deliberately not a "claim your account" button — claiming is
+        not built. The note can promise nothing is lost because a guest is a real
+        anonymous user: linking an identity later keeps the same auth.users.id,
+        and therefore the same domain row.
+      */}
+      <TrackingTiles
+        initial={summary}
+        greeting={t("greeting")}
+        guestChip={isGuest ? t("guestChip") : undefined}
+      />
 
       {isGuest && <p className="text-muted">{t("guestNote")}</p>}
 
@@ -60,8 +64,8 @@ export function HomeView({
         still promises nothing it cannot deliver — the stat tiles below stay
         empty because no tracking endpoint exists yet.
       */}
-      <Card tone="emphasis">
-        <p className="text-sm font-semibold tracking-widest text-accent-glow uppercase">
+      <Card>
+        <p className="text-sm font-semibold tracking-widest text-emphasis-label uppercase">
           {t("todayLabel")}
         </p>
         <p className="mt-2 text-lg leading-relaxed">
@@ -84,7 +88,18 @@ export function HomeView({
         </div>
       </Card>
 
-      <TrackingTiles initial={summary} />
+      {/*
+        Not a chart — /dashboard already draws those. This answers the cruder
+        question the home screen is for: did the week happen.
+      */}
+      <Card>
+        <WeekStrip
+          days={summary.days.map((day) => ({ date: day.date, value: day.water_ml }))}
+          target={WATER_TARGET_ML}
+          label={t("weekWater")}
+          empty={t("weekEmpty")}
+        />
+      </Card>
 
       {/*
         Family setup exists now, so this card stops being a notice and becomes a

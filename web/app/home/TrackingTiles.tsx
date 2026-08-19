@@ -5,12 +5,21 @@ import { useState } from "react";
 
 import { EMPTY_SUMMARY } from "../../src/tracking/summaryTypes";
 import type { TrackingSummary } from "../../src/tracking/summaryTypes";
+import { SLEEP_TARGET_MINUTES, WATER_TARGET_ML } from "../../src/tracking/targets";
 import { Alert } from "../../src/ui/Alert";
 import { Button } from "../../src/ui/Button";
 import { Card } from "../../src/ui/Card";
+import { ProgressRing } from "../../src/ui/ProgressRing";
 
 /** One tap. Not configurable yet — a glass is the unit people think in. */
 const GLASS_ML = 250;
+
+/**
+ * These figures are the WEEK's, not today's, so the water ring is measured
+ * against a week of the daily target. Part-way through the week it therefore
+ * reads part-full, which is the honest picture: the week is part-way done.
+ */
+const DAYS_IN_WEEK = 7;
 const SLEEP_STEP_MINUTES = 30;
 const DEFAULT_SLEEP_MINUTES = 420;
 
@@ -30,7 +39,15 @@ const today = (): string => new Date().toISOString().slice(0, 10);
  * every log re-reads the summary, so a failed write cannot leave a tile showing
  * a total that was never stored.
  */
-export function TrackingTiles({ initial }: { initial: TrackingSummary }) {
+export function TrackingTiles({
+  initial,
+  greeting,
+  guestChip,
+}: {
+  initial: TrackingSummary;
+  greeting: string;
+  guestChip?: string | undefined;
+}) {
   const t = useTranslations("tracking");
   const tError = useTranslations("errors");
 
@@ -71,33 +88,57 @@ export function TrackingTiles({ initial }: { initial: TrackingSummary }) {
       ? null
       : (summary.sleep_minutes / summary.sleep_nights / 60).toFixed(1);
 
+  const nightlyMinutes =
+    summary.sleep_nights === 0 ? 0 : summary.sleep_minutes / summary.sleep_nights;
+
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold tracking-widest text-muted uppercase">
-        {t("thisWeek")}
-      </h2>
+      {/*
+        The greeting lives inside this client component rather than on the
+        screen above it because the rings beside it have to move the instant
+        something is logged. Splitting them would mean either a server round
+        trip before the numbers caught up, or two sources of truth for the same
+        three figures.
+      */}
+      <div className="-mx-5 rounded-3xl bg-emphasis px-5 pt-5 pb-6 text-on-emphasis">
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="text-3xl font-bold tracking-tight">{greeting}</h1>
+          {guestChip !== undefined && (
+            <span className="rounded-full bg-emphasis-label/15 px-3 py-1 text-sm font-semibold text-emphasis-label">
+              {guestChip}
+            </span>
+          )}
+        </div>
+
+        <p className="mt-1 text-sm font-semibold tracking-widest text-emphasis-label uppercase">
+          {t("thisWeek")}
+        </p>
+
+        <div className="mt-4 grid grid-cols-3 gap-3">
+          <ProgressRing
+            label={t("water")}
+            value={summary.water_ml}
+            target={WATER_TARGET_ML * DAYS_IN_WEEK}
+            display={`${litres}L`}
+          />
+          <ProgressRing
+            label={t("sleep")}
+            value={nightlyMinutes}
+            target={SLEEP_TARGET_MINUTES}
+            display={sleepHours === null ? "—" : `${sleepHours}h`}
+          />
+          <ProgressRing
+            label={t("workouts")}
+            value={summary.workouts_completed}
+            target={summary.workouts_scheduled}
+            display={`${summary.workouts_completed}`}
+          />
+        </div>
+      </div>
 
       {error !== undefined && (
         <Alert>{tError.has(error) ? tError(error) : tError("UNKNOWN")}</Alert>
       )}
-
-      <div className="grid grid-cols-3 gap-3">
-        <Tile value={`${litres}L`} label={t("water")} />
-        <Tile
-          value={sleepHours === null ? "—" : `${sleepHours}h`}
-          label={t("sleep")}
-          hint={sleepHours === null ? undefined : t("nightly")}
-        />
-        <Tile
-          value={`${summary.workouts_completed}`}
-          label={t("workouts")}
-          hint={
-            summary.workouts_scheduled === 0
-              ? undefined
-              : t("ofScheduled", { scheduled: summary.workouts_scheduled })
-          }
-        />
-      </div>
 
       <Card>
         <div className="flex flex-col gap-4">
@@ -154,15 +195,5 @@ export function TrackingTiles({ initial }: { initial: TrackingSummary }) {
         </div>
       </Card>
     </section>
-  );
-}
-
-function Tile({ value, label, hint }: { value: string; label: string; hint?: string | undefined }) {
-  return (
-    <div className="rounded-card border border-line bg-surface p-4 text-center">
-      <div className="text-2xl font-bold text-ink">{value}</div>
-      <div className="mt-1 text-xs text-muted">{label}</div>
-      {hint !== undefined && <div className="text-[0.65rem] text-muted">{hint}</div>}
-    </div>
   );
 }

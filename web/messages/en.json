@@ -35,7 +35,9 @@
     "setUpFamily": "Set up a family",
     "mealsCta": "Plan a meal",
     "viewDashboard": "See my week",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "weekWater": "Water this week",
+    "weekEmpty": "Nothing logged yet this week."
   },
   "onboarding": {
     "title": "Build your plan",
