@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { hasFamily } from "../../src/family/hasFamily";
 import { currentStep } from "../../src/onboarding/currentStep";
 import { hasProfile } from "../../src/onboarding/hasProfile";
 import { isGuestSession } from "../../src/onboarding/isGuestSession";
@@ -26,13 +27,21 @@ export default async function HomePage() {
   }
 
   // Resolved only after the guard has decided this request belongs here, so a
-  // redirected caller never pays for either call. Concurrent because neither
-  // answer depends on the other, and both are round trips.
-  const [isGuest, profileExists, tracking] = await Promise.all([
+  // redirected caller pays for none of them. Concurrent because no answer
+  // depends on another and every one is a round trip.
+  const [isGuest, profileExists, familyExists, tracking] = await Promise.all([
     isGuestSession(),
     hasProfile(),
+    hasFamily(),
     trackingState(),
   ]);
 
-  return <HomeView isGuest={isGuest} hasProfile={profileExists} summary={tracking.summary} />;
+  return (
+    <HomeView
+      isGuest={isGuest}
+      hasProfile={profileExists}
+      inFamily={familyExists}
+      summary={tracking.summary}
+    />
+  );
 }

@@ -152,3 +152,46 @@ describe("logging in flight", () => {
     );
   });
 });
+
+describe("the family card", () => {
+  /*
+    This card used to render "You're not in a family yet." as a hardcoded
+    string, on a screen that never asked. It said that to everyone — including
+    families who had already set one up on the very screen it was offering to
+    take them to.
+  */
+  it("says nothing about membership to someone who has a family", () => {
+    renderView({ inFamily: true });
+
+    expect(screen.queryByText(messages.home.noFamily)).not.toBeInTheDocument();
+    expect(screen.getByText(messages.home.inFamily)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: messages.home.viewFamily })).toHaveAttribute(
+      "href",
+      "/family",
+    );
+  });
+
+  it("offers to set one up when there is none", () => {
+    renderView({ inFamily: false });
+
+    expect(screen.getByText(messages.home.noFamily)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: messages.home.setUpFamily })).toHaveAttribute(
+      "href",
+      "/family",
+    );
+  });
+
+  // The failure mode the three-state answer exists for: an API that blinked
+  // must not produce a confident sentence about a family it never looked up.
+  // The way in stays; the claim does not.
+  it("claims nothing either way when it could not find out", () => {
+    renderView({ inFamily: null });
+
+    expect(screen.queryByText(messages.home.noFamily)).not.toBeInTheDocument();
+    expect(screen.queryByText(messages.home.inFamily)).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: messages.home.openFamily })).toHaveAttribute(
+      "href",
+      "/family",
+    );
+  });
+});

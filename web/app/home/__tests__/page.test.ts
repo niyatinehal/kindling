@@ -24,10 +24,16 @@ jest.mock("../../../src/onboarding/isGuestSession", () => ({
 jest.mock("../../../src/onboarding/hasProfile", () => ({
   hasProfile: jest.fn(() => Promise.resolve(false)),
 }));
+// Stubbed for the same reason: it reads /auth/me too, and the single mocked
+// `Response` these tests hand back cannot have its body consumed twice.
+jest.mock("../../../src/family/hasFamily", () => ({
+  hasFamily: jest.fn(() => Promise.resolve(null)),
+}));
 
 import { redirect } from "next/navigation";
 
 import { callApi } from "../../../src/api/upstream";
+import { hasFamily } from "../../../src/family/hasFamily";
 import { hasProfile } from "../../../src/onboarding/hasProfile";
 import { isGuestSession } from "../../../src/onboarding/isGuestSession";
 import { createSupabaseServerClient } from "../../../src/supabase/server";
@@ -74,6 +80,7 @@ beforeEach(() => {
   // below would persist into every test that runs after it in file order.
   (isGuestSession as jest.Mock).mockResolvedValue(false);
   (hasProfile as jest.Mock).mockResolvedValue(false);
+  (hasFamily as jest.Mock).mockResolvedValue(null);
 });
 
 afterEach(() => {
@@ -121,6 +128,30 @@ describe("/home", () => {
     const page = await HomePage();
 
     expect(page.props.hasProfile).toBe(true);
+  });
+
+  // The card on this screen used to state "You're not in a family yet." without
+  // anything ever having asked. The page has to resolve it and hand it down.
+  it("tells the view whether there is a family", async () => {
+    signedIn();
+    mockCallApi.mockResolvedValue(json({ id: "u1", display_name: "Meera", family: null }, 200));
+    (hasFamily as jest.Mock).mockResolvedValue(true);
+
+    const page = await HomePage();
+
+    expect(page.props.inFamily).toBe(true);
+  });
+
+  // An unreachable API is not evidence that somebody has no family, so the
+  // unknown has to survive the trip to the view rather than flattening to false.
+  it("passes on not knowing, rather than guessing", async () => {
+    signedIn();
+    mockCallApi.mockResolvedValue(json({ id: "u1", display_name: "Meera", family: null }, 200));
+    (hasFamily as jest.Mock).mockResolvedValue(null);
+
+    const page = await HomePage();
+
+    expect(page.props.inFamily).toBeNull();
   });
 
   it("sends a caller with no session to sign in, without calling the API", async () => {

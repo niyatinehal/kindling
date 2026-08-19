@@ -28,10 +28,18 @@ import { TrackingTiles } from "./TrackingTiles";
 export function HomeView({
   isGuest = false,
   hasProfile = false,
+  inFamily = null,
   summary,
 }: {
   isGuest?: boolean;
   hasProfile?: boolean;
+  /**
+   * Whether this user belongs to a family, or `null` when the answer could not
+   * be fetched. Defaults to `null` because "we did not ask" and "there is no
+   * family" are different facts, and this card spent its whole life conflating
+   * them.
+   */
+  inFamily?: boolean | null;
   summary: TrackingSummary;
 }) {
   const t = useTranslations("home");
@@ -105,13 +113,25 @@ export function HomeView({
         Family setup exists now, so this card stops being a notice and becomes a
         way in. It carries no member preview: the family screen resolves that
         itself, and duplicating it here would mean a second pair of upstream hops
-        on every /home render.
+        on every /home render. `hasFamily` costs one hop precisely so that
+        holds — it reads the membership off /auth/me and stops there.
+
+        What it must NOT do is what it used to: render "You're not in a family
+        yet." as a hardcoded string on a screen that never asked. That sentence
+        was shown to every user forever, including the families who had already
+        set one up on the screen it was offering to take them to.
+
+        Hence three branches rather than two. When the answer could not be
+        fetched the way in stays and the claim goes — an unreachable API is not
+        evidence that somebody has no family.
       */}
       <Card>
-        <p className="text-muted">{t("noFamily")}</p>
-        <div className="mt-4">
+        {inFamily !== null && (
+          <p className="text-muted">{inFamily ? t("inFamily") : t("noFamily")}</p>
+        )}
+        <div className={inFamily === null ? undefined : "mt-4"}>
           <LinkButton href="/family" variant="secondary">
-            {t("setUpFamily")}
+            {inFamily === null ? t("openFamily") : inFamily ? t("viewFamily") : t("setUpFamily")}
           </LinkButton>
         </div>
       </Card>
