@@ -81,3 +81,36 @@ describe("continue as a guest", () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 });
+
+describe("sign-in actions in flight", () => {
+  /** A request that never settles, so the click below lands mid-flight. */
+  function pendingFetch() {
+    const mock = jest.fn(() => new Promise<Response>(() => {}));
+    global.fetch = mock as unknown as typeof fetch;
+    return mock;
+  }
+
+  // An OTP is a text message with a cost and an expiry. Pressing twice used to
+  // send two, and the second invalidated the code the first one delivered.
+  it("sends one code however many times the button is pressed", () => {
+    const fetchMock = pendingFetch();
+
+    renderPage();
+    const send = screen.getByRole("button", { name: messages.signin.sendCode });
+    fireEvent.click(send);
+    fireEvent.click(send);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(send).toHaveAttribute("aria-busy", "true");
+  });
+
+  it("signs in one guest however many times the button is pressed", () => {
+    const fetchMock = pendingFetch();
+
+    renderPage();
+    fireEvent.click(guestButton());
+    fireEvent.click(guestButton());
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});

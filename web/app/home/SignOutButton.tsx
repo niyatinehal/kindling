@@ -17,11 +17,17 @@ export function SignOutButton() {
   const tError = useTranslations("errors");
   const router = useRouter();
   const [failed, setFailed] = useState(false);
+  // Without this the button stayed live for the whole POST. The second press
+  // lands after the first has already cleared the cookie, so it answers 401 and
+  // raises "we could not sign you out" over a session that is, in fact, gone.
+  const [signingOut, setSigningOut] = useState(false);
 
   async function signOut() {
+    setSigningOut(true);
     const response = await fetch("/api/auth/logout", { method: "POST" });
 
     if (!response.ok) {
+      setSigningOut(false);
       // Deliberately stays on this screen. The cookie is still valid, so
       // navigating away would show a signed-in app to someone who believes
       // they just left.
@@ -42,6 +48,7 @@ export function SignOutButton() {
       {failed && <Alert>{tError("SIGN_OUT_FAILED")}</Alert>}
       <Button
         variant="ghost"
+        loading={signingOut}
         onClick={() => {
           void signOut();
         }}

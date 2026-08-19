@@ -91,6 +91,7 @@ export function ConsentForm({
       */}
       <Button
         disabled={!complete || submitting}
+        loading={submitting}
         onClick={() => {
           onSubmit({
             displayName,

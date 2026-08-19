@@ -136,6 +136,7 @@ export function PlanClient({
           {plan === null ? (
             <Button
               disabled={busy}
+              loading={busy}
               onClick={() => {
                 void generate();
               }}

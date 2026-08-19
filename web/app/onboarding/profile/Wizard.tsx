@@ -398,6 +398,7 @@ export function Wizard({
         {step === TOTAL - 1 ? (
           <Button
             disabled={saving || !stepComplete[step]}
+            loading={saving}
             onClick={() => {
               void submit();
             }}

@@ -155,6 +155,7 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
 
           <Button
             disabled={busy}
+            loading={busy}
             onClick={() => {
               void suggest();
             }}

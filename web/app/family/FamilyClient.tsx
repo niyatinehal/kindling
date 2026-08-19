@@ -15,6 +15,9 @@ import { ChoiceGroup } from "../../src/ui/ChoiceGroup";
 import { Field } from "../../src/ui/Field";
 import { Screen } from "../../src/ui/Screen";
 
+/** The three writes this screen can make, and therefore the three it can report on. */
+type FamilyAction = "create" | "join" | "invite";
+
 const INVITABLE_ROLES = ["adult", "child", "elderly"] as const;
 
 /** Pulls the error code out of a proxied envelope, whatever shape it arrived in. */
@@ -41,11 +44,19 @@ export function FamilyClient({ initialFamily }: { initialFamily: FamilySummary |
   const [code, setCode] = useState("");
   const [invitedRole, setInvitedRole] = useState<string[]>(["adult"]);
   const [issuedCode, setIssuedCode] = useState<string | undefined>(undefined);
-  const [busy, setBusy] = useState(false);
+  // Which action is in flight, not merely that one is. A single boolean put
+  // every button into the working state at once, so creating a family told the
+  // user that joining one was also underway.
+  const [pending, setPending] = useState<FamilyAction | null>(null);
   const [error, setError] = useState<string | undefined>(undefined);
 
-  async function post(path: string, body: unknown, onOk: (body: unknown) => void): Promise<void> {
-    setBusy(true);
+  async function post(
+    action: FamilyAction,
+    path: string,
+    body: unknown,
+    onOk: (body: unknown) => void,
+  ): Promise<void> {
+    setPending(action);
     setError(undefined);
 
     const response = await fetch(path, {
@@ -54,7 +65,7 @@ export function FamilyClient({ initialFamily }: { initialFamily: FamilySummary |
       body: JSON.stringify(body),
     });
     const parsed = await readJsonBody(response);
-    setBusy(false);
+    setPending(null);
 
     if (!response.ok) {
       const code = errorCode(parsed);
@@ -88,14 +99,15 @@ export function FamilyClient({ initialFamily }: { initialFamily: FamilySummary |
               </h2>
               <Field label={t("nameLabel")} value={name} onChange={setName} maxLength={120} />
               <Button
-                disabled={busy || name.trim() === ""}
+                disabled={pending !== null || name.trim() === ""}
+                loading={pending === "create"}
                 onClick={() => {
-                  void post("/api/family", { name: name.trim() }, () => {
+                  void post("create", "/api/family", { name: name.trim() }, () => {
                     router.refresh();
                   });
                 }}
               >
-                {busy ? t("working") : t("create")}
+                {pending === "create" ? t("working") : t("create")}
               </Button>
             </div>
           </Card>
@@ -113,14 +125,15 @@ export function FamilyClient({ initialFamily }: { initialFamily: FamilySummary |
                 maxLength={12}
               />
               <Button
-                disabled={busy || code.trim() === ""}
+                disabled={pending !== null || code.trim() === ""}
+                loading={pending === "join"}
                 onClick={() => {
-                  void post("/api/family/join", { code: code.trim() }, () => {
+                  void post("join", "/api/family/join", { code: code.trim() }, () => {
                     router.refresh();
                   });
                 }}
               >
-                {busy ? t("working") : t("join")}
+                {pending === "join" ? t("working") : t("join")}
               </Button>
             </div>
           </Card>
@@ -175,9 +188,11 @@ export function FamilyClient({ initialFamily }: { initialFamily: FamilySummary |
                   onChange={setInvitedRole}
                 />
                 <Button
-                  disabled={busy}
+                  disabled={pending !== null}
+                  loading={pending === "invite"}
                   onClick={() => {
                     void post(
+                      "invite",
                       "/api/family/invite",
                       { invited_role: invitedRole[0] ?? "adult", invited_contact: null },
                       (body) => {
@@ -190,7 +205,7 @@ export function FamilyClient({ initialFamily }: { initialFamily: FamilySummary |
                     );
                   }}
                 >
-                  {busy ? t("working") : t("invite")}
+                  {pending === "invite" ? t("working") : t("invite")}
                 </Button>
 
                 {issuedCode !== undefined && (

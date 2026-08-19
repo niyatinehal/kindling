@@ -12,6 +12,15 @@ import { Card } from "../../src/ui/Card";
 import { Field } from "../../src/ui/Field";
 import { Screen } from "../../src/ui/Screen";
 
+/**
+ * The three ways off this screen, and therefore the three it can report on.
+ *
+ * `verify` and `guest` are never cleared on success on purpose: both navigate,
+ * and flicking the button back to its resting label while the route change is
+ * still in progress reads as "nothing happened".
+ */
+type SignInAction = "sendCode" | "verify" | "guest";
+
 export default function SignInPage() {
   const t = useTranslations("signin");
   const tError = useTranslations("errors");
@@ -20,13 +29,20 @@ export default function SignInPage() {
   const [code, setCode] = useState("");
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
+  // Which sign-in action is in flight. Every button here posts, and none of
+  // them used to stop a second press: two OTP requests meant two texts, and the
+  // second code invalidated the one already on its way.
+  const [pending, setPending] = useState<SignInAction | null>(null);
 
   async function requestCode() {
+    setPending("sendCode");
     const response = await fetch("/api/auth/otp", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ contact }),
     });
+    setPending(null);
+
     if (response.ok) {
       setSent(true);
       setError(undefined);
@@ -36,6 +52,7 @@ export default function SignInPage() {
   }
 
   async function verifyCode() {
+    setPending("verify");
     const response = await fetch("/api/auth/verify", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -43,6 +60,7 @@ export default function SignInPage() {
     });
 
     if (!response.ok) {
+      setPending(null);
       setError("UNAUTHENTICATED");
       return;
     }
@@ -56,9 +74,11 @@ export default function SignInPage() {
   }
 
   async function continueAsGuest() {
+    setPending("guest");
     const response = await fetch("/api/auth/guest", { method: "POST" });
 
     if (!response.ok) {
+      setPending(null);
       setError("GUEST_SIGNIN_FAILED");
       return;
     }
@@ -82,6 +102,8 @@ export default function SignInPage() {
 
           {!sent ? (
             <Button
+              disabled={pending !== null}
+              loading={pending === "sendCode"}
               onClick={() => {
                 void requestCode();
               }}
@@ -92,6 +114,8 @@ export default function SignInPage() {
             <>
               <Field label={t("codeLabel")} value={code} onChange={setCode} inputMode="numeric" />
               <Button
+                disabled={pending !== null}
+                loading={pending === "verify"}
                 onClick={() => {
                   void verifyCode();
                 }}
@@ -106,6 +130,8 @@ export default function SignInPage() {
       <div className="flex flex-col gap-3">
         <Button
           variant="ghost"
+          disabled={pending !== null}
+          loading={pending === "guest"}
           onClick={() => {
             void continueAsGuest();
           }}

@@ -40,6 +40,34 @@ describe("Button", () => {
     }
   });
 
+  // Every call site that passes `loading` is mid-POST. A press that still got
+  // through would be a second registration, a second family, a second glass of
+  // water — which is the whole reason the prop exists.
+  it("does not call onClick while loading", () => {
+    const onClick = jest.fn();
+    render(
+      <Button onClick={onClick} loading>
+        Start
+      </Button>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Start" }));
+
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it("reports itself as busy while loading", () => {
+    render(<Button loading>Start</Button>);
+    expect(screen.getByRole("button", { name: "Start" })).toHaveAttribute("aria-busy", "true");
+  });
+
+  // The spinner is decoration, so the label has to remain the whole accessible
+  // name. Every screen test in this repo finds its buttons by that name.
+  it("keeps its label as the accessible name while loading", () => {
+    render(<Button loading>Building…</Button>);
+    expect(screen.getByRole("button", { name: "Building…" })).toBeInTheDocument();
+  });
+
   // Only --color-accent passes AA against white text (5.02:1). If a variant
   // ever renders white on accent-bright (3.30:1), that is a real failure.
   it("never puts white text on the bright accent", () => {

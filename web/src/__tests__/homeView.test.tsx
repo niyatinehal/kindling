@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 
 // HomeView now contains a client island that calls `useRouter`, which throws
@@ -12,7 +12,9 @@ import messages from "../../messages/en.json";
 import { EMPTY_SUMMARY } from "../tracking/summaryTypes";
 import { HomeView } from "../../app/home/HomeView";
 
-function renderView(props: { isGuest?: boolean; hasProfile?: boolean } = {}) {
+function renderView(
+  props: { isGuest?: boolean; hasProfile?: boolean; inFamily?: boolean | null } = {},
+) {
   render(
     <NextIntlClientProvider locale="en" messages={messages}>
       <HomeView summary={EMPTY_SUMMARY} {...props} />
@@ -128,5 +130,25 @@ describe("HomeView shell", () => {
       screen.getByRole("button", { name: messages.tracking.addGlass.replace("{ml}", "250") }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: messages.tracking.logSleep })).toBeInTheDocument();
+  });
+});
+
+describe("logging in flight", () => {
+  // Same shared-flag problem as the family screen: logging water spun the
+  // "Log sleep" button, which reads as sleep being saved.
+  it("shows the working state only on the entry that was logged", () => {
+    global.fetch = jest.fn(() => new Promise<Response>(() => {})) as unknown as typeof fetch;
+
+    renderView();
+    const water = screen.getByRole("button", {
+      name: messages.tracking.addGlass.replace("{ml}", "250"),
+    });
+    fireEvent.click(water);
+
+    expect(water).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("button", { name: messages.tracking.logSleep })).not.toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
   });
 });

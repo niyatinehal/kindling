@@ -199,3 +199,27 @@ describe("family screen — in a family", () => {
     expect(screen.getByText(new RegExp(messages.family.removed))).toBeInTheDocument();
   });
 });
+
+describe("family actions in flight", () => {
+  // One `busy` boolean used to drive all three buttons, so creating a family
+  // put "Join" into the working state too — telling the user something was
+  // happening to an action they had not started.
+  it("shows the working state only on the button that was pressed", () => {
+    global.fetch = jest.fn(() => new Promise<Response>(() => {})) as unknown as typeof fetch;
+
+    renderFamily(null);
+    fireEvent.change(screen.getByLabelText(messages.family.nameLabel), {
+      target: { value: "Sharma" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: messages.family.create }));
+
+    expect(screen.getByRole("button", { name: messages.family.working })).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: messages.family.join })).not.toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+  });
+});

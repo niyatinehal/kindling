@@ -84,4 +84,19 @@ describe("signing out", () => {
     });
     expect(mockPush).not.toHaveBeenCalled();
   });
+
+  // Two logout POSTs is not harmful, but the second lands after the first has
+  // already cleared the cookie and answers 401 — which would raise the "we
+  // could not sign you out" alert on a session that is, in fact, gone.
+  it("posts once however many times the button is pressed", () => {
+    const fetchMock = jest.fn(() => new Promise<Response>(() => {}));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    renderView();
+    fireEvent.click(signOutButton());
+    fireEvent.click(signOutButton());
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(signOutButton()).toHaveAttribute("aria-busy", "true");
+  });
 });

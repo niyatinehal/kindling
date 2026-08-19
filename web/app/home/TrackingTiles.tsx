@@ -14,6 +14,9 @@ import { ProgressRing } from "../../src/ui/ProgressRing";
 /** One tap. Not configurable yet — a glass is the unit people think in. */
 const GLASS_ML = 250;
 
+/** The two things this component writes, and therefore the two it can report on. */
+type TrackedEntry = "water" | "sleep";
+
 /**
  * These figures are the WEEK's, not today's, so the water ring is measured
  * against a week of the daily target. Part-way through the week it therefore
@@ -53,11 +56,14 @@ export function TrackingTiles({
 
   const [summary, setSummary] = useState(initial);
   const [sleepMinutes, setSleepMinutes] = useState(DEFAULT_SLEEP_MINUTES);
-  const [busy, setBusy] = useState(false);
+  // Which entry is being written, not merely that something is. One shared
+  // boolean drove every button's working state, so logging water announced
+  // itself on "Log last night" as well.
+  const [pending, setPending] = useState<TrackedEntry | null>(null);
   const [error, setError] = useState<string | undefined>(undefined);
 
-  async function send(body: Record<string, unknown>): Promise<void> {
-    setBusy(true);
+  async function send(entry: TrackedEntry, body: Record<string, unknown>): Promise<void> {
+    setPending(entry);
     setError(undefined);
 
     const response = await fetch("/api/tracking", {
@@ -67,7 +73,7 @@ export function TrackingTiles({
     });
 
     if (!response.ok) {
-      setBusy(false);
+      setPending(null);
       setError("TRACKING_FAILED");
       return;
     }
@@ -79,7 +85,7 @@ export function TrackingTiles({
       const body = (await refreshed.json()) as { summary?: TrackingSummary };
       setSummary({ ...EMPTY_SUMMARY, ...body.summary });
     }
-    setBusy(false);
+    setPending(null);
   }
 
   const litres = (summary.water_ml / 1000).toFixed(1);
@@ -146,9 +152,10 @@ export function TrackingTiles({
             <p className="text-sm font-medium text-muted">{t("logWaterLabel")}</p>
             <div className="mt-2">
               <Button
-                disabled={busy}
+                disabled={pending !== null}
+                loading={pending === "water"}
                 onClick={() => {
-                  void send({ type: "water", value: GLASS_ML });
+                  void send("water", { type: "water", value: GLASS_ML });
                 }}
               >
                 {t("addGlass", { ml: GLASS_ML })}
@@ -161,7 +168,7 @@ export function TrackingTiles({
             <div className="mt-2 flex items-center gap-3">
               <Button
                 variant="secondary"
-                disabled={busy || sleepMinutes <= SLEEP_STEP_MINUTES}
+                disabled={pending !== null || sleepMinutes <= SLEEP_STEP_MINUTES}
                 onClick={() => {
                   setSleepMinutes(sleepMinutes - SLEEP_STEP_MINUTES);
                 }}
@@ -173,7 +180,7 @@ export function TrackingTiles({
               </span>
               <Button
                 variant="secondary"
-                disabled={busy || sleepMinutes >= 960}
+                disabled={pending !== null || sleepMinutes >= 960}
                 onClick={() => {
                   setSleepMinutes(sleepMinutes + SLEEP_STEP_MINUTES);
                 }}
@@ -183,9 +190,10 @@ export function TrackingTiles({
             </div>
             <div className="mt-2">
               <Button
-                disabled={busy}
+                disabled={pending !== null}
+                loading={pending === "sleep"}
                 onClick={() => {
-                  void send({ type: "sleep", value: sleepMinutes, rating: null });
+                  void send("sleep", { type: "sleep", value: sleepMinutes, rating: null });
                 }}
               >
                 {t("logSleep")}

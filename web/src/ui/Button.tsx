@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { Spinner } from "./Spinner";
 import { VARIANT_CLASSES } from "./variants";
 import type { Variant } from "./variants";
 
@@ -18,20 +19,32 @@ export function Button({
   variant = "primary",
   type = "button",
   disabled = false,
+  loading = false,
 }: {
   children: ReactNode;
   onClick?: () => void;
   variant?: ButtonVariant;
   type?: "button" | "submit";
   disabled?: boolean;
+  /**
+   * True while the action this button started is still in flight.
+   *
+   * Implies `disabled` rather than sitting beside it. Every call site is
+   * mid-POST when it passes this, and a loading button that still took a press
+   * would be the double-submit it exists to prevent — so the two cannot be set
+   * inconsistently.
+   */
+  loading?: boolean;
 }) {
   return (
     <button
       type={type}
-      disabled={disabled}
+      disabled={disabled || loading}
+      aria-busy={loading}
       {...(onClick !== undefined && { onClick })}
-      className={`min-h-12 w-full rounded-card px-6 text-[1.0625rem] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${VARIANT_CLASSES[variant]}`}
+      className={`flex min-h-12 w-full items-center justify-center gap-2 rounded-card px-6 text-[1.0625rem] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${VARIANT_CLASSES[variant]}`}
     >
+      {loading && <Spinner />}
       {children}
     </button>
   );
