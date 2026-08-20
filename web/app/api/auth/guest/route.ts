@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { callerIp, guestByIp, tooManyRequests } from "../../../../src/security/authLimits";
 import { createSupabaseServerClient } from "../../../../src/supabase/server";
 
 /**
@@ -16,7 +17,15 @@ import { createSupabaseServerClient } from "../../../../src/supabase/server";
  * REGISTRATION_REQUIRED, which `nextStep` routes to /consent. A guest is a
  * user who signed in differently, not a user with a different journey.
  */
-export async function POST() {
+export async function POST(request: Request) {
+  // Every guest is a real row in auth.users. There is no contact to key on, so
+  // the caller is all there is — weaker than the OTP routes, and still enough
+  // to stop one script filling the table.
+  const perIp = guestByIp(callerIp(request));
+  if (!perIp.allowed) {
+    return tooManyRequests(perIp.retryAfterSeconds);
+  }
+
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInAnonymously();
 

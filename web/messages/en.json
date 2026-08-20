@@ -241,6 +241,7 @@
     "UNAUTHENTICATED": "Your session has expired. Please sign in again.",
     "REGISTRATION_REQUIRED": "One more step before you can continue.",
     "OTP_REQUEST_FAILED": "We couldn't send that code. Please check the number or email and try again.",
+    "RATE_LIMITED": "Too many tries. Please wait a few minutes and try again.",
     "UPSTREAM_UNAVAILABLE": "We couldn't reach the server. Please try again in a moment.",
     "GUEST_SIGNIN_FAILED": "We couldn't start a guest session. Please try again in a moment.",
     "PROFILE_SAVE_FAILED": "We couldn't save your answers. They're still here — please try again.",

@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { errorCode } from "../../src/api/errorCode";
 import { readJsonBody } from "../../src/api/readJsonBody";
 import { nextStep } from "../../src/onboarding/nextStep";
 import { Alert } from "../../src/ui/Alert";
@@ -20,6 +21,17 @@ import { Screen } from "../../src/ui/Screen";
  * still in progress reads as "nothing happened".
  */
 type SignInAction = "sendCode" | "verify" | "guest";
+
+/**
+ * Distinguishes "we refused you for now" from whatever else went wrong.
+ *
+ * Every failure on this screen used to collapse into one message, and for a
+ * 429 that message said to check the number or email — sending the user
+ * straight back to the button, which is precisely the traffic being refused.
+ */
+async function refusalOr(response: Response, fallback: string): Promise<string> {
+  return errorCode(await readJsonBody(response)) === "RATE_LIMITED" ? "RATE_LIMITED" : fallback;
+}
 
 export default function SignInPage() {
   const t = useTranslations("signin");
@@ -48,7 +60,7 @@ export default function SignInPage() {
       setError(undefined);
       return;
     }
-    setError("OTP_REQUEST_FAILED");
+    setError(await refusalOr(response, "OTP_REQUEST_FAILED"));
   }
 
   async function verifyCode() {
@@ -61,7 +73,7 @@ export default function SignInPage() {
 
     if (!response.ok) {
       setPending(null);
-      setError("UNAUTHENTICATED");
+      setError(await refusalOr(response, "UNAUTHENTICATED"));
       return;
     }
 
@@ -79,7 +91,7 @@ export default function SignInPage() {
 
     if (!response.ok) {
       setPending(null);
-      setError("GUEST_SIGNIN_FAILED");
+      setError(await refusalOr(response, "GUEST_SIGNIN_FAILED"));
       return;
     }
 

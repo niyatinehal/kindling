@@ -114,3 +114,20 @@ describe("sign-in actions in flight", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("being rate limited", () => {
+  // A refusal that reads "check the number or email" invites the one thing the
+  // limiter is trying to stop: an immediate retry, and then another.
+  it("says to wait rather than blaming the address", async () => {
+    global.fetch = jest.fn(() =>
+      Promise.resolve(response(429, { error: { code: "RATE_LIMITED" } })),
+    ) as unknown as typeof fetch;
+
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: messages.signin.sendCode }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(messages.errors.RATE_LIMITED),
+    );
+  });
+});

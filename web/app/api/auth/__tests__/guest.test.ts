@@ -37,11 +37,16 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
+/** Next always hands a route handler a Request; the route now reads the caller off it. */
+function guestRequest() {
+  return new Request("http://localhost:3001/api/auth/guest", { method: "POST" });
+}
+
 describe("POST /api/auth/guest", () => {
   it("returns 200 when the anonymous sign-in succeeds", async () => {
     (createSupabaseServerClient as jest.Mock).mockResolvedValue(stubClient({ error: null }));
 
-    const response = await POST();
+    const response = await POST(guestRequest());
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ authenticated: true });
@@ -57,7 +62,7 @@ describe("POST /api/auth/guest", () => {
   it("lets the client's cookie write proceed untouched", async () => {
     (createSupabaseServerClient as jest.Mock).mockResolvedValue(stubClient({ error: null }));
 
-    await POST();
+    await POST(guestRequest());
 
     expect(setAllCalls).toHaveLength(1);
     expect(setAllCalls[0]?.options.httpOnly).toBe(true);
@@ -71,7 +76,7 @@ describe("POST /api/auth/guest", () => {
       stubClient({ error: { message: "Anonymous sign-ins are disabled" } }),
     );
 
-    const response = await POST();
+    const response = await POST(guestRequest());
 
     expect(response.status).toBe(502);
     expect(await response.json()).toEqual({ error: { code: "GUEST_SIGNIN_FAILED" } });
@@ -83,8 +88,38 @@ describe("POST /api/auth/guest", () => {
       stubClient({ error: { message: "Anonymous sign-ins are disabled" } }),
     );
 
-    const body = JSON.stringify(await (await POST()).json());
+    const body = JSON.stringify(await (await POST(guestRequest())).json());
 
     expect(body).not.toContain("disabled");
+  });
+});
+
+describe("rate limiting", () => {
+  async function freshRoute() {
+    let route!: typeof import("../guest/route");
+    let server!: typeof import("../../../../src/supabase/server");
+    await jest.isolateModulesAsync(async () => {
+      server = await import("../../../../src/supabase/server");
+      route = await import("../guest/route");
+    });
+    return { send: route.POST, client: server.createSupabaseServerClient as jest.Mock };
+  }
+
+  // Every guest sign-in creates a real row in auth.users. Unthrottled, this
+  // endpoint is a one-line script for filling the project's user table.
+  it("stops creating guests after a burst from one caller", async () => {
+    const { send, client } = await freshRoute();
+    const signInAnonymously = jest.fn(() => Promise.resolve({ error: null }));
+    client.mockResolvedValue({ auth: { signInAnonymously } });
+
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      await send(new Request("http://localhost:3001/api/auth/guest", { method: "POST" }));
+    }
+    const refused = await send(
+      new Request("http://localhost:3001/api/auth/guest", { method: "POST" }),
+    );
+
+    expect(refused.status).toBe(429);
+    expect(signInAnonymously).toHaveBeenCalledTimes(10);
   });
 });

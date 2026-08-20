@@ -96,3 +96,41 @@ describe("POST /api/auth/verify", () => {
     expect(JSON.stringify(await response.json())).not.toContain("expired");
   });
 });
+
+describe("rate limiting", () => {
+  async function freshRoute() {
+    let route!: typeof import("../verify/route");
+    let server!: typeof import("../../../../src/supabase/server");
+    await jest.isolateModulesAsync(async () => {
+      server = await import("../../../../src/supabase/server");
+      route = await import("../verify/route");
+    });
+    return { send: route.POST, client: server.createSupabaseServerClient as jest.Mock };
+  }
+
+  function attempt(code: string) {
+    return new Request("http://localhost:3001/api/auth/verify", {
+      method: "POST",
+      body: JSON.stringify({ contact: "+919999999999", code }),
+    });
+  }
+
+  /*
+    The one that matters most on this route. The code is six digits, so an
+    unthrottled endpoint is a keyspace of a million a script walks in minutes —
+    and every wrong guess here used to cost nothing at all.
+  */
+  it("stops guessing at the code after a handful of wrong attempts", async () => {
+    const { send, client } = await freshRoute();
+    const verifyOtp = jest.fn(() => Promise.resolve({ error: { message: "invalid" } }));
+    client.mockResolvedValue({ auth: { verifyOtp } });
+
+    for (let guess = 0; guess < 5; guess += 1) {
+      await send(attempt(String(100000 + guess)));
+    }
+    const refused = await send(attempt("999999"));
+
+    expect(refused.status).toBe(429);
+    expect(verifyOtp).toHaveBeenCalledTimes(5);
+  });
+});
