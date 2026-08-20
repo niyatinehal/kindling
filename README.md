@@ -287,8 +287,15 @@ values in the dashboard:
 | `DIRECT_URL`   | Supabase **direct** string (port 5432)                  |
 | `SUPABASE_URL` | `https://<project-ref>.supabase.co` — no trailing slash |
 
-`PORT` is injected by Render and must not be set. The resulting URL —
-`https://wellness-api.onrender.com` — is what step 4 needs.
+`PORT` is injected by Render and must not be set.
+
+Take the resulting URL from the service page — it is what step 4 needs. **Do not
+assume it is `https://wellness-api.onrender.com`.** `onrender.com` subdomains are
+global, so when the service name is already taken Render appends a suffix and
+deploys at something like `https://wellness-api-u1uo.onrender.com` instead. That
+is the URL this project actually got, and pointing anything at the unsuffixed
+host reaches nothing at all — DNS does not resolve, so the failure looks like a
+hang rather than a 404.
 
 ### 4. Vercel — the web app
 
@@ -310,18 +317,71 @@ Take the resulting URL back to step 1 and set it as the Supabase Site URL.
 
 ### 5. Keep it awake
 
-Point a free external monitor — UptimeRobot at 5-minute intervals, or
-cron-job.org — at `https://wellness-api.onrender.com/healthz`. That single ping
-solves both free-tier problems at once: it keeps Render's instance from sleeping,
-and because `/healthz` checks the database, it counts as activity that stops the
-Supabase project pausing.
+Render spins a free instance down after 15 minutes without inbound traffic, and
+the next request pays the wake-up: 15.4s measured on this service against 0.2-0.6s
+warm, and worse under load. Point a free external scheduler
+at **`<your-render-url>/readyz`** on a 14-minute schedule — one minute of margin
+under the spin-down window. For this project that is
+`https://wellness-api-u1uo.onrender.com/readyz`.
+
+**`/readyz`, not `/healthz`.** They are not interchangeable here. `/healthz` is a
+liveness probe and deliberately touches nothing (`api/src/routes/health.ts`), so
+pinging it wakes the container and leaves the first real visitor paying to open
+the database connection. `/readyz` runs a real query, which warms the Prisma pool
+_and_ counts as Supabase activity — the thing that stops a free Supabase project
+auto-pausing after 7 idle days. Only `/readyz` solves both free-tier problems.
+
+`scripts/keep-warm.sh` is that ping, and `npm run keep-warm` runs it locally to
+confirm a URL works before you wire up a scheduler:
+
+```bash
+npm run keep-warm https://wellness-api-u1uo.onrender.com
+```
+
+It exits non-zero with a distinct code per failure — `2` unreachable, `3` up but
+the database is down, `4` an unexpected status — so a scheduler's failure
+notification says which thing broke. It also warns when a ping takes over 5
+seconds, which means it arrived _after_ a spin-down and the schedule is not
+actually holding the instance open.
+
+#### Configuring the scheduler
+
+The scheduler cannot live in this repo, so it is the one deploy step with no
+artifact under version control. On [cron-job.org](https://cron-job.org) (free,
+1-minute granularity):
+
+| Setting          | Value                                             |
+| ---------------- | ------------------------------------------------- |
+| URL              | `https://wellness-api-u1uo.onrender.com/readyz`   |
+| Schedule         | every 14 minutes — cron expression `*/14 * * * *` |
+| Request timeout  | 60s or higher                                     |
+| Treat as success | HTTP 200 only                                     |
+| Notify on        | failure                                           |
+
+Set the timeout above 50 seconds. A short one fails precisely on the ping that
+found the service asleep and had real work to do — the alert fires exactly when
+the mechanism is working.
+
+`*/14` fires at :00, :14, :28, :42 and :56, so the widest gap is 14 minutes and
+the wrap-around to the next hour is 4. Every gap stays under the 15-minute
+window. UptimeRobot works too, at a 5-minute floor on its free plan.
+
+#### What this does and does not fix
 
 Do not use a GitHub Actions schedule for this. Actions bills a minimum of one
-minute per run, so a 10-minute ping costs ~4,300 minutes a month against a
-private repo's 2,000-minute allowance. An external monitor costs nothing.
+minute per run, so a 14-minute ping is ~3,100 runs and ~3,100 billed minutes a
+month against a private repo's 2,000-minute allowance — it would starve CI. An
+external scheduler costs nothing. Render's own Cron Jobs are a paid service type
+($1/month minimum), and once you are paying, a Starter web service removes
+spin-down outright for $7.
 
 Staying awake uses roughly 730 of Render's 750 free instance-hours per month, so
-one always-on free service fits — a second one would not.
+one always-on free service fits and **a second one would not** — adding another
+free service blows the workspace cap mid-month and suspends both.
+
+This fixes cold starts only. It does nothing about the free instance's 0.1 CPU
+and 512 MB, and free instances do not autoscale, so a genuine traffic spike still
+saturates a warm instance. A launch worth spiking for wants Starter.
 
 ### What is not automated
 
