@@ -80,6 +80,16 @@ export function ConsentForm({
             />
             <span className="text-ink">{t("healthDataLabel")}</span>
           </label>
+
+          {/*
+            Outside the label on purpose: a link inside a <label> is reached by
+            tapping the thing that toggles the checkbox, so following it would
+            also flip the consent — the one control on this screen that must
+            only ever change deliberately.
+          */}
+          <a href="/privacy" className="text-accent underline underline-offset-4">
+            {t("policyLink")}
+          </a>
         </div>
       </Card>
 

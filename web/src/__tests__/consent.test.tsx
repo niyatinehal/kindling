@@ -159,3 +159,20 @@ describe("guest consent", () => {
     ).not.toBeChecked();
   });
 });
+
+describe("what is being consented to", () => {
+  /*
+    The form records `policy_version` against a document, and until now that
+    document existed nowhere and was linked from nowhere. Asking somebody to
+    agree to health-data processing with nothing to read is not consent — it
+    is a checkbox.
+  */
+  it("links to the policy it is recording agreement to", () => {
+    renderForm();
+
+    expect(screen.getByRole("link", { name: messages.consent.policyLink })).toHaveAttribute(
+      "href",
+      "/privacy",
+    );
+  });
+});
