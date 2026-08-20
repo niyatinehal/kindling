@@ -12,6 +12,10 @@ export type ApiErrorCode =
   | "FLOOR_LOCKED"
   | "ALREADY_IN_FAMILY"
   | "INVITE_EXPIRED"
+  // A deletion refused because the caller is the last admin of a household
+  // that still has people in it. Like the two above it this is an instruction
+  // rather than a fault: hand admin over, then delete.
+  | "FAMILY_NEEDS_ADMIN"
   | "VALIDATION_FAILED"
   | "INTERNAL";
 

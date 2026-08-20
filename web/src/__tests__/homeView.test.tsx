@@ -27,26 +27,26 @@ describe("HomeView", () => {
     renderView({ isGuest: true });
 
     expect(screen.getByText(messages.home.guestChip)).toBeInTheDocument();
-    expect(screen.getByText(messages.home.guestNote)).toBeInTheDocument();
+    expect(screen.getByText(messages.home.claimBody)).toBeInTheDocument();
   });
 
   it("shows nothing about guests for a normal user", () => {
     renderView();
 
     expect(screen.queryByText(messages.home.guestChip)).not.toBeInTheDocument();
-    expect(screen.queryByText(messages.home.guestNote)).not.toBeInTheDocument();
+    expect(screen.queryByText(messages.home.claimBody)).not.toBeInTheDocument();
   });
 
-  // Claiming an account is not built. A button that does nothing is worse
-  // than no button, so there must not be one.
+  // Claiming IS built now, so the invariant this test has carried since the
+  // beginning has flipped rather than gone away. What it pins is the same
+  // thing it always pinned: the complete set of controls a guest is offered,
+  // so that anything new has to be added here deliberately instead of
+  // appearing beside the others unnoticed.
   //
-  // This has been rewritten each time the screen gained a control, which is the
-  // signal that "no buttons" and "no links" were never the real invariant. The
-  // real one is that a guest is offered EXACTLY the journey and the tracking
-  // controls — and nothing that claims an account, because that flow does not
-  // exist. Pinning the whole set means a stray claim button fails this loudly
-  // rather than slipping in beside the others.
-  it("offers no claim action, because claiming is not built yet", () => {
+  // The claim action earns its place because it does something — for as long
+  // as it did not exist, a button offering it would have been a lie, which is
+  // what the previous version of this test was protecting against.
+  it("offers a guest the whole journey and a way to keep the account", () => {
     renderView({ isGuest: true, hasProfile: true });
 
     expect(screen.getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
@@ -63,10 +63,17 @@ describe("HomeView", () => {
       "−",
       "+",
       messages.tracking.logSleep,
+      // The way out of guest mode, which is the one control a guest is
+      // offered that a signed-in user is not.
+      messages.home.claimAction,
       // Signing out is a session control, not an account action: it ends the
       // anonymous session rather than claiming or upgrading it, so a guest is
       // offered it on the same terms as anyone else.
       messages.home.signOut,
+      // Deleting is the same kind of control for the same reason — it disposes
+      // of the account rather than claiming one, and a guest who wants their
+      // health data gone must be able to say so as plainly as anyone else.
+      messages.home.deleteAccount,
     ]);
   });
 });

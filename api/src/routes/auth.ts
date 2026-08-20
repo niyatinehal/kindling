@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import type { PrismaClient } from "../../generated/prisma/client.js";
 import { sendError } from "../http/errors.js";
+import { deleteAccount } from "../services/deleteAccount.js";
 import { registerUser } from "../services/registerUser.js";
 import { createAuthMiddleware } from "../auth/middleware.js";
 import { InvalidTokenError } from "../auth/verifyToken.js";
@@ -114,6 +115,35 @@ export function createAuthRouter(deps: {
           email: row.email,
           family: user.familyId === undefined ? null : { id: user.familyId, role: user.role },
         });
+      })
+      .catch((error: unknown) => {
+        next(error);
+      });
+  });
+
+  /**
+   * Erasure. Not a request queued for somebody to action later — the rows are
+   * gone when this returns, which is what the privacy page promises.
+   */
+  router.delete("/me", authenticate, (req, res, next) => {
+    const user = req.user;
+    if (user === undefined) {
+      sendError(res, 401, "UNAUTHENTICATED", "A Bearer token is required.");
+      return;
+    }
+
+    deleteAccount(deps.prisma, { userId: user.id })
+      .then((result) => {
+        if (!result.deleted) {
+          sendError(
+            res,
+            409,
+            "FAMILY_NEEDS_ADMIN",
+            "Make somebody else an admin of your family before deleting your account.",
+          );
+          return;
+        }
+        res.status(204).end();
       })
       .catch((error: unknown) => {
         next(error);

@@ -6,6 +6,8 @@ import { Card } from "../../src/ui/Card";
 import { LinkButton } from "../../src/ui/LinkButton";
 import { Screen } from "../../src/ui/Screen";
 import { WeekStrip } from "../../src/ui/WeekStrip";
+import { ClaimAccountCard } from "./ClaimAccountCard";
+import { DeleteAccountButton } from "./DeleteAccountButton";
 import { SignOutButton } from "./SignOutButton";
 import { TrackingTiles } from "./TrackingTiles";
 
@@ -63,7 +65,13 @@ export function HomeView({
         guestChip={isGuest ? t("guestChip") : undefined}
       />
 
-      {isGuest && <p className="text-muted">{t("guestNote")}</p>}
+      {/*
+        This was a note telling a guest their data lives only in this browser.
+        Saying that and offering nothing to do about it is a warning; the same
+        sentence with a field under it is a way out, and it attaches to the
+        identity the guest already has rather than moving anything.
+      */}
+      {isGuest && <ClaimAccountCard />}
 
       {/*
         The Today card is the one thing on this screen with something to say, so
@@ -142,6 +150,13 @@ export function HomeView({
         on a shared family device, one they must be able to find.
       */}
       <SignOutButton />
+
+      {/*
+        Below sign-out, because leaving is the thing people come to this corner
+        for and erasing is not. It asks before it does anything, which is what
+        makes it safe to put within reach of the control beside it.
+      */}
+      <DeleteAccountButton />
     </Screen>
   );
 }
