@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { callerIp, guestByIp, tooManyRequests } from "../../../../src/security/authLimits";
+import { reportFailure } from "../../../../src/observability/reportFailure";
 import { createSupabaseServerClient } from "../../../../src/supabase/server";
 
 /**
@@ -33,6 +34,15 @@ export async function POST(request: Request) {
     // Most likely `enable_anonymous_sign_ins` is false in this environment.
     // The reason is logged and never returned — same rule as /api/auth/otp.
     console.error("guest sign-in failed", { reason: error.message });
+
+    // The landing page's primary button. A failure here is a visitor who
+    // bounced, and nothing else would record that it happened.
+    void reportFailure({
+      code: "GUEST_SIGNIN_FAILED",
+      status: 502,
+      path: "/api/auth/guest",
+      detail: error.message,
+    });
     return NextResponse.json({ error: { code: "GUEST_SIGNIN_FAILED" } }, { status: 502 });
   }
 

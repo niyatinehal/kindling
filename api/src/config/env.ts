@@ -18,6 +18,12 @@ const envSchema = z.object({
   // src/workouts/planGenerator.ts. An LLM-backed engine would be a new value
   // here, not a change to the calling code.
   WORKOUT_ENGINE: z.enum(["rules"]).default("rules"),
+  // Shared secret the web app presents when reporting a failure it handled
+  // itself — a quota-exhausted sign-in email, say, which never reaches this
+  // service's error handler because it never reaches this service. Optional
+  // on purpose: unset, the reporting route is not mounted at all, so a
+  // deployment without one has no endpoint rather than an open one.
+  INTERNAL_REPORT_TOKEN: z.string().min(16).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

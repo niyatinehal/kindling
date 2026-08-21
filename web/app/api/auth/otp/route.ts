@@ -8,6 +8,7 @@ import {
   otpByIp,
   tooManyRequests,
 } from "../../../../src/security/authLimits";
+import { reportFailure } from "../../../../src/observability/reportFailure";
 import { createSupabaseServerClient } from "../../../../src/supabase/server";
 
 const body = z.object({ contact: z.string().min(3) });
@@ -47,6 +48,19 @@ export async function POST(request: Request) {
   if (error) {
     // Deliberately generic: whether an account exists is not the caller's business.
     console.error("otp request failed", { reason: error.message });
+
+    // Reported as well as logged, because this is the failure that goes
+    // unnoticed. A daily email quota running out looks exactly like this, and
+    // the caller is told to check an address that was never the problem.
+    // Not awaited — the person is owed their answer now, and `reportFailure`
+    // is written never to reject.
+    void reportFailure({
+      code: "OTP_REQUEST_FAILED",
+      status: 502,
+      path: "/api/auth/otp",
+      detail: error.message,
+    });
+
     return NextResponse.json({ error: { code: "OTP_REQUEST_FAILED" } }, { status: 502 });
   }
 

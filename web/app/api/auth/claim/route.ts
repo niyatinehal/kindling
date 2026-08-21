@@ -8,6 +8,7 @@ import {
   otpByIp,
   tooManyRequests,
 } from "../../../../src/security/authLimits";
+import { reportFailure } from "../../../../src/observability/reportFailure";
 import { createSupabaseServerClient } from "../../../../src/supabase/server";
 
 const body = z.object({ contact: z.string().min(3) });
@@ -50,6 +51,15 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   if (error) {
     console.error("claim failed", { reason: error.message });
+
+    // Spends a message from the same quota the OTP route does, so it fails the
+    // same way and needs to be visible for the same reason.
+    void reportFailure({
+      code: "CLAIM_FAILED",
+      status: 502,
+      path: "/api/auth/claim",
+      detail: error.message,
+    });
     // Worth distinguishing: somebody typing an address they already have an
     // account for needs to sign in with it, not keep retrying here. Every
     // other reason stays generic — the upstream message is never returned.

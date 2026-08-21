@@ -15,6 +15,7 @@ import { createProfileRouter } from "./routes/profiles.js";
 import { createPlanRouter } from "./routes/plans.js";
 import { createFamilyRouter, createInviteRouter } from "./routes/families.js";
 import { createTrackingRouter } from "./routes/tracking.js";
+import { createErrorReportRouter } from "./routes/errorReports.js";
 import { createMealRouter } from "./routes/meals.js";
 
 export type AppDeps = {
@@ -22,6 +23,13 @@ export type AppDeps = {
   prisma: PrismaClient;
   verify: (token: string) => Promise<VerifiedToken>;
   planGenerator: PlanGenerator;
+  /**
+   * Shared secret the web app presents when reporting a failure it handled
+   * itself. Optional: with it unset the reporting route is not mounted, so a
+   * deployment that has not been given one has no open write endpoint rather
+   * than a permissive one.
+   */
+  internalReportToken?: string;
 };
 
 /**
@@ -47,6 +55,16 @@ export function createApp(deps: AppDeps): Express {
   app.use("/api/v1/invites", createInviteRouter({ prisma: deps.prisma, verify: deps.verify }));
   app.use("/api/v1/tracking", createTrackingRouter({ prisma: deps.prisma, verify: deps.verify }));
   app.use("/api/v1/meals", createMealRouter({ prisma: deps.prisma, verify: deps.verify }));
+  if (deps.internalReportToken !== undefined) {
+    app.use(
+      "/api/v1/internal",
+      createErrorReportRouter({
+        prisma: deps.prisma,
+        internalReportToken: deps.internalReportToken,
+      }),
+    );
+  }
+
   app.use(
     "/api/v1/plans",
     createPlanRouter({

@@ -12,6 +12,11 @@ const app = createApp({
   prisma,
   verify: createSupabaseVerifier(env.SUPABASE_URL),
   planGenerator: createPlanGenerator(env.WORKOUT_ENGINE),
+  // Spread rather than passed as possibly-undefined: with the variable unset
+  // the key is absent, and `createApp` leaves the reporting route unmounted.
+  ...(env.INTERNAL_REPORT_TOKEN === undefined
+    ? {}
+    : { internalReportToken: env.INTERNAL_REPORT_TOKEN }),
 });
 
 const server = app.listen(env.PORT, () => {
