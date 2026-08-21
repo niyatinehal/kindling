@@ -30,9 +30,11 @@ export default tseslint.config(
     },
   },
 
-  // The entry point logs its bind address to stdout before any logger exists.
+  // The entry point logs its bind address to stdout before any logger exists,
+  // and the operator scripts exist to print — `npm run errors` writing to a
+  // logger nobody reads would defeat the point of it.
   {
-    files: ["src/server.ts", "prisma/seed.ts"],
+    files: ["src/server.ts", "prisma/seed.ts", "scripts/**/*.ts"],
     rules: {
       "no-console": "off",
     },

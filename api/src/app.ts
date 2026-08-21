@@ -5,6 +5,9 @@ import type { PrismaClient } from "../generated/prisma/client.js";
 import type { VerifiedToken } from "./auth/verifyToken.js";
 import type { PlanGenerator } from "./workouts/planGenerator.js";
 import { sendError } from "./http/errors.js";
+import { recordError } from "./observability/recordError.js";
+import { redact } from "./observability/redact.js";
+import { requestId } from "./observability/requestId.js";
 import { healthRouter } from "./routes/health.js";
 import { createReadyRouter } from "./routes/ready.js";
 import { createAuthRouter } from "./routes/auth.js";
@@ -29,6 +32,11 @@ export function createApp(deps: AppDeps): Express {
   const app = express();
 
   app.disable("x-powered-by");
+
+  // First, so every log line and every recorded failure below can be tied back
+  // to one request — including the ones thrown before any route runs.
+  app.use(requestId());
+
   app.use(express.json());
 
   app.use(healthRouter);
@@ -59,8 +67,33 @@ export function createApp(deps: AppDeps): Express {
   // message, its stack, a driver error, a connection string — may reach the
   // client; the real error is logged here and the client gets one generic
   // envelope.
-  app.use((error: unknown, _req: Request, res: Response, _next: NextFunction): void => {
-    console.error("unhandled error", error);
+  app.use((error: unknown, req: Request, res: Response, _next: NextFunction): void => {
+    // Structured, so the platform log can be searched by request id rather
+    // than read. Redacted for the same reason the stored copy is: this line
+    // may contain whatever the thrower interpolated into the message.
+    console.error(
+      JSON.stringify({
+        level: "error",
+        event: "unhandled_error",
+        requestId: req.requestId,
+        method: req.method,
+        path: req.path,
+        message: redact(error instanceof Error ? error.message : error),
+      }),
+    );
+
+    // Stored as well as logged, because the log is the thing nobody reads.
+    // Deliberately not awaited: the caller is owed its 500 now, and
+    // `recordError` is written never to reject, so nothing here can turn a
+    // handled failure into an unhandled one.
+    void recordError(deps.prisma, {
+      error,
+      status: 500,
+      requestId: req.requestId,
+      method: req.method,
+      path: req.path,
+    });
+
     sendError(res, 500, "INTERNAL", "Something went wrong. Please try again.");
   });
 

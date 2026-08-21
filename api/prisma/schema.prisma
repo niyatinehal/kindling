@@ -285,7 +285,7 @@ model PlanExercise {
 
   exerciseKey String @map("exercise_key")
 
-  sets Int?
+  sets            Int?
   /// Null for a held or timed movement, where `durationSeconds` carries the dose.
   reps            Int?
   durationSeconds Int? @map("duration_seconds")
@@ -497,4 +497,38 @@ model ConsentRecord {
 
   @@index([userId, consentType])
   @@map("consent_records")
+}
+
+/// Something that went wrong, kept so it can be looked at later.
+///
+/// Deliberately carries NO user id and no foreign key to `users`. Two reasons,
+/// and both matter. Every other reference into `users` is ON DELETE RESTRICT,
+/// so error rows pointing at somebody would block the account deletion flow —
+/// the person could not leave because of a log line about them. And an erasure
+/// promise that leaves their id behind in a table nothing prunes is not
+/// erasure. A request id is enough to tie an error to a request without tying
+/// it to a person.
+///
+/// `message` and `stack` are redacted on the way in (src/observability/redact.ts),
+/// which is what keeps these rows non-personal rather than merely
+/// user-id-free.
+model ErrorEvent {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  occurredAt DateTime @default(now()) @map("occurred_at")
+
+  /// Correlates with the x-request-id header echoed back to the caller, so a
+  /// person reporting "it broke" can be matched to the row without being
+  /// identified by it.
+  requestId String? @map("request_id")
+
+  method String?
+  path   String?
+  status Int
+
+  name    String
+  message String
+  stack   String?
+
+  @@index([occurredAt])
+  @@map("error_events")
 }

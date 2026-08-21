@@ -74,13 +74,33 @@ describe("error-handling middleware", () => {
     expect(response.body).not.toHaveProperty("stack");
   });
 
-  it("still logs the real error server-side", async () => {
+  /*
+    This used to assert the opposite of its second half: that the log line
+    contained the connection string, password and all. That was the right test
+    while "logged" meant one line in a terminal somebody was watching — the
+    thing it was guarding against was the error being swallowed.
+
+    Two things changed. The message is now redacted on its way out, and it is
+    also written to a table that is kept indefinitely, so a password in it is
+    not a fleeting line in a scrollback any more. Both halves of the intent
+    still hold and are asserted separately: the failure is identifiable, and
+    the credential is not written down.
+  */
+  it("records the failure server-side without writing the credential down", async () => {
     await request(appWithBrokenSecondLookup())
       .get("/api/v1/auth/me")
       .set("Authorization", "Bearer irrelevant");
 
     expect(errorSpy).toHaveBeenCalled();
     const logged: string[] = errorSpy.mock.calls.flat().map((value: unknown) => String(value));
-    expect(logged.some((entry) => entry.includes(DISTINCTIVE_SECRET))).toBe(true);
+    const line = logged.find((entry) => entry.includes("unhandled_error"));
+
+    expect(line).toBeDefined();
+    // Identifiable: which request, on which route.
+    expect(line).toContain("/api/v1/auth/me");
+    // And redacted, rather than merely absent — the difference between the
+    // secret being stripped and the message being dropped altogether.
+    expect(line).toContain("[redacted:connection-string]");
+    expect(line).not.toContain(DISTINCTIVE_SECRET);
   });
 });
