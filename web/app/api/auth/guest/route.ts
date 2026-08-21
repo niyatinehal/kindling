@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 
 import { callerIp, guestByIp, tooManyRequests } from "../../../../src/security/authLimits";
 import { reportFailure } from "../../../../src/observability/reportFailure";
@@ -37,11 +37,13 @@ export async function POST(request: Request) {
 
     // The landing page's primary button. A failure here is a visitor who
     // bounced, and nothing else would record that it happened.
-    await reportFailure({
-      code: "GUEST_SIGNIN_FAILED",
-      status: 502,
-      path: "/api/auth/guest",
-      detail: error.message,
+    after(async () => {
+      await reportFailure({
+        code: "GUEST_SIGNIN_FAILED",
+        status: 502,
+        path: "/api/auth/guest",
+        detail: error.message,
+      });
     });
     return NextResponse.json({ error: { code: "GUEST_SIGNIN_FAILED" } }, { status: 502 });
   }

@@ -1,6 +1,17 @@
 /**
  * @jest-environment node
  */
+/*
+  `after()` refuses to run outside a request scope, and these tests call the
+  handler directly rather than through a server. Invoking the callback
+  immediately is the honest stand-in: what the real thing guarantees is that
+  the work runs, only later than the response.
+*/
+jest.mock("next/server", () => {
+  const actual = jest.requireActual<typeof import("next/server")>("next/server");
+  return { ...actual, after: (work: () => unknown) => void work() };
+});
+
 jest.mock("../../../../src/supabase/server", () => ({
   createSupabaseServerClient: jest.fn(),
 }));

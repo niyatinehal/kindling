@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { z } from "zod";
 
 import {
@@ -54,11 +54,13 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     // Spends a message from the same quota the OTP route does, so it fails the
     // same way and needs to be visible for the same reason.
-    await reportFailure({
-      code: "CLAIM_FAILED",
-      status: 502,
-      path: "/api/auth/claim",
-      detail: error.message,
+    after(async () => {
+      await reportFailure({
+        code: "CLAIM_FAILED",
+        status: 502,
+        path: "/api/auth/claim",
+        detail: error.message,
+      });
     });
     // Worth distinguishing: somebody typing an address they already have an
     // account for needs to sign in with it, not keep retrying here. Every
