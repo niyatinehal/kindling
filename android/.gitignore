@@ -1,0 +1,23 @@
+# The release signing key. Whoever holds this can publish updates as this app,
+# and losing it means never being able to update a Play Store listing again —
+# so it belongs in a password manager or a backup, never in the repository.
+*.keystore
+*.jks
+
+# The generated Gradle project, its build output, and Gradle's own state.
+# twa-manifest.json is the source of truth here — `bubblewrap update` writes
+# all of this from it, so checking it in would mean reviewing generated code
+# on every regeneration for no benefit.
+app/
+build/
+build.gradle
+settings.gradle
+gradle/
+gradle.properties
+gradlew
+gradlew.bat
+store_icon.png
+.gradle/
+*.apk
+*.aab
+*.idsig

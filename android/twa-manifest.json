@@ -1,0 +1,48 @@
+{
+  "packageId": "app.vercel.wellness_platform_sigma.twa",
+  "host": "wellness-platform-sigma.vercel.app",
+  "name": "Family Wellness Platform",
+  "launcherName": "Wellness",
+  "display": "standalone",
+  "themeColor": "#f4f7f2",
+  "themeColorDark": "#0f1a14",
+  "navigationColor": "#f4f7f2",
+  "navigationColorDark": "#0f1a14",
+  "navigationDividerColor": "#f4f7f2",
+  "navigationDividerColorDark": "#0f1a14",
+  "backgroundColor": "#f4f7f2",
+  "enableNotifications": false,
+  "startUrl": "/",
+  "iconUrl": "https://wellness-platform-sigma.vercel.app/icon-512.png",
+  "maskableIconUrl": "https://wellness-platform-sigma.vercel.app/icon-maskable-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "/home/makima/wellness_platform/android/wellness-release.keystore",
+    "alias": "wellness"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://wellness-platform-sigma.vercel.app/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://wellness-platform-sigma.vercel.app/",
+  "minSdkVersion": 23,
+  "orientation": "default",
+  "fingerprints": [
+    {
+      "name": "release",
+      "value": "6C:C1:E0:11:11:DA:A8:C6:FC:3F:6C:12:A9:F6:05:78:B6:5F:96:46:92:7A:FD:94:EC:14:19:D3:47:05:5B:83"
+    }
+  ],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "appVersion": "1.0.0"
+}
