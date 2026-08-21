@@ -14,6 +14,7 @@
 import "dotenv/config";
 
 import { createPrismaClient, disconnect } from "../src/db/prisma.js";
+import { describeFailure } from "../src/observability/describeFailure.js";
 
 const DEFAULT_LIMIT = 20;
 
@@ -52,6 +53,10 @@ async function main(): Promise<void> {
     }
 
     console.log(`\n${events.length} of the most recent failures.`);
+  } catch (failure) {
+    // The whole point of this script is not having to read a stack trace.
+    console.error(describeFailure(failure));
+    process.exitCode = 1;
   } finally {
     await disconnect(prisma);
   }
