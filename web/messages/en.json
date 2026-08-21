@@ -504,7 +504,7 @@
       "heading": "What you can do about it",
       "access": "See it — everything stored about you is shown in the app itself.",
       "correct": "Correct it — your details can be edited at any time from the plan screen.",
-      "deletion": "Delete it — there is a Delete my account button below Sign out. It removes your profile, everything you logged, your workout plan and your family membership, and it is not a request queued for somebody to action: those records are gone when it finishes. The email address or phone number you sign in with is held separately by the sign-in provider and is not removed by that button — write to us and we will remove it.",
+      "deletion": "Delete it — there is a Delete my account button below Sign out. It removes your profile, everything you logged, your workout plan and your family membership, and it is not a request queued for somebody to action: those records are gone when it finishes. The email address or phone number you sign in with is held separately by the sign-in provider and is not removed by that button.",
       "withdraw": "Withdraw consent — deleting your account withdraws it, because there is nothing left to process."
     },
     "children": {
@@ -518,11 +518,6 @@
     "security": {
       "heading": "How it is protected",
       "body": "Everything travels over HTTPS. Your session lives in a cookie that JavaScript cannot read. Every request to the server is checked against a signed token, and the database refuses direct access from outside the application entirely."
-    },
-    "contact": {
-      "heading": "Getting in touch",
-      "body": "For anything about this page, or to ask what is held about you, write to {email}.",
-      "email": "REPLACE-ME@example.com"
     },
     "changes": {
       "heading": "Changes",

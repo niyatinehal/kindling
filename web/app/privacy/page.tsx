@@ -57,15 +57,6 @@ export default function PrivacyPage() {
           </div>
         </Card>
       ))}
-
-      <Card>
-        <h2 className="text-sm font-semibold tracking-widest text-muted uppercase">
-          {t("contact.heading")}
-        </h2>
-        <p className="mt-3 leading-relaxed text-ink">
-          {t("contact.body", { email: t("contact.email") })}
-        </p>
-      </Card>
     </Screen>
   );
 }

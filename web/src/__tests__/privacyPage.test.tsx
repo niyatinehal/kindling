@@ -54,4 +54,22 @@ describe("the privacy policy", () => {
 
     expect(screen.getByText(messages.privacy.sharing.noSelling)).toBeInTheDocument();
   });
+
+  /*
+    This page went live with "REPLACE-ME@example.com" in it. A placeholder in a
+    privacy notice is not a cosmetic problem — it is a published document about
+    health data telling the reader the author did not finish. Nothing that
+    reads like a stand-in goes out again without failing here first.
+  */
+  it("publishes no placeholder text", () => {
+    const { container } = render(
+      <NextIntlClientProvider locale="en" messages={messages}>
+        <PrivacyPage />
+      </NextIntlClientProvider>,
+    );
+
+    for (const placeholder of ["example.com", "REPLACE", "TODO", "TBD", "lorem"]) {
+      expect(container.textContent?.toLowerCase()).not.toContain(placeholder.toLowerCase());
+    }
+  });
 });
