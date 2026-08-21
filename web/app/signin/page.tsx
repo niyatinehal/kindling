@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { errorCode } from "../../src/api/errorCode";
+import { enterAsGuest } from "../../src/auth/enterAsGuest";
 import { readJsonBody } from "../../src/api/readJsonBody";
 import { nextStep } from "../../src/onboarding/nextStep";
 import { Alert } from "../../src/ui/Alert";
@@ -87,19 +88,19 @@ export default function SignInPage() {
 
   async function continueAsGuest() {
     setPending("guest");
-    const response = await fetch("/api/auth/guest", { method: "POST" });
 
-    if (!response.ok) {
+    // The same helper the landing page uses. A guest is a user who signed in
+    // differently, so the journey after sign-in is the same journey, resolved
+    // by the same call — in one place, so the two screens cannot drift.
+    const entered = await enterAsGuest();
+
+    if (entered === null) {
       setPending(null);
-      setError(await refusalOr(response, "GUEST_SIGNIN_FAILED"));
+      setError("GUEST_SIGNIN_FAILED");
       return;
     }
 
-    // Deliberately identical to what verifyCode does after a successful
-    // verification. A guest is a user who signed in differently, so the
-    // journey after sign-in is the same journey, resolved by the same call.
-    const me = await fetch("/api/me");
-    router.push(nextStep(me.status, await readJsonBody(me)));
+    router.push(entered.destination);
   }
 
   return (

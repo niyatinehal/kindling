@@ -1,6 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 
+// The landing page now carries a client island — the guest entry button —
+// which calls `useRouter`, and that throws outside a mounted app router.
+// Nothing here drives it; this only lets the screen render.
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: jest.fn(), refresh: jest.fn() }),
+}));
+
 import messages from "../../messages/en.json";
 import LandingPage from "../../app/page";
 

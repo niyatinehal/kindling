@@ -2,8 +2,20 @@
   "landing": {
     "title": "Family Wellness Platform",
     "subtitle": "One app your whole family opens.",
+    "previewLabel": "An example week — not real data",
+    "water": "Water",
+    "sleep": "Sleep",
+    "workouts": "Workouts",
+    "weekWater": "Water this week",
+    "planTitle": "A plan that leaves things out",
+    "planBody": "Tell it about injuries, conditions and what you actually have at home. The plan is built from fixed rules, and it shows you what it left out and why.",
+    "mealsTitle": "Meals from what's already in the kitchen",
+    "mealsBody": "Pick what you have in. Get dishes that fit what you eat, and log the ones you cooked.",
+    "familyTitle": "Everyone in one place, on their own terms",
+    "familyBody": "Join a household and choose category by category what you share. Turning something off hides it — being the admin does not override that.",
+    "tryGuest": "Look around — no account needed",
     "signIn": "Sign in",
-    "privacy": "Privacy"
+    "privacy": "What we store, and why"
   },
   "signin": {
     "title": "Sign in",
