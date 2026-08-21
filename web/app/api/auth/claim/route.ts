@@ -54,7 +54,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     // Spends a message from the same quota the OTP route does, so it fails the
     // same way and needs to be visible for the same reason.
-    void reportFailure({
+    await reportFailure({
       code: "CLAIM_FAILED",
       status: 502,
       path: "/api/auth/claim",

@@ -1,3 +1,6 @@
+/** Longer than a healthy round trip, shorter than anyone's patience. */
+const TIMEOUT_MS = 2000;
+
 export type HandledFailure = {
   /** An upper-case identifier the API will store as the event name. */
   code: string;
@@ -18,9 +21,19 @@ export type HandledFailure = {
  * most likely to ruin a launch day was the one nobody could see, while the
  * user was being told to check an email address that was fine.
  *
- * Fire and forget, and it never throws. It is called on a path that is already
- * failing; if reporting could fail the request, then making a problem visible
- * would have made it worse.
+ * Awaited by its callers, and it never throws.
+ *
+ * The first version was fire-and-forget, copied from the API side where the
+ * process outlives the response. A Vercel function does not: it returns, gets
+ * frozen, and the in-flight request dies with it. Nothing arrived, while the
+ * endpoint it was reporting to worked perfectly — a bug found by testing the
+ * chain against production rather than by any test here.
+ *
+ * Which makes the timeout load-bearing rather than tidy. The likeliest reason
+ * a failure needs reporting is that something upstream is unwell, and an
+ * unbounded wait would hang the user's error message behind exactly the thing
+ * that is broken. Two seconds is far longer than a healthy round trip and far
+ * shorter than a person's patience on a page that has already failed.
  *
  * Silent when `INTERNAL_REPORT_TOKEN` is unset, because that is also how the
  * API decides not to mount the receiving route. Both ends agree by default,
@@ -40,6 +53,7 @@ export async function reportFailure(failure: HandledFailure): Promise<void> {
       method: "POST",
       headers: { "content-type": "application/json", "x-internal-token": token },
       body: JSON.stringify(failure),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
       // Never attach the session cookie: this is a server-to-server report and
       // the API has no use for a user credential it did not ask for.
       credentials: "omit",

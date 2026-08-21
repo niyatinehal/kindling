@@ -52,9 +52,11 @@ export async function POST(request: Request) {
     // Reported as well as logged, because this is the failure that goes
     // unnoticed. A daily email quota running out looks exactly like this, and
     // the caller is told to check an address that was never the problem.
-    // Not awaited — the person is owed their answer now, and `reportFailure`
-    // is written never to reject.
-    void reportFailure({
+    // Awaited: a Vercel function is frozen the moment it responds, so a
+    // fire-and-forget report never survives to be sent. `reportFailure` never
+    // rejects and gives up after two seconds, so this cannot fail or stall
+    // the answer the person is owed.
+    await reportFailure({
       code: "OTP_REQUEST_FAILED",
       status: 502,
       path: "/api/auth/otp",

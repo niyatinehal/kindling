@@ -69,4 +69,29 @@ describe("reportFailure", () => {
       reportFailure({ code: "OTP_REQUEST_FAILED", status: 502 }),
     ).resolves.toBeUndefined();
   });
+
+  /*
+    Found in production, not in a test. The first version was fire-and-forget —
+    `void reportFailure(...)` — copied from the API side, where the process
+    outlives the response. A Vercel function does not: it returns, gets frozen,
+    and the in-flight request dies with it. The report never arrived, and the
+    endpoint it was reporting to was working perfectly the whole time.
+
+    So the call is awaited now, which makes the timeout load-bearing rather
+    than tidy: the most likely reason a failure needs reporting is that the API
+    is unwell, and an unbounded wait would hang the user's error response
+    behind the very thing that is broken.
+  */
+  it("gives up rather than hanging the response behind a sick API", async () => {
+    configured();
+    let options: RequestInit | undefined;
+    global.fetch = jest.fn((_url: unknown, init?: RequestInit) => {
+      options = init;
+      return Promise.resolve({ ok: true } as Response);
+    }) as unknown as typeof fetch;
+
+    await reportFailure({ code: "OTP_REQUEST_FAILED", status: 502 });
+
+    expect(options?.signal).toBeInstanceOf(AbortSignal);
+  });
 });
