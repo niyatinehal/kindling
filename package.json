@@ -37,7 +37,8 @@
     "start:web": "npm run start -w web",
     "test:web": "npm run test -w web",
     "lint:web": "npm run lint -w web",
-    "typecheck:web": "npm run typecheck -w web"
+    "typecheck:web": "npm run typecheck -w web",
+    "keep-warm": "bash scripts/keep-warm.sh"
   },
   "devDependencies": {
     "concurrently": "10.0.5",
