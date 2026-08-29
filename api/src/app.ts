@@ -74,6 +74,22 @@ export function createApp(deps: AppDeps): Express {
     }),
   );
 
+  // Everything that matched no route above. Without this, Express's default
+  // finalhandler answers `Cannot GET /whatever` as text/html — which is not
+  // the envelope the rest of this API promises, and worse, the web app's
+  // `proxyUpstream` checks content-type before it parses. HTML from upstream
+  // is indistinguishable there from an upstream that is down, so it answers
+  // UPSTREAM_UNAVAILABLE and the person is told the server could not be
+  // reached. A mistyped path and an outage read identically, in the logs and
+  // on the screen, which is expensive at exactly the wrong moment.
+  //
+  // The path is not echoed back the way finalhandler echoed it. A 404 is the
+  // one response whose body an outsider gets to choose the contents of, and
+  // it buys nothing here — the caller already knows what it asked for.
+  app.use((_req: Request, res: Response): void => {
+    sendError(res, 404, "NOT_FOUND", "No route matches that path and method.");
+  });
+
   // Mounted last on purpose: Express only recognizes a 4-argument function as
   // an error handler, and only routes to it when it is the final middleware
   // registered. Every route in this app dispatches failures with

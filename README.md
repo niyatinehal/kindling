@@ -79,6 +79,9 @@ call `/auth/register` and retry. Every failure uses one envelope:
 { "error": { "code": "UNAUTHENTICATED", "message": "The token is not valid." } }
 ```
 
+A path that matches no route is part of that rather than an exception to it: it answers `404
+NOT_FOUND` in the same shape, so a client never has to parse Express's HTML default.
+
 Tokens are ES256, verified against `${SUPABASE_URL}/auth/v1/.well-known/jwks.json`. `SUPABASE_URL`
 is required at boot; `SUPABASE_SERVICE_ROLE_KEY` is required only to seed.
 

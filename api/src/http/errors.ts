@@ -17,6 +17,9 @@ export type ApiErrorCode =
   // rather than a fault: hand admin over, then delete.
   | "FAMILY_NEEDS_ADMIN"
   | "VALIDATION_FAILED"
+  // No route matched the path and method at all, as opposed to a route that
+  // ran and found nothing — those answer VALIDATION_FAILED with a reason.
+  | "NOT_FOUND"
   | "INTERNAL";
 
 /**
