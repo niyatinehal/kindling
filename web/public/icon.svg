@@ -1,11 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" fill="#0b3d2e" />
-  <g fill="#ffffff" transform="translate(256 256) scale(1.15) translate(-256 -256)">
-    <circle cx="144" cy="192" r="30" />
-    <rect x="112" y="238" width="64" height="112" rx="32" />
-    <circle cx="256" cy="192" r="30" />
-    <rect x="224" y="238" width="64" height="112" rx="32" />
-    <circle cx="368" cy="192" r="30" />
-    <rect x="336" y="238" width="64" height="112" rx="32" />
-  </g>
+  <rect width="512" height="512" fill="#0b3d2e"/>
+  <line x1="256.0" y1="104.0" x2="332.0" y2="124.4" stroke="#4ade80" stroke-width="20.0" stroke-linecap="round"/>
+  <line x1="353.7" y1="139.6" x2="398.8" y2="204.0" stroke="#4ade80" stroke-width="20.0" stroke-linecap="round"/>
+  <line x1="405.7" y1="229.6" x2="398.8" y2="308.0" stroke="#4ade80" stroke-width="20.0" stroke-linecap="round"/>
+  <line x1="387.6" y1="332.0" x2="332.0" y2="387.6" stroke="#f4f7f2" stroke-width="20.0" stroke-linecap="round"/>
+  <line x1="308.0" y1="398.8" x2="229.6" y2="405.7" stroke="#f4f7f2" stroke-width="20.0" stroke-linecap="round"/>
+  <line x1="204.0" y1="398.8" x2="139.6" y2="353.7" stroke="#f4f7f2" stroke-width="20.0" stroke-linecap="round"/>
+  <line x1="124.4" y1="332.0" x2="104.0" y2="256.0" stroke="#f4f7f2" stroke-width="20.0" stroke-linecap="round"/>
+  <line x1="106.3" y1="229.6" x2="139.6" y2="158.3" stroke="#f4f7f2" stroke-width="20.0" stroke-linecap="round"/>
+  <line x1="158.3" y1="139.6" x2="229.6" y2="106.3" stroke="#f4f7f2" stroke-width="20.0" stroke-linecap="round"/>
 </svg>

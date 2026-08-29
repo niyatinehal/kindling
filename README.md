@@ -1,6 +1,6 @@
-# Family Wellness Platform
+# Kindling
 
-[![CI](https://github.com/niyatinehal/wellness-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/niyatinehal/wellness-platform/actions/workflows/ci.yml)
+[![CI](https://github.com/niyatinehal/kindling/actions/workflows/ci.yml/badge.svg)](https://github.com/niyatinehal/kindling/actions/workflows/ci.yml)
 
 TypeScript + Express service backed by Postgres via Supabase and Prisma. Identity is provided by
 Supabase Auth and verified here; the schema enforces Domain A's invariants (soft-deleted users,
@@ -17,7 +17,7 @@ unique-while-live emails, one active membership per family member) at the databa
 This is an npm workspaces monorepo:
 
 ```
-wellness_platform/
+kindling/
   package.json            workspace root — shared infra scripts, Prettier, Supabase CLI
   scripts/dev.sh           the one-command dev script (`npm run dev`)
   api/                     the backend service (Express, Prisma, Jest)
@@ -40,7 +40,7 @@ directory.
 
 ```bash
 git clone <repo-url>
-cd wellness_platform
+cd kindling
 npm ci
 npm run dev
 ```
@@ -290,9 +290,9 @@ values in the dashboard:
 `PORT` is injected by Render and must not be set.
 
 Take the resulting URL from the service page — it is what step 4 needs. **Do not
-assume it is `https://wellness-api.onrender.com`.** `onrender.com` subdomains are
+assume it is `https://kindling-api.onrender.com`.** `onrender.com` subdomains are
 global, so when the service name is already taken Render appends a suffix and
-deploys at something like `https://wellness-api-u1uo.onrender.com` instead. That
+deploys at something like `https://kindling-api-u1uo.onrender.com` instead. That
 is the URL this project actually got, and pointing anything at the unsuffixed
 host reaches nothing at all — DNS does not resolve, so the failure looks like a
 hang rather than a 404.
@@ -322,7 +322,7 @@ the next request pays the wake-up: 15.4s measured on this service against 0.2-0.
 warm, and worse under load. Point a free external scheduler
 at **`<your-render-url>/readyz`** on a 14-minute schedule — one minute of margin
 under the spin-down window. For this project that is
-`https://wellness-api-u1uo.onrender.com/readyz`.
+`https://kindling-api-u1uo.onrender.com/readyz`.
 
 **`/readyz`, not `/healthz`.** They are not interchangeable here. `/healthz` is a
 liveness probe and deliberately touches nothing (`api/src/routes/health.ts`), so
@@ -335,7 +335,7 @@ auto-pausing after 7 idle days. Only `/readyz` solves both free-tier problems.
 confirm a URL works before you wire up a scheduler:
 
 ```bash
-npm run keep-warm https://wellness-api-u1uo.onrender.com
+npm run keep-warm https://kindling-api-u1uo.onrender.com
 ```
 
 It exits non-zero with a distinct code per failure — `2` unreachable, `3` up but
@@ -352,7 +352,7 @@ artifact under version control. On [cron-job.org](https://cron-job.org) (free,
 
 | Setting          | Value                                             |
 | ---------------- | ------------------------------------------------- |
-| URL              | `https://wellness-api-u1uo.onrender.com/readyz`   |
+| URL              | `https://kindling-api-u1uo.onrender.com/readyz`   |
 | Schedule         | every 14 minutes — cron expression `*/14 * * * *` |
 | Request timeout  | 60s or higher                                     |
 | Treat as success | HTTP 200 only                                     |
@@ -400,7 +400,7 @@ schema before they run:
 
 ```bash
 npm run test:db:up          # start the disposable test Postgres on 127.0.0.1:54329
-( cd api && DIRECT_URL=postgresql://postgres:postgres@127.0.0.1:54329/wellness_test npx prisma migrate deploy )
+( cd api && DIRECT_URL=postgresql://postgres:postgres@127.0.0.1:54329/kindling_test npx prisma migrate deploy )
 npm run test:integration    # 24 tests, serialized via --runInBand (see the note in jest.config.js)
 npm run test:db:down
 ```
@@ -464,7 +464,7 @@ required at boot (see `api/src/config/env.ts`), and `npm start` crashes immediat
 >
 > ```bash
 > cd api
-> export DIRECT_URL=postgresql://postgres:postgres@127.0.0.1:54329/wellness_test
+> export DIRECT_URL=postgresql://postgres:postgres@127.0.0.1:54329/kindling_test
 > export SHADOW_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54329/shadow
 > mkdir -p "prisma/migrations/$(date -u +%Y%m%d%H%M%S)_my_change"
 > npx prisma migrate diff --from-migrations prisma/migrations \

@@ -51,7 +51,7 @@ const loadProductionPwaModules = async () => {
  * `Serwist.findMatchingRoute` does.
  */
 const handlerFor = (runtimeCaching: readonly RuntimeCaching[], path: string): unknown => {
-  const url = new URL(path, "https://wellness.test");
+  const url = new URL(path, "https://kindling.test");
   const options: RouteMatchCallbackOptions = {
     url,
     request: new Request(url),

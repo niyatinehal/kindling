@@ -28,7 +28,7 @@ die()  { printf '\033[1;31m✗\033[0m %s\n' "$2" >&2; exit "$1"; }
 # without exporting anything.
 BASE_URL="${1:-${API_BASE_URL:-}}"
 [ -n "$BASE_URL" ] ||
-  die 1 "No URL. Pass one (scripts/keep-warm.sh https://wellness-api-u1uo.onrender.com) or set API_BASE_URL."
+  die 1 "No URL. Pass one (scripts/keep-warm.sh https://kindling-api-u1uo.onrender.com) or set API_BASE_URL."
 
 # A trailing slash would produce '//readyz', which Express does not route.
 BASE_URL="${BASE_URL%/}"

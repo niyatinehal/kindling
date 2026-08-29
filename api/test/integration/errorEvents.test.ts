@@ -7,7 +7,7 @@ import { rulesPlanGenerator } from "../../src/workouts/planGenerator.js";
 
 const connectionString =
   process.env["TEST_DATABASE_URL"] ??
-  "postgresql://postgres:postgres@127.0.0.1:54329/wellness_test";
+  "postgresql://postgres:postgres@127.0.0.1:54329/kindling_test";
 
 const prisma = createPrismaClient(connectionString);
 

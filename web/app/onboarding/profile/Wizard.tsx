@@ -68,7 +68,7 @@ const TOTAL = STEPS.length;
  * that state. Session scope also means a shared phone does not hand the next
  * person the last one's answers.
  */
-const DRAFT_KEY = "wellness.profile.draft";
+const DRAFT_KEY = "kindling.profile.draft";
 
 type Draft = {
   birthYear: string;

@@ -40,7 +40,7 @@ describe("digital asset links", () => {
   // Must match `packageId` in android/twa-manifest.json. A mismatch is the
   // most common reason verification fails, and it produces no error anywhere.
   it("names the package the APK is actually built as", () => {
-    expect(statements[0]?.target?.package_name).toBe("app.vercel.wellness_platform_sigma.twa");
+    expect(statements[0]?.target?.package_name).toBe("family.kindling.twa");
   });
 
   it("carries a well-formed signing fingerprint", () => {

@@ -168,12 +168,12 @@ describe("intake wizard", () => {
     });
     expect(push).not.toHaveBeenCalled();
     // Recoverable: a failed save must not throw the answers away.
-    expect(sessionStorage.getItem("wellness.profile.draft")).not.toBeNull();
+    expect(sessionStorage.getItem("kindling.profile.draft")).not.toBeNull();
   });
 
   it("restores an abandoned draft rather than starting over", () => {
     sessionStorage.setItem(
-      "wellness.profile.draft",
+      "kindling.profile.draft",
       JSON.stringify({ birthYear: "1996", goal: ["strength"] }),
     );
 
@@ -186,7 +186,7 @@ describe("intake wizard", () => {
   // A draft written by an earlier version of this form has keys the current one
   // expects to be arrays. Rendering must not crash on the missing ones.
   it("survives a draft that is missing keys", () => {
-    sessionStorage.setItem("wellness.profile.draft", JSON.stringify({ birthYear: "1990" }));
+    sessionStorage.setItem("kindling.profile.draft", JSON.stringify({ birthYear: "1990" }));
 
     expect(() => {
       renderWizard();
@@ -251,7 +251,7 @@ describe("editing saved details", () => {
   // the user already completed.
   it("prefers the saved profile over a leftover draft", () => {
     sessionStorage.setItem(
-      "wellness.profile.draft",
+      "kindling.profile.draft",
       JSON.stringify({ birthYear: "1990", goal: ["fat_loss"] }),
     );
 

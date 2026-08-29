@@ -9,7 +9,7 @@
 # directly and needs no blueprint.
 services:
   - type: web
-    name: wellness-api
+    name: kindling-api
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .

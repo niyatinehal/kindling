@@ -20,7 +20,7 @@ const app = createApp({
 });
 
 const server = app.listen(env.PORT, () => {
-  console.log(`wellness-platform listening on http://localhost:${env.PORT}`);
+  console.log(`kindling listening on http://localhost:${env.PORT}`);
 });
 
 /**

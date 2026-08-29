@@ -3,7 +3,7 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "app.vercel.wellness_platform_sigma.twa",
+      "package_name": "family.kindling.twa",
       "sha256_cert_fingerprints": [
         "6C:C1:E0:11:11:DA:A8:C6:FC:3F:6C:12:A9:F6:05:78:B6:5F:96:46:92:7A:FD:94:EC:14:19:D3:47:05:5B:83"
       ]

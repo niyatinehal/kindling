@@ -10,7 +10,7 @@ import type { ReactNode } from "react";
 import { CHROME_COLOUR, THEME_COOKIE, isTheme, type Theme } from "../src/theme/theme";
 
 export const metadata = {
-  title: "Family Wellness Platform",
+  title: "Kindling",
   description: "One app a whole family opens.",
   manifest: "/manifest.webmanifest",
   // The manifest covers Android and desktop. iOS reads none of it: Safari takes
@@ -22,7 +22,7 @@ export const metadata = {
     apple: "/apple-touch-icon.png",
   },
   appleWebApp: {
-    title: "Wellness",
+    title: "Kindling",
     // `default` keeps the status bar legible against `--color-canvas`.
     // `black-translucent` would draw the page under the clock and battery.
     statusBarStyle: "default",
