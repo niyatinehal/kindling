@@ -38,12 +38,12 @@ export function WeekStrip({
               <div
                 key={date}
                 data-day={date}
-                className="flex h-full flex-1 items-end overflow-hidden rounded-[5px] bg-canvas"
+                className="flex h-full flex-1 items-end rounded-[5px] bg-raised"
               >
                 {fraction !== null && (
                   <div
                     data-fill={String(fraction)}
-                    className="w-full rounded-[5px] bg-water"
+                    className="w-full rounded-[5px] bg-water dark:shadow-[0_0_12px_-2px_var(--color-water)]"
                     style={{ height: `${Math.max(fraction * 100, 8)}%` }}
                   />
                 )}

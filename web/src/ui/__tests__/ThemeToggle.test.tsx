@@ -28,6 +28,13 @@ describe("ThemeToggle", () => {
     expect(screen.getByRole("button", { name: messages.theme.switchToLight })).toBeInTheDocument();
   });
 
+  // No attribute means nobody has chosen, and the app is dark until they do.
+  it("treats an unchosen theme as dark", () => {
+    renderToggle();
+
+    expect(screen.getByRole("button", { name: messages.theme.switchToLight })).toBeInTheDocument();
+  });
+
   it("switches the document over immediately, without waiting for the server", () => {
     document.documentElement.dataset["theme"] = "light";
     renderToggle();

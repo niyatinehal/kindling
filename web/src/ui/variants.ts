@@ -17,8 +17,8 @@
  * being handed one it has no look for.
  */
 export const VARIANT_CLASSES = {
-  primary: "bg-accent text-surface hover:brightness-110",
-  secondary: "bg-surface text-ink border border-line hover:border-accent/40",
+  primary: "bg-accent text-surface font-bold shadow-button hover:brightness-110",
+  secondary: "bg-raised text-ink hover:brightness-110 dark:hover:brightness-125",
   ghost: "bg-transparent text-accent hover:bg-canvas",
 } as const;
 

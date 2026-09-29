@@ -1,7 +1,9 @@
+import type React from "react";
+
 import { fractionOf } from "../tracking/targets";
 
-const SIZE = 80;
-const STROKE = 6;
+const SIZE = 96;
+const STROKE = 7;
 const RADIUS = (SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
@@ -40,7 +42,7 @@ export function ProgressRing({
   const fraction = fractionOf(value, target);
 
   return (
-    <div className="flex flex-col items-center gap-1.5">
+    <div className="flex flex-col items-center gap-2">
       <div className="relative grid place-items-center" style={{ width: SIZE, height: SIZE }}>
         {/*
           Rotated so the fill starts at twelve o'clock rather than three, which
@@ -63,6 +65,8 @@ export function ProgressRing({
               r={RADIUS}
               fill="none"
               stroke={color}
+              className="dark:[filter:drop-shadow(0_0_6px_var(--ring))]"
+              style={{ "--ring": color } as React.CSSProperties}
               strokeWidth={STROKE}
               strokeLinecap="round"
               strokeDasharray={CIRCUMFERENCE}
@@ -70,7 +74,7 @@ export function ProgressRing({
             />
           )}
         </svg>
-        <span className="absolute text-base font-semibold tabular-nums">{display}</span>
+        <span className="absolute text-xl font-bold tracking-tight tabular-nums">{display}</span>
       </div>
       <span className="text-sm text-muted">{label}</span>
     </div>

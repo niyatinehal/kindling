@@ -76,7 +76,7 @@ export function ChoiceGroup<T extends string>({
                 className={`inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full border px-4 text-base transition has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent motion-safe:active:scale-95 ${
                   isSelected
                     ? "border-accent bg-move-soft font-semibold text-ink"
-                    : "border-line bg-surface text-ink hover:border-accent/50"
+                    : "border-transparent bg-raised text-ink hover:border-line"
                 }`}
               >
                 {input}
@@ -92,7 +92,7 @@ export function ChoiceGroup<T extends string>({
               className={`flex min-h-13 cursor-pointer items-center gap-3 rounded-control border px-4 py-2 text-[1.0625rem] transition ${
                 isSelected
                   ? "border-accent bg-move-soft font-semibold text-ink"
-                  : "border-line bg-surface text-ink hover:border-accent/50"
+                  : "border-transparent bg-raised text-ink hover:border-line"
               }`}
             >
               {input}

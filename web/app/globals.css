@@ -1,6 +1,12 @@
 @import "tailwindcss";
 
 /*
+ * `dark:` means this app's dark theme — the default, or the explicit choice —
+ * not the operating system's preference, which the app no longer follows.
+ */
+@custom-variant dark (&:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *));
+
+/*
  * The palette, twice — once per theme. Names are SEMANTIC (`accent`, not
  * `green-600`) so that changing the colour scheme never means touching a
  * component, and now so that changing the whole THEME does not either.
@@ -51,6 +57,7 @@
 
   --c-shadow-card: 0 1px 2px rgb(11 61 46 / 0.03), 0 6px 20px -14px rgb(11 61 46 / 0.12);
   --c-shadow-button: none;
+  --c-raised: #f6f9f6;
 
   /*
    * One colour per thing you track, so a glance tells water from sleep before
@@ -78,94 +85,94 @@
 /*
  * Dark, twice, and the two blocks MUST stay identical.
  *
- * They cannot be merged: one is reached through a media query and the other
- * through an attribute selector, and CSS has no way to say "either of these".
- * `palette.test.ts` asserts the two declare the same values, so the
- * duplication cannot rot.
+ * Dark is the default: the first block applies whenever nobody has chosen
+ * light, and the second is the explicit choice. They are kept apart so that
+ * each selector reads as what it means, and `palette.test.ts` asserts they
+ * declare the same values, so the duplication cannot rot.
  *
- * The `:not([data-theme="light"])` guard is what lets an explicit light choice
- * beat a dark system preference.
+ * Near-black with a trace of the brand green, rather than pure black: pure
+ * black makes every edge vibrate against it, and this value is the one the
+ * Android app already paints its status bar.
+ *
+ * Shadows are gone and glow takes over: nothing darkens further against a
+ * near-black page, so depth comes from `--c-raised` surfaces and from light —
+ * the primary button and the rings give off their own colour.
  */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
+:root:not([data-theme="light"]) {
+  color-scheme: dark;
 
-    --c-ink: #eaf4ee;
-    --c-canvas: #07271d;
-    --c-surface: #0f3629;
-    --c-accent: #4ade80;
-    --c-accent-bright: #22c55e;
-    --c-accent-glow: #4ade80;
-    --c-muted: #9dbdab;
-    --c-line: #24614a;
+  --c-ink: #f2f7f4;
+  --c-canvas: #0f1a14;
+  --c-surface: #16231c;
+  --c-raised: #1e2e25;
+  --c-accent: #4ade80;
+  --c-accent-bright: #22c55e;
+  --c-accent-glow: #4ade80;
+  --c-muted: #9fb4a8;
+  --c-line: #26382e;
 
-    --c-emphasis: #164534;
-    --c-on-emphasis: #eaf4ee;
-    --c-emphasis-label: #4ade80;
+  --c-emphasis: #1e2e25;
+  --c-on-emphasis: #f2f7f4;
+  --c-emphasis-label: #4ade80;
 
-    /*
-     * Not a darker shadow — no shadow. A shadow is a darkening, and there is
-     * nothing left to darken against #07271d. The border takes over the job of
-     * separating a card from the page, which is why `--c-line` steps up here
-     * rather than merely being recoloured.
-     */
-    --c-shadow-card: none;
-    --c-shadow-button: none;
+  --c-shadow-card: none;
+  --c-shadow-button: 0 0 28px -8px rgb(74 222 128 / 0.55);
 
-    --c-water: #7dd3fc;
-    --c-water-soft: #0c3b52;
-    --c-water-glow: #7dd3fc;
-    --c-sleep: #a5b4fc;
-    --c-sleep-soft: #272b63;
-    --c-sleep-glow: #a5b4fc;
-    --c-move: #4ade80;
-    --c-move-soft: #14532d;
-    --c-meal: #fdba74;
-    --c-meal-soft: #4a2412;
-    --c-meal-glow: #fdba74;
-    --c-family: #f0abfc;
-    --c-family-soft: #4a1450;
-  }
+  --c-water: #67cbff;
+  --c-water-soft: #11293a;
+  --c-water-glow: #67cbff;
+  --c-sleep: #ab9eff;
+  --c-sleep-soft: #221f44;
+  --c-sleep-glow: #ab9eff;
+  --c-move: #4ade80;
+  --c-move-soft: #133322;
+  --c-meal: #ffa564;
+  --c-meal-soft: #37220f;
+  --c-meal-glow: #ffa564;
+  --c-family: #f78fd2;
+  --c-family-soft: #3a1732;
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  --c-ink: #eaf4ee;
-  --c-canvas: #07271d;
-  --c-surface: #0f3629;
+  --c-ink: #f2f7f4;
+  --c-canvas: #0f1a14;
+  --c-surface: #16231c;
+  --c-raised: #1e2e25;
   --c-accent: #4ade80;
   --c-accent-bright: #22c55e;
   --c-accent-glow: #4ade80;
-  --c-muted: #9dbdab;
-  --c-line: #24614a;
+  --c-muted: #9fb4a8;
+  --c-line: #26382e;
 
-  --c-emphasis: #164534;
-  --c-on-emphasis: #eaf4ee;
+  --c-emphasis: #1e2e25;
+  --c-on-emphasis: #f2f7f4;
   --c-emphasis-label: #4ade80;
 
   --c-shadow-card: none;
-  --c-shadow-button: none;
+  --c-shadow-button: 0 0 28px -8px rgb(74 222 128 / 0.55);
 
-  --c-water: #7dd3fc;
-  --c-water-soft: #0c3b52;
-  --c-water-glow: #7dd3fc;
-  --c-sleep: #a5b4fc;
-  --c-sleep-soft: #272b63;
-  --c-sleep-glow: #a5b4fc;
+  --c-water: #67cbff;
+  --c-water-soft: #11293a;
+  --c-water-glow: #67cbff;
+  --c-sleep: #ab9eff;
+  --c-sleep-soft: #221f44;
+  --c-sleep-glow: #ab9eff;
   --c-move: #4ade80;
-  --c-move-soft: #14532d;
-  --c-meal: #fdba74;
-  --c-meal-soft: #4a2412;
-  --c-meal-glow: #fdba74;
-  --c-family: #f0abfc;
-  --c-family-soft: #4a1450;
+  --c-move-soft: #133322;
+  --c-meal: #ffa564;
+  --c-meal-soft: #37220f;
+  --c-meal-glow: #ffa564;
+  --c-family: #f78fd2;
+  --c-family-soft: #3a1732;
 }
 
 @theme inline {
   --color-ink: var(--c-ink);
   --color-canvas: var(--c-canvas);
   --color-surface: var(--c-surface);
+  --color-raised: var(--c-raised);
   --color-accent: var(--c-accent);
   --color-accent-bright: var(--c-accent-bright);
   --color-accent-glow: var(--c-accent-glow);
@@ -198,7 +205,7 @@
    * are being talked into a habit, and soft corners read as friendly rather
    * than clinical.
    */
-  --radius-card: 1.25rem;
+  --radius-card: 1.5rem;
   --radius-control: 1rem;
   --shadow-card: var(--c-shadow-card);
   --shadow-button: var(--c-shadow-button);

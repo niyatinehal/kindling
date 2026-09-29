@@ -12,8 +12,8 @@ import type { ReactNode } from "react";
  * the page, in dark it lifts above it.
  */
 const TONES = {
-  surface: "bg-surface text-ink border border-line",
-  emphasis: "bg-emphasis text-on-emphasis",
+  surface: "bg-surface text-ink border border-line/70",
+  emphasis: "bg-raised text-ink",
 } as const;
 
 export function Card({

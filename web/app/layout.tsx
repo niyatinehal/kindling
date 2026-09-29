@@ -8,7 +8,13 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import type { ReactNode } from "react";
 
-import { CHROME_COLOUR, THEME_COOKIE, isTheme, type Theme } from "../src/theme/theme";
+import {
+  CHROME_COLOUR,
+  DEFAULT_THEME,
+  THEME_COOKIE,
+  isTheme,
+  type Theme,
+} from "../src/theme/theme";
 
 /*
  * Self-hosted by next/font at build time, so no request ever goes to Google
@@ -53,25 +59,14 @@ async function storedTheme(): Promise<Theme | undefined> {
 }
 
 /**
- * Browser chrome follows the theme.
- *
- * With no stored choice this hands over both colours and lets the browser pick
- * by system preference. With a choice it names a single colour, because the
- * media queries would otherwise contradict a user who picked dark on a light
- * machine — the page would be dark and the address bar would not.
+ * Browser chrome follows the theme: the stored choice, or the default when
+ * nobody has made one. Always one colour — the page no longer follows the
+ * system preference, so neither may the address bar.
  */
 export async function generateViewport(): Promise<Viewport> {
   const theme = await storedTheme();
 
-  return {
-    themeColor:
-      theme === undefined
-        ? [
-            { media: "(prefers-color-scheme: light)", color: CHROME_COLOUR.light },
-            { media: "(prefers-color-scheme: dark)", color: CHROME_COLOUR.dark },
-          ]
-        : CHROME_COLOUR[theme],
-  };
+  return { themeColor: CHROME_COLOUR[theme ?? DEFAULT_THEME] };
 }
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
@@ -88,7 +83,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       script racing the first paint to correct it.
 
       Absent a cookie the attribute is omitted, and `globals.css` falls through
-      to `prefers-color-scheme`.
+      to the dark palette, which is the default.
     */
     <html
       lang={locale}

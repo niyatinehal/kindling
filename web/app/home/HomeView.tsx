@@ -3,10 +3,9 @@ import { useTranslations } from "next-intl";
 import type { TrackingSummary } from "../../src/tracking/summaryTypes";
 import { WATER_TARGET_ML } from "../../src/tracking/targets";
 import { Card } from "../../src/ui/Card";
-import { Icon } from "../../src/ui/Icon";
 import { LinkButton } from "../../src/ui/LinkButton";
+import { NavList, NavRow } from "../../src/ui/NavList";
 import { Screen } from "../../src/ui/Screen";
-import { Tile } from "../../src/ui/Tile";
 import { WeekStrip } from "../../src/ui/WeekStrip";
 import { ClaimAccountCard } from "./ClaimAccountCard";
 import { DeleteAccountButton } from "./DeleteAccountButton";
@@ -97,22 +96,6 @@ export function HomeView({
       </Card>
 
       {/*
-        What used to be two more full-width buttons under "See my plan". As a
-        stack, three equal buttons asked the reader to read all three to find
-        the one they wanted; as tiles, the colour and the icon get there first.
-      */}
-      {hasProfile && (
-        <div className="grid grid-cols-2 gap-3">
-          <Tile href="/meals" icon="utensils" tone="meal">
-            {t("mealsCta")}
-          </Tile>
-          <Tile href="/dashboard" icon="chart" tone="water">
-            {t("viewDashboard")}
-          </Tile>
-        </div>
-      )}
-
-      {/*
         Not a chart — /dashboard already draws those. This answers the cruder
         question the home screen is for: did the week happen.
       */}
@@ -141,19 +124,29 @@ export function HomeView({
         fetched the way in stays and the claim goes — an unreachable API is not
         evidence that somebody has no family.
       */}
-      <Card>
-        <div className="flex items-center gap-3">
-          <Icon name="users" className="size-5 text-family" />
-          {inFamily !== null && (
-            <p className="text-muted">{inFamily ? t("inFamily") : t("noFamily")}</p>
-          )}
-        </div>
-        <div className="mt-4">
-          <LinkButton href="/family" variant="secondary">
-            {inFamily === null ? t("openFamily") : inFamily ? t("viewFamily") : t("setUpFamily")}
-          </LinkButton>
-        </div>
-      </Card>
+      {/*
+        One list for everywhere else there is to go, in the order people go
+        there: food most days, the week now and then, the family least. What
+        were tiles and a separate family card were three different shapes for
+        the same kind of thing.
+      */}
+      <NavList>
+        {hasProfile && (
+          <>
+            <NavRow href="/meals" icon="utensils" tone="meal" label={t("mealsCta")} />
+            <NavRow href="/dashboard" icon="chart" tone="water" label={t("viewDashboard")} />
+          </>
+        )}
+        <NavRow
+          href="/family"
+          icon="users"
+          tone="family"
+          label={
+            inFamily === null ? t("openFamily") : inFamily ? t("viewFamily") : t("setUpFamily")
+          }
+          detail={inFamily === null ? undefined : inFamily ? t("inFamily") : t("noFamily")}
+        />
+      </NavList>
 
       {/*
         Last on the screen and the quietest variant on it, because signing out

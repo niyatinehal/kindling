@@ -62,7 +62,9 @@ export default function LandingPage() {
   return (
     <Screen>
       <div className="flex flex-col gap-3 pt-2">
-        <h1 className="text-[2.5rem] leading-[1.08] font-semibold text-ink">{t("title")}</h1>
+        <h1 className="text-[2.5rem] leading-[1.05] font-bold tracking-tight text-ink">
+          {t("title")}
+        </h1>
         <p className="text-lg leading-snug text-muted">{t("subtitle")}</p>
       </div>
 

@@ -188,7 +188,14 @@ export function PlanClient({
           }
 
           return (
-            <div key={dayKey} className={isToday ? "rounded-card ring-1 ring-accent" : undefined}>
+            <div
+              key={dayKey}
+              className={
+                isToday
+                  ? "rounded-card ring-1 ring-accent dark:shadow-[0_0_32px_-12px_var(--color-accent)]"
+                  : undefined
+              }
+            >
               <Card>
                 <h2 className="font-semibold text-ink">{tDay(dayKey)}</h2>
 
@@ -235,6 +242,7 @@ export function PlanClient({
                             <>
                               <Button
                                 inline
+                                variant="secondary"
                                 onClick={() => {
                                   void tick(exercise.id, "completed");
                                 }}

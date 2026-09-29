@@ -27,7 +27,17 @@ export const isTheme = (value: unknown): value is Theme =>
  */
 export const CHROME_COLOUR: Record<Theme, string> = {
   light: "#f4f7f2",
-  dark: "#07271d",
+  // The same value the Android app's twa-manifest.json already declares as
+  // `themeColorDark`, so the status bar above the page matches the page.
+  dark: "#0f1a14",
 };
+
+/**
+ * What a visitor sees before choosing. Dark, deliberately, not the system
+ * preference: the design is built dark-first, and most phones report light,
+ * so following the system would mean almost nobody saw it. The toggle is on
+ * every screen, and a choice made there is kept in THEME_COOKIE.
+ */
+export const DEFAULT_THEME: Theme = "dark";
 
 export const otherTheme = (theme: Theme): Theme => (theme === "dark" ? "light" : "dark");

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import {
   CHROME_COLOUR,
+  DEFAULT_THEME,
   THEME_COOKIE,
   THEME_COOKIE_MAX_AGE,
   isTheme,
@@ -28,7 +29,7 @@ import { Icon } from "./Icon";
  */
 export function ThemeToggle() {
   const t = useTranslations("theme");
-  const [theme, setTheme] = useState<Theme>("light");
+  const [theme, setTheme] = useState<Theme>(DEFAULT_THEME);
 
   /*
    * Read back what the server already decided, rather than deciding again.
@@ -39,13 +40,8 @@ export function ThemeToggle() {
   useEffect(() => {
     const attribute = document.documentElement.dataset["theme"];
 
-    if (isTheme(attribute)) {
-      setTheme(attribute);
-      return;
-    }
-
-    // No cookie was set, so the page is showing whatever the system asked for.
-    setTheme(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    // No attribute means no cookie, so the page is showing the default.
+    setTheme(isTheme(attribute) ? attribute : DEFAULT_THEME);
   }, []);
 
   function switchTheme() {

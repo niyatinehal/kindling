@@ -23,7 +23,9 @@ export function Screen({ children, title }: { children: ReactNode; title?: strin
       */}
       <div className="flex items-start justify-between gap-3">
         {title !== undefined && (
-          <h1 className="pt-1 text-[2rem] leading-tight font-semibold text-ink">{title}</h1>
+          <h1 className="pt-1 text-[2rem] leading-tight font-bold tracking-tight text-ink">
+            {title}
+          </h1>
         )}
         <div className="ms-auto">
           <ThemeToggle />

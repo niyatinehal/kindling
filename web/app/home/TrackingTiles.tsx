@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { EMPTY_SUMMARY } from "../../src/tracking/summaryTypes";
@@ -54,6 +54,7 @@ export function TrackingTiles({
   guestChip?: string | undefined;
 }) {
   const t = useTranslations("tracking");
+  const locale = useLocale();
   const tError = useTranslations("errors");
 
   const [summary, setSummary] = useState(initial);
@@ -108,8 +109,24 @@ export function TrackingTiles({
         trip before the numbers caught up, or two sources of truth for the same
         three figures.
       */}
-      <div className="flex items-center justify-between gap-3 pt-1">
-        <h1 className="text-[2.25rem] leading-tight font-semibold text-ink">{greeting}</h1>
+      <div className="flex items-end justify-between gap-3 pt-1">
+        <div>
+          {/*
+            The server renders in UTC and the phone in its own timezone, so
+            around midnight the two can name different days. The phone is
+            right, so its value is allowed to replace the server's quietly.
+          */}
+          <p suppressHydrationWarning className="text-sm font-medium text-muted">
+            {new Date().toLocaleDateString(locale, {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+            })}
+          </p>
+          <h1 className="mt-0.5 text-[2.5rem] leading-tight font-bold tracking-tight text-ink">
+            {greeting}
+          </h1>
+        </div>
         {guestChip !== undefined && (
           <span className="rounded-full bg-move-soft px-3 py-1 text-sm font-semibold text-move">
             {guestChip}
@@ -120,7 +137,7 @@ export function TrackingTiles({
       <Hero>
         <p className="text-sm font-medium text-muted">{t("thisWeek")}</p>
 
-        <div className="mt-4 grid grid-cols-3 gap-3">
+        <div className="mt-5 grid grid-cols-3 gap-2">
           <ProgressRing
             color="var(--color-water)"
             label={t("water")}

@@ -37,7 +37,7 @@ export function Field({
         {...(maxLength !== undefined && { maxLength })}
         {...(inputMode !== undefined && { inputMode })}
         onChange={(event) => onChange(event.target.value)}
-        className="min-h-13 w-full rounded-control border border-muted/60 bg-surface px-4 text-[1.0625rem] text-ink transition focus:border-accent focus:ring-4 focus:ring-accent/15"
+        className="min-h-13 w-full rounded-control border border-line bg-raised px-4 text-[1.0625rem] text-ink transition focus:border-accent focus:ring-4 focus:ring-accent/15"
       />
     </label>
   );
