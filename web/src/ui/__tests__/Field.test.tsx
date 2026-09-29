@@ -2,6 +2,9 @@ import { fireEvent, render, screen } from "@testing-library/react";
 
 import { Field } from "../Field";
 
+// 48px (min-h-12) is the floor, not the exact size: anything from 12 up passes.
+const MIN_TOUCH_TARGET = /\bmin-h-(1[2-9]|[2-9]\d)\b/;
+
 describe("Field", () => {
   it("associates its label with its input", () => {
     render(<Field label="Phone number" value="" onChange={jest.fn()} />);
@@ -24,6 +27,6 @@ describe("Field", () => {
 
   it("meets the minimum touch target", () => {
     render(<Field label="Name" value="" onChange={jest.fn()} />);
-    expect(screen.getByLabelText("Name").className).toContain("min-h-12");
+    expect(screen.getByLabelText("Name").className).toMatch(MIN_TOUCH_TARGET);
   });
 });

@@ -2,6 +2,9 @@ import { render, screen } from "@testing-library/react";
 
 import { LinkButton } from "../LinkButton";
 
+// 48px (min-h-12) is the floor, not the exact size: anything from 12 up passes.
+const MIN_TOUCH_TARGET = /\bmin-h-(1[2-9]|[2-9]\d)\b/;
+
 describe("LinkButton", () => {
   // The whole reason this exists rather than reusing Button: it must be a
   // link, because it navigates. The landing test finds it with getByRole("link").
@@ -20,7 +23,7 @@ describe("LinkButton", () => {
           Go
         </LinkButton>,
       );
-      expect(screen.getByRole("link", { name: "Go" }).className).toContain("min-h-12");
+      expect(screen.getByRole("link", { name: "Go" }).className).toMatch(MIN_TOUCH_TARGET);
     }
   });
 

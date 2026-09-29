@@ -12,6 +12,7 @@ import { Button } from "../../src/ui/Button";
 import { Card } from "../../src/ui/Card";
 import { ChoiceGroup } from "../../src/ui/ChoiceGroup";
 import { Field } from "../../src/ui/Field";
+import { Icon, IconChip } from "../../src/ui/Icon";
 import { Screen } from "../../src/ui/Screen";
 
 const SLOTS = ["breakfast", "lunch", "dinner", "snack"] as const;
@@ -128,11 +129,14 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
 
       <Card>
         <div className="flex flex-col gap-5">
-          <div>
-            <h2 className="text-sm font-semibold tracking-widest text-muted uppercase">
-              {t("pantryTitle")}
-            </h2>
-            <p className="mt-1 text-sm text-muted">{t("pantryHint")}</p>
+          <div className="flex gap-3">
+            <IconChip name="utensils" tone="meal" />
+            <div>
+              <h2 className="font-display text-xl leading-snug font-semibold text-ink">
+                {t("pantryTitle")}
+              </h2>
+              <p className="mt-1 text-sm leading-relaxed text-muted">{t("pantryHint")}</p>
+            </div>
           </div>
 
           {PANTRY_GROUPS.map((group) => (
@@ -143,6 +147,7 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
               selected={selected}
               onChange={setSelected}
               multiple
+              layout="chips"
             />
           ))}
 
@@ -151,6 +156,7 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
             choices={SLOTS.map((value) => ({ value, label: tSlot(value) }))}
             selected={slot}
             onChange={setSlot}
+            layout="chips"
           />
 
           <Button
@@ -175,12 +181,14 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
         <Card key={suggestion.recipe_key}>
           <div className="flex flex-col gap-2">
             <div className="flex items-baseline justify-between gap-3">
-              <h3 className="text-lg font-semibold text-ink">
+              <h3 className="font-display text-xl font-semibold text-ink">
                 {tRecipe.has(suggestion.recipe_key)
                   ? tRecipe(suggestion.recipe_key)
                   : suggestion.recipe_key}
               </h3>
-              <span className="text-sm text-muted">{tSlot(suggestion.slot as "lunch")}</span>
+              <span className="rounded-full bg-meal-soft px-2.5 py-0.5 text-xs font-semibold text-meal">
+                {tSlot(suggestion.slot as "lunch")}
+              </span>
             </div>
 
             {/* §16.2: nutrition is always labelled an estimate, never a fact. */}
@@ -193,7 +201,10 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
             </p>
 
             {suggestion.missing.length === 0 ? (
-              <p className="text-sm font-medium text-accent">{t("canCookNow")}</p>
+              <p className="inline-flex items-center gap-1.5 self-start rounded-full bg-move-soft px-3 py-1 text-sm font-semibold text-move">
+                <Icon name="check" className="size-4" />
+                {t("canCookNow")}
+              </p>
             ) : (
               <p className="text-sm text-muted">
                 {t("needsMore", {

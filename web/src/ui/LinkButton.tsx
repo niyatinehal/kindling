@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { VARIANT_CLASSES } from "./variants";
+import { BUTTON_SHAPE, VARIANT_CLASSES } from "./variants";
 import type { LinkVariant } from "./variants";
 
 /**
@@ -24,10 +24,7 @@ export function LinkButton({
   variant?: LinkVariant;
 }) {
   return (
-    <a
-      href={href}
-      className={`flex min-h-12 w-full items-center justify-center rounded-card px-6 text-[1.0625rem] font-semibold transition ${VARIANT_CLASSES[variant]}`}
-    >
+    <a href={href} className={`${BUTTON_SHAPE} ${VARIANT_CLASSES[variant]}`}>
       {children}
     </a>
   );

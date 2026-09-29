@@ -72,6 +72,19 @@ const PAIRS: { name: string; fg: string; bg: string; min: number }[] = [
   // Non-text: the ring fill and the chart's target line.
   { name: "progress fill on a card", fg: "--c-accent-bright", bg: "--c-surface", min: 3 },
   { name: "chart target line", fg: "--c-accent", bg: "--c-surface", min: 3 },
+  // Category colours carry short labels on their own soft chip ("You can cook
+  // this right now"), so they are held to the text threshold there, and to
+  // the graphics threshold as icons on a plain card.
+  ...(["water", "sleep", "move", "meal", "family"] as const).flatMap((c) => [
+    { name: `${c} label on its chip`, fg: `--c-${c}`, bg: `--c-${c}-soft`, min: 4.5 },
+    { name: `${c} icon on a card`, fg: `--c-${c}`, bg: "--c-surface", min: 3 },
+  ]),
+  ...(["water", "sleep", "meal"] as const).map((c) => ({
+    name: `${c} ring on the hero`,
+    fg: `--c-${c}-glow`,
+    bg: "--c-emphasis",
+    min: 3,
+  })),
 ];
 
 describe("palette", () => {

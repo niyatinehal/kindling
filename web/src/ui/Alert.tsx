@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
  */
 export function Alert({ children }: { children: ReactNode }) {
   return (
-    <p role="alert" className="rounded-card border border-line bg-surface p-4 text-ink">
+    <p role="alert" className="rounded-control border border-meal/30 bg-meal-soft p-4 text-ink">
       {children}
     </p>
   );

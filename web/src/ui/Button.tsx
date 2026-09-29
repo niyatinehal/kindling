@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Spinner } from "./Spinner";
-import { VARIANT_CLASSES } from "./variants";
+import { BUTTON_SHAPE, VARIANT_CLASSES } from "./variants";
 import type { Variant } from "./variants";
 
 /**
@@ -42,7 +42,7 @@ export function Button({
       disabled={disabled || loading}
       aria-busy={loading}
       {...(onClick !== undefined && { onClick })}
-      className={`flex min-h-12 w-full items-center justify-center gap-2 rounded-card px-6 text-[1.0625rem] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${VARIANT_CLASSES[variant]}`}
+      className={`${BUTTON_SHAPE} disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none ${VARIANT_CLASSES[variant]}`}
     >
       {loading && <Spinner />}
       {children}

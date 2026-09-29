@@ -2,12 +2,32 @@ import "./globals.css";
 
 import { SerwistProvider } from "@serwist/turbopack/react";
 import type { Viewport } from "next";
+import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
 import { cookies } from "next/headers";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import type { ReactNode } from "react";
 
 import { CHROME_COLOUR, THEME_COOKIE, isTheme, type Theme } from "../src/theme/theme";
+
+/*
+ * Self-hosted by next/font at build time, so no request ever goes to Google
+ * from a visitor's browser — the privacy page promises no third parties, and
+ * a font CDN would quietly be one. `swap` shows the system face until these
+ * arrive rather than blank text, which matters on a slow phone connection.
+ */
+const heading = Fraunces({
+  subsets: ["latin"],
+  axes: ["SOFT", "WONK", "opsz"],
+  variable: "--font-heading",
+  display: "swap",
+});
+
+const body = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-body",
+  display: "swap",
+});
 
 export const metadata = {
   title: "Family Wellness Platform",
@@ -77,8 +97,12 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       Absent a cookie the attribute is omitted, and `globals.css` falls through
       to `prefers-color-scheme`.
     */
-    <html lang={locale} {...(theme !== undefined && { "data-theme": theme })}>
-      <body>
+    <html
+      lang={locale}
+      className={`${heading.variable} ${body.variable}`}
+      {...(theme !== undefined && { "data-theme": theme })}
+    >
+      <body className="font-sans">
         {/*
           The worker is served from /serwist/sw.js, so its *default* scope would
           be /serwist/ — it would control nothing the user ever visits. Two

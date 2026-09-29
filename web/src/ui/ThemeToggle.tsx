@@ -11,6 +11,7 @@ import {
   otherTheme,
   type Theme,
 } from "../theme/theme";
+import { Icon } from "./Icon";
 
 /**
  * Switches the theme, and is the only thing in the app that writes the cookie.
@@ -67,9 +68,9 @@ export function ThemeToggle() {
       type="button"
       onClick={switchTheme}
       aria-label={theme === "dark" ? t("switchToLight") : t("switchToDark")}
-      className="grid min-h-11 min-w-11 place-items-center rounded-full border border-line bg-surface text-lg transition hover:bg-canvas"
+      className="grid min-h-11 min-w-11 place-items-center rounded-full border border-line bg-surface text-ink shadow-card transition hover:bg-canvas"
     >
-      <span aria-hidden="true">{theme === "dark" ? "☀" : "☾"}</span>
+      <Icon name={theme === "dark" ? "sun" : "moon"} className="size-5" />
     </button>
   );
 }

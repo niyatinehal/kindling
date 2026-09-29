@@ -3,8 +3,10 @@ import { useTranslations } from "next-intl";
 import type { TrackingSummary } from "../../src/tracking/summaryTypes";
 import { WATER_TARGET_ML } from "../../src/tracking/targets";
 import { Card } from "../../src/ui/Card";
+import { IconChip } from "../../src/ui/Icon";
 import { LinkButton } from "../../src/ui/LinkButton";
 import { Screen } from "../../src/ui/Screen";
+import { Tile } from "../../src/ui/Tile";
 import { WeekStrip } from "../../src/ui/WeekStrip";
 import { ClaimAccountCard } from "./ClaimAccountCard";
 import { DeleteAccountButton } from "./DeleteAccountButton";
@@ -81,28 +83,39 @@ export function HomeView({
         empty because no tracking endpoint exists yet.
       */}
       <Card>
-        <p className="text-sm font-semibold tracking-widest text-emphasis-label uppercase">
-          {t("todayLabel")}
-        </p>
-        <p className="mt-2 text-lg leading-relaxed">
+        <div className="flex items-center gap-3">
+          <IconChip name="activity" tone="move" size="sm" />
+          <p className="text-sm font-bold tracking-widest text-accent uppercase">
+            {t("todayLabel")}
+          </p>
+        </div>
+        <p className="mt-3 text-lg leading-relaxed">
           {hasProfile ? t("todayPlanReady") : t("todayNoProfile")}
         </p>
-        <div className="mt-4 flex flex-col gap-2">
+        <div className="mt-4">
           {hasProfile ? (
-            <>
-              <LinkButton href="/plan">{t("viewPlan")}</LinkButton>
-              <LinkButton href="/meals" variant="secondary">
-                {t("mealsCta")}
-              </LinkButton>
-              <LinkButton href="/dashboard" variant="secondary">
-                {t("viewDashboard")}
-              </LinkButton>
-            </>
+            <LinkButton href="/plan">{t("viewPlan")}</LinkButton>
           ) : (
             <LinkButton href="/onboarding/profile">{t("startIntake")}</LinkButton>
           )}
         </div>
       </Card>
+
+      {/*
+        What used to be two more full-width buttons under "See my plan". As a
+        stack, three equal buttons asked the reader to read all three to find
+        the one they wanted; as tiles, the colour and the icon get there first.
+      */}
+      {hasProfile && (
+        <div className="grid grid-cols-2 gap-3">
+          <Tile href="/meals" icon="utensils" tone="meal">
+            {t("mealsCta")}
+          </Tile>
+          <Tile href="/dashboard" icon="chart" tone="water">
+            {t("viewDashboard")}
+          </Tile>
+        </div>
+      )}
 
       {/*
         Not a chart — /dashboard already draws those. This answers the cruder
@@ -134,10 +147,13 @@ export function HomeView({
         evidence that somebody has no family.
       */}
       <Card>
-        {inFamily !== null && (
-          <p className="text-muted">{inFamily ? t("inFamily") : t("noFamily")}</p>
-        )}
-        <div className={inFamily === null ? undefined : "mt-4"}>
+        <div className="flex items-center gap-3">
+          <IconChip name="users" tone="family" />
+          {inFamily !== null && (
+            <p className="text-muted">{inFamily ? t("inFamily") : t("noFamily")}</p>
+          )}
+        </div>
+        <div className="mt-4">
           <LinkButton href="/family" variant="secondary">
             {inFamily === null ? t("openFamily") : inFamily ? t("viewFamily") : t("setUpFamily")}
           </LinkButton>

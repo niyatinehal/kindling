@@ -1,3 +1,5 @@
+import { Icon } from "./Icon";
+
 /**
  * The way back.
  *
@@ -11,9 +13,9 @@ export function BackLink({ href, children }: { href: string; children: React.Rea
   return (
     <a
       href={href}
-      className="inline-flex min-h-12 items-center gap-2 self-start text-[1.0625rem] font-medium text-accent"
+      className="-ms-2 inline-flex min-h-12 items-center gap-1 self-start rounded-full ps-1 pe-3 text-[1.0625rem] font-semibold text-accent transition hover:bg-surface"
     >
-      <span aria-hidden="true">←</span>
+      <Icon name="chevronLeft" className="size-5" />
       {children}
     </a>
   );

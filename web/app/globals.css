@@ -49,7 +49,30 @@
   --c-on-emphasis: #f4f7f2;
   --c-emphasis-label: #4ade80;
 
-  --c-shadow-card: 0 1px 2px rgb(11 61 46 / 0.04), 0 8px 24px -12px rgb(11 61 46 / 0.18);
+  --c-shadow-card: 0 1px 2px rgb(11 61 46 / 0.04), 0 12px 32px -16px rgb(11 61 46 / 0.22);
+  --c-shadow-button: 0 8px 20px -10px rgb(21 128 61 / 0.55);
+
+  /*
+   * One colour per thing you track, so a glance tells water from sleep before
+   * a word is read. Each has a strong value for icons and fills and a soft one
+   * for the chip behind it; `-glow` is for the dark emphasis hero, which is
+   * dark in both themes and so shares one value. None of these carry body
+   * text — the pairs in palette.test.ts hold them to the 3:1 WCAG asks of
+   * meaningful graphics.
+   */
+  --c-water: #0369a1;
+  --c-water-soft: #e0f2fe;
+  --c-water-glow: #7dd3fc;
+  --c-sleep: #4f46e5;
+  --c-sleep-soft: #e0e7ff;
+  --c-sleep-glow: #a5b4fc;
+  --c-move: #15803d;
+  --c-move-soft: #dcfce7;
+  --c-meal: #c2410c;
+  --c-meal-soft: #ffedd5;
+  --c-meal-glow: #fdba74;
+  --c-family: #a21caf;
+  --c-family-soft: #fae8ff;
 }
 
 /*
@@ -87,6 +110,21 @@
      * rather than merely being recoloured.
      */
     --c-shadow-card: none;
+    --c-shadow-button: none;
+
+    --c-water: #7dd3fc;
+    --c-water-soft: #0c3b52;
+    --c-water-glow: #7dd3fc;
+    --c-sleep: #a5b4fc;
+    --c-sleep-soft: #272b63;
+    --c-sleep-glow: #a5b4fc;
+    --c-move: #4ade80;
+    --c-move-soft: #14532d;
+    --c-meal: #fdba74;
+    --c-meal-soft: #4a2412;
+    --c-meal-glow: #fdba74;
+    --c-family: #f0abfc;
+    --c-family-soft: #4a1450;
   }
 }
 
@@ -107,6 +145,21 @@
   --c-emphasis-label: #4ade80;
 
   --c-shadow-card: none;
+  --c-shadow-button: none;
+
+  --c-water: #7dd3fc;
+  --c-water-soft: #0c3b52;
+  --c-water-glow: #7dd3fc;
+  --c-sleep: #a5b4fc;
+  --c-sleep-soft: #272b63;
+  --c-sleep-glow: #a5b4fc;
+  --c-move: #4ade80;
+  --c-move-soft: #14532d;
+  --c-meal: #fdba74;
+  --c-meal-soft: #4a2412;
+  --c-meal-glow: #fdba74;
+  --c-family: #f0abfc;
+  --c-family-soft: #4a1450;
 }
 
 @theme inline {
@@ -123,8 +176,32 @@
   --color-on-emphasis: var(--c-on-emphasis);
   --color-emphasis-label: var(--c-emphasis-label);
 
-  --radius-card: 1rem;
+  --color-water: var(--c-water);
+  --color-water-soft: var(--c-water-soft);
+  --color-water-glow: var(--c-water-glow);
+  --color-sleep: var(--c-sleep);
+  --color-sleep-soft: var(--c-sleep-soft);
+  --color-sleep-glow: var(--c-sleep-glow);
+  --color-move: var(--c-move);
+  --color-move-soft: var(--c-move-soft);
+  --color-meal: var(--c-meal);
+  --color-meal-soft: var(--c-meal-soft);
+  --color-meal-glow: var(--c-meal-glow);
+  --color-family: var(--c-family);
+  --color-family-soft: var(--c-family-soft);
+
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-heading), ui-serif, Georgia, serif;
+
+  /*
+   * Rounder than it was. The people this is for are not choosing a tool, they
+   * are being talked into a habit, and soft corners read as friendly rather
+   * than clinical.
+   */
+  --radius-card: 1.5rem;
+  --radius-control: 1rem;
   --shadow-card: var(--c-shadow-card);
+  --shadow-button: var(--c-shadow-button);
 }
 
 /*
@@ -140,6 +217,18 @@ body {
   background-color: var(--color-canvas);
   color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * Headings get the display face, and only headings: Fraunces is warm at 30px
+ * and hard work at 15px, and the body copy is what a parent actually reads.
+ * SOFT rounds the serifs off, which is most of the friendliness.
+ */
+h1,
+.font-display {
+  font-family: var(--font-display);
+  font-variation-settings: "SOFT" 100, "WONK" 0;
+  letter-spacing: -0.01em;
 }
 
 /*

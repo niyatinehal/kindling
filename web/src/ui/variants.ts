@@ -17,10 +17,20 @@
  * being handed one it has no look for.
  */
 export const VARIANT_CLASSES = {
-  primary: "bg-accent text-surface hover:brightness-110",
-  secondary: "bg-surface text-ink border border-line hover:bg-canvas",
+  primary: "bg-accent text-surface shadow-button hover:brightness-110",
+  secondary: "bg-surface text-ink border border-line hover:border-accent/40 hover:bg-canvas",
   ghost: "bg-transparent text-accent hover:bg-canvas",
 } as const;
+
+/**
+ * The shape both primitives share. Pills, because a full-width rounded
+ * rectangle reads as a form field at a glance, and the one thing a button must
+ * never be mistaken for is something you type into. `active:scale` is the
+ * press a thumb expects from a phone app; `motion-safe` keeps it away from
+ * anyone who has asked their OS for less movement.
+ */
+export const BUTTON_SHAPE =
+  "flex min-h-13 w-full items-center justify-center gap-2 rounded-full px-6 text-[1.0625rem] font-semibold transition motion-safe:active:scale-[0.98]";
 
 export type Variant = keyof typeof VARIANT_CLASSES;
 

@@ -2,6 +2,9 @@ import { useTranslations } from "next-intl";
 
 import { SLEEP_TARGET_MINUTES, WATER_TARGET_ML } from "../src/tracking/targets";
 import { Card } from "../src/ui/Card";
+import { Hero } from "../src/ui/Hero";
+import { Icon, IconChip } from "../src/ui/Icon";
+import type { IconName, Tone } from "../src/ui/Icon";
 import { LinkButton } from "../src/ui/LinkButton";
 import { ProgressRing } from "../src/ui/ProgressRing";
 import { Screen } from "../src/ui/Screen";
@@ -32,7 +35,11 @@ const EXAMPLE_WEEK = [
   { date: "day-7", value: 1250 },
 ];
 
-const FEATURES = ["plan", "meals", "family"] as const;
+const FEATURES = [
+  { key: "plan", icon: "activity", tone: "move" },
+  { key: "meals", icon: "utensils", tone: "meal" },
+  { key: "family", icon: "users", tone: "family" },
+] as const satisfies readonly { key: string; icon: IconName; tone: Tone }[];
 
 /**
  * What somebody sees when they follow a link to this app.
@@ -54,28 +61,30 @@ export default function LandingPage() {
 
   return (
     <Screen>
-      <div className="flex flex-col gap-2">
-        <h1 className="text-4xl font-bold tracking-tight text-ink">{t("title")}</h1>
-        <p className="text-lg text-muted">{t("subtitle")}</p>
+      <div className="flex flex-col gap-3 pt-2">
+        <h1 className="text-[2.75rem] leading-[1.05] font-semibold text-ink">{t("title")}</h1>
+        <p className="text-xl leading-snug text-muted">{t("subtitle")}</p>
       </div>
 
       {/*
         The same hero the home screen uses, so what a visitor sees here is
         literally what they get after signing in.
       */}
-      <div className="-mx-5 rounded-3xl bg-emphasis px-5 pt-5 pb-6 text-on-emphasis">
+      <Hero>
         <p className="text-sm font-semibold tracking-widest text-emphasis-label uppercase">
           {t("previewLabel")}
         </p>
 
-        <div className="mt-4 grid grid-cols-3 gap-3">
+        <div className="mt-5 grid grid-cols-3 gap-3">
           <ProgressRing
+            color="var(--color-water-glow)"
             label={t("water")}
             value={12500}
             target={WATER_TARGET_ML * DAYS_IN_WEEK}
             display="12.5L"
           />
           <ProgressRing
+            color="var(--color-sleep-glow)"
             label={t("sleep")}
             value={400}
             target={SLEEP_TARGET_MINUTES}
@@ -83,18 +92,23 @@ export default function LandingPage() {
           />
           <ProgressRing label={t("workouts")} value={3} target={4} display="3" />
         </div>
-      </div>
+      </Hero>
 
       <Card>
         <WeekStrip days={EXAMPLE_WEEK} target={WATER_TARGET_ML} label={t("weekWater")} />
       </Card>
 
-      {FEATURES.map((feature) => (
-        <Card key={feature}>
-          <h2 className="text-[1.0625rem] font-semibold text-ink">
-            {t(`${feature}Title` as "planTitle")}
-          </h2>
-          <p className="mt-2 leading-relaxed text-muted">{t(`${feature}Body` as "planBody")}</p>
+      {FEATURES.map(({ key, icon, tone }) => (
+        <Card key={key}>
+          <div className="flex gap-4">
+            <IconChip name={icon} tone={tone} />
+            <div>
+              <h2 className="font-display text-xl leading-snug font-semibold text-ink">
+                {t(`${key}Title` as "planTitle")}
+              </h2>
+              <p className="mt-1.5 leading-relaxed text-muted">{t(`${key}Body` as "planBody")}</p>
+            </div>
+          </div>
         </Card>
       ))}
 
@@ -108,7 +122,11 @@ export default function LandingPage() {
         <LinkButton href="/signin" variant="secondary">
           {t("signIn")}
         </LinkButton>
-        <a href="/privacy" className="self-center text-sm text-muted underline underline-offset-4">
+        <a
+          href="/privacy"
+          className="inline-flex min-h-11 items-center gap-1.5 self-center text-sm text-muted underline underline-offset-4"
+        >
+          <Icon name="shield" className="size-4" />
           {t("privacy")}
         </a>
       </div>

@@ -9,6 +9,8 @@ import { SLEEP_TARGET_MINUTES, WATER_TARGET_ML } from "../../src/tracking/target
 import { Alert } from "../../src/ui/Alert";
 import { Button } from "../../src/ui/Button";
 import { Card } from "../../src/ui/Card";
+import { Hero } from "../../src/ui/Hero";
+import { IconChip } from "../../src/ui/Icon";
 import { ProgressRing } from "../../src/ui/ProgressRing";
 
 /** One tap. Not configurable yet — a glass is the unit people think in. */
@@ -106,9 +108,9 @@ export function TrackingTiles({
         trip before the numbers caught up, or two sources of truth for the same
         three figures.
       */}
-      <div className="-mx-5 rounded-3xl bg-emphasis px-5 pt-5 pb-6 text-on-emphasis">
+      <Hero>
         <div className="flex items-start justify-between gap-3">
-          <h1 className="text-3xl font-bold tracking-tight">{greeting}</h1>
+          <h1 className="text-[2.125rem] leading-tight font-semibold">{greeting}</h1>
           {guestChip !== undefined && (
             <span className="rounded-full bg-emphasis-label/15 px-3 py-1 text-sm font-semibold text-emphasis-label">
               {guestChip}
@@ -120,14 +122,16 @@ export function TrackingTiles({
           {t("thisWeek")}
         </p>
 
-        <div className="mt-4 grid grid-cols-3 gap-3">
+        <div className="mt-5 grid grid-cols-3 gap-3">
           <ProgressRing
+            color="var(--color-water-glow)"
             label={t("water")}
             value={summary.water_ml}
             target={WATER_TARGET_ML * DAYS_IN_WEEK}
             display={`${litres}L`}
           />
           <ProgressRing
+            color="var(--color-sleep-glow)"
             label={t("sleep")}
             value={nightlyMinutes}
             target={SLEEP_TARGET_MINUTES}
@@ -140,17 +144,20 @@ export function TrackingTiles({
             display={`${summary.workouts_completed}`}
           />
         </div>
-      </div>
+      </Hero>
 
       {error !== undefined && (
         <Alert>{tError.has(error) ? tError(error) : tError("UNKNOWN")}</Alert>
       )}
 
       <Card>
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-5">
           <div>
-            <p className="text-sm font-medium text-muted">{t("logWaterLabel")}</p>
-            <div className="mt-2">
+            <div className="flex items-center gap-3">
+              <IconChip name="droplet" tone="water" size="sm" />
+              <p className="font-semibold text-ink">{t("logWaterLabel")}</p>
+            </div>
+            <div className="mt-3">
               <Button
                 disabled={pending !== null}
                 loading={pending === "water"}
@@ -163,9 +170,12 @@ export function TrackingTiles({
             </div>
           </div>
 
-          <div>
-            <p className="text-sm font-medium text-muted">{t("logSleepLabel")}</p>
-            <div className="mt-2 flex items-center gap-3">
+          <div className="border-t border-line pt-5">
+            <div className="flex items-center gap-3">
+              <IconChip name="moon" tone="sleep" size="sm" />
+              <p className="font-semibold text-ink">{t("logSleepLabel")}</p>
+            </div>
+            <div className="mt-3 flex items-center gap-3">
               <Button
                 variant="secondary"
                 disabled={pending !== null || sleepMinutes <= SLEEP_STEP_MINUTES}
@@ -175,7 +185,7 @@ export function TrackingTiles({
               >
                 −
               </Button>
-              <span className="min-w-16 text-center text-lg font-semibold text-ink">
+              <span className="min-w-20 text-center font-display text-2xl font-semibold text-ink tabular-nums">
                 {(sleepMinutes / 60).toFixed(1)}h
               </span>
               <Button
@@ -188,7 +198,7 @@ export function TrackingTiles({
                 +
               </Button>
             </div>
-            <div className="mt-2">
+            <div className="mt-3">
               <Button
                 disabled={pending !== null}
                 loading={pending === "sleep"}

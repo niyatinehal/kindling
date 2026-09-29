@@ -63,7 +63,8 @@ describe("dashboard", () => {
     expect(screen.getByText(messages.dashboard.sleepChart)).toBeInTheDocument();
     expect(screen.getByText(messages.dashboard.workoutChart)).toBeInTheDocument();
     expect(screen.getByText(messages.dashboard.mealChart)).toBeInTheDocument();
-    expect(container.querySelectorAll("svg")).toHaveLength(4);
+    // Charts only: the frame's icons are SVGs too, but decorative and unlabelled.
+    expect(container.querySelectorAll('svg[role="img"]')).toHaveLength(4);
   });
 
   it("measures adherence against what was actually scheduled", () => {

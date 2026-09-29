@@ -10,6 +10,7 @@ import { Alert } from "../../src/ui/Alert";
 import { BackLink } from "../../src/ui/BackLink";
 import { Button } from "../../src/ui/Button";
 import { Card } from "../../src/ui/Card";
+import { Icon } from "../../src/ui/Icon";
 import { LinkButton } from "../../src/ui/LinkButton";
 import { Screen } from "../../src/ui/Screen";
 
@@ -165,31 +166,59 @@ export function PlanClient({
           // ISO weekday: getUTCDay() is 0 for Sunday, the API uses 7.
           const isoToday = new Date().getUTCDay() === 0 ? 7 : new Date().getUTCDay();
           const isToday = Number(dayKey) === isoToday;
-          return (
-            <Card key={dayKey}>
-              <h2 className="text-sm font-semibold tracking-widest text-muted uppercase">
-                {tDay(dayKey)}
-              </h2>
 
-              {day === undefined ? (
-                <p className="mt-2 text-muted">{t("restLabel")}</p>
-              ) : (
-                <ul className="mt-3 flex flex-col gap-3">
-                  {day.exercises.map((exercise) => (
-                    <li key={exercise.id} className="flex flex-col gap-2">
-                      <div className="flex flex-col">
-                        <span className="text-[1.0625rem] font-medium text-ink">
-                          {tExercise.has(exercise.exercise_key)
-                            ? tExercise(exercise.exercise_key)
-                            : exercise.exercise_key}
+          // A rest day is one fact, so it gets one quiet row rather than a card
+          // the same size as a workout — the week should read at a glance as
+          // "these days I move", not seven equal boxes.
+          if (day === undefined) {
+            return (
+              <div
+                key={dayKey}
+                className="flex min-h-14 items-center justify-between gap-3 rounded-card border border-dashed border-line px-5 text-muted"
+              >
+                <h2 className="text-sm font-bold tracking-widest uppercase">{tDay(dayKey)}</h2>
+                <span className="inline-flex items-center gap-2 text-sm font-medium">
+                  <Icon name="moon" className="size-4 text-sleep" />
+                  {t("restLabel")}
+                </span>
+              </div>
+            );
+          }
+
+          return (
+            <div
+              key={dayKey}
+              className={isToday ? "rounded-[1.75rem] p-1 ring-2 ring-accent" : undefined}
+            >
+              <Card>
+                <h2 className="text-sm font-bold tracking-widest text-accent uppercase">
+                  {tDay(dayKey)}
+                </h2>
+
+                <ol className="mt-2 flex flex-col divide-y divide-line">
+                  {day.exercises.map((exercise, index) => (
+                    <li key={exercise.id} className="flex flex-col gap-3 py-3 last:pb-0">
+                      <div className="flex items-center gap-3">
+                        <span
+                          aria-hidden="true"
+                          className="grid size-9 shrink-0 place-items-center rounded-full bg-move-soft text-sm font-bold text-move tabular-nums"
+                        >
+                          {index + 1}
                         </span>
-                        <span className="text-sm text-muted">
-                          {exercise.sets !== null && exercise.reps !== null
-                            ? t("setsReps", { sets: exercise.sets, reps: exercise.reps })
-                            : t("duration", { seconds: exercise.duration_seconds ?? 0 })}
-                          {exercise.rest_seconds !== null &&
-                            ` · ${t("restBetween", { seconds: exercise.rest_seconds })}`}
-                        </span>
+                        <div className="flex flex-col">
+                          <span className="text-[1.0625rem] font-semibold text-ink">
+                            {tExercise.has(exercise.exercise_key)
+                              ? tExercise(exercise.exercise_key)
+                              : exercise.exercise_key}
+                          </span>
+                          <span className="text-sm text-muted">
+                            {exercise.sets !== null && exercise.reps !== null
+                              ? t("setsReps", { sets: exercise.sets, reps: exercise.reps })
+                              : t("duration", { seconds: exercise.duration_seconds ?? 0 })}
+                            {exercise.rest_seconds !== null &&
+                              ` · ${t("restBetween", { seconds: exercise.rest_seconds })}`}
+                          </span>
+                        </div>
                       </div>
 
                       {/*
@@ -199,7 +228,8 @@ export function PlanClient({
                       {isToday && (
                         <div className="flex items-center gap-2">
                           {ticks[exercise.id] === "completed" ? (
-                            <span className="text-sm font-semibold text-accent">
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-move-soft px-3 py-1 text-sm font-semibold text-move">
+                              <Icon name="check" className="size-4" />
                               {tTrack("done")}
                             </span>
                           ) : ticks[exercise.id] === "skipped" ? (
@@ -227,9 +257,9 @@ export function PlanClient({
                       )}
                     </li>
                   ))}
-                </ul>
-              )}
-            </Card>
+                </ol>
+              </Card>
+            </div>
           );
         })}
 
@@ -239,14 +269,22 @@ export function PlanClient({
         so it can never claim a reason that did not change the plan.
       */}
       {plan !== null && exclusions.length > 0 && (
-        <Card>
-          <h2 className="text-sm font-semibold tracking-widest text-muted uppercase">
-            {t("whyTitle")}
-          </h2>
-          <p className="mt-2 text-muted">{t("whyBody")}</p>
-          <ul className="mt-2 list-inside list-disc text-muted">
+        <Card tone="emphasis">
+          <div className="flex items-center gap-3">
+            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-emphasis-label/15 text-emphasis-label">
+              <Icon name="shield" className="size-[1.375rem]" />
+            </span>
+            <h2 className="font-display text-xl leading-snug font-semibold">{t("whyTitle")}</h2>
+          </div>
+          <p className="mt-3 leading-relaxed opacity-90">{t("whyBody")}</p>
+          <ul className="mt-3 flex flex-wrap gap-2">
             {exclusions.map((reason) => (
-              <li key={reason}>{tReason.has(reason) ? tReason(reason) : reason}</li>
+              <li
+                key={reason}
+                className="rounded-full bg-emphasis-label/15 px-3 py-1 text-sm font-semibold text-emphasis-label"
+              >
+                {tReason.has(reason) ? tReason(reason) : reason}
+              </li>
             ))}
           </ul>
         </Card>

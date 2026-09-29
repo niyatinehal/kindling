@@ -281,9 +281,28 @@ export function Wizard({
         <Alert>{tError.has(error) ? tError(error) : tError("UNKNOWN")}</Alert>
       )}
 
-      <p className="text-sm font-semibold tracking-widest text-muted uppercase">
-        {t("stepOf", { current: step + 1, total: TOTAL })} · {t(`steps.${STEPS[step] ?? "about"}`)}
-      </p>
+      {/*
+        The words stay — "Step 2 of 5" is what a screen reader announces and
+        what a parent reads — and the bar underneath says the same thing to
+        everyone else before they have read a word. It is decorative for that
+        reason: the text above it already carries the information.
+      */}
+      <div className="flex flex-col gap-2.5">
+        <p className="text-sm font-semibold tracking-widest text-muted uppercase">
+          {t("stepOf", { current: step + 1, total: TOTAL })} ·{" "}
+          <span className="text-accent">{t(`steps.${STEPS[step] ?? "about"}`)}</span>
+        </p>
+        <div aria-hidden="true" className="flex gap-1.5">
+          {STEPS.map((name, index) => (
+            <span
+              key={name}
+              className={`h-2 flex-1 rounded-full transition-colors ${
+                index <= step ? "bg-accent" : "bg-line"
+              }`}
+            />
+          ))}
+        </div>
+      </div>
 
       <Card>
         <div className="flex flex-col gap-5">
@@ -350,6 +369,7 @@ export function Wizard({
                 selected={draft.equipment}
                 onChange={(equipment) => update({ equipment })}
                 multiple
+                layout="chips"
               />
             </>
           )}
@@ -362,6 +382,7 @@ export function Wizard({
                 selected={draft.injuries}
                 onChange={(injuries) => update({ injuries })}
                 multiple
+                layout="chips"
               />
               <ChoiceGroup
                 legend={t("labels.conditions")}
@@ -369,6 +390,7 @@ export function Wizard({
                 selected={draft.conditions}
                 onChange={(conditions) => update({ conditions })}
                 multiple
+                layout="chips"
               />
               <Field
                 label={t("labels.notes")}
@@ -389,6 +411,7 @@ export function Wizard({
               selected={draft.dietary}
               onChange={(dietary) => update({ dietary })}
               multiple
+              layout="chips"
             />
           )}
         </div>
