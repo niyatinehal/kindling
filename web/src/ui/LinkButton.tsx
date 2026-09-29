@@ -24,7 +24,7 @@ export function LinkButton({
   variant?: LinkVariant;
 }) {
   return (
-    <a href={href} className={`${BUTTON_SHAPE} ${VARIANT_CLASSES[variant]}`}>
+    <a href={href} className={`${BUTTON_SHAPE} w-full px-6 ${VARIANT_CLASSES[variant]}`}>
       {children}
     </a>
   );

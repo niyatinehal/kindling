@@ -1,7 +1,7 @@
 import { fractionOf } from "../tracking/targets";
 
 const SIZE = 80;
-const STROKE = 8;
+const STROKE = 6;
 const RADIUS = (SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
@@ -28,7 +28,7 @@ export function ProgressRing({
   value,
   target,
   display,
-  color = "var(--color-accent-glow)",
+  color = "var(--color-accent-bright)",
 }: {
   label: string;
   value: number;
@@ -52,8 +52,7 @@ export function ProgressRing({
             cy={SIZE / 2}
             r={RADIUS}
             fill="none"
-            stroke="currentColor"
-            strokeOpacity={0.22}
+            stroke="var(--color-line)"
             strokeWidth={STROKE}
           />
           {fraction !== null && (
@@ -71,9 +70,9 @@ export function ProgressRing({
             />
           )}
         </svg>
-        <span className="absolute text-base font-bold tabular-nums">{display}</span>
+        <span className="absolute text-base font-semibold tabular-nums">{display}</span>
       </div>
-      <span className="text-[0.8125rem] font-semibold opacity-80">{label}</span>
+      <span className="text-sm text-muted">{label}</span>
     </div>
   );
 }

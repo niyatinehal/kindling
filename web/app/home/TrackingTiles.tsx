@@ -10,7 +10,7 @@ import { Alert } from "../../src/ui/Alert";
 import { Button } from "../../src/ui/Button";
 import { Card } from "../../src/ui/Card";
 import { Hero } from "../../src/ui/Hero";
-import { IconChip } from "../../src/ui/Icon";
+import { Icon } from "../../src/ui/Icon";
 import { ProgressRing } from "../../src/ui/ProgressRing";
 
 /** One tap. Not configurable yet — a glass is the unit people think in. */
@@ -100,7 +100,7 @@ export function TrackingTiles({
     summary.sleep_nights === 0 ? 0 : summary.sleep_minutes / summary.sleep_nights;
 
   return (
-    <section className="flex flex-col gap-3">
+    <section className="flex flex-col gap-4">
       {/*
         The greeting lives inside this client component rather than on the
         screen above it because the rings beside it have to move the instant
@@ -108,36 +108,35 @@ export function TrackingTiles({
         trip before the numbers caught up, or two sources of truth for the same
         three figures.
       */}
+      <div className="flex items-center justify-between gap-3 pt-1">
+        <h1 className="text-[2.25rem] leading-tight font-semibold text-ink">{greeting}</h1>
+        {guestChip !== undefined && (
+          <span className="rounded-full bg-move-soft px-3 py-1 text-sm font-semibold text-move">
+            {guestChip}
+          </span>
+        )}
+      </div>
+
       <Hero>
-        <div className="flex items-start justify-between gap-3">
-          <h1 className="text-[2.125rem] leading-tight font-semibold">{greeting}</h1>
-          {guestChip !== undefined && (
-            <span className="rounded-full bg-emphasis-label/15 px-3 py-1 text-sm font-semibold text-emphasis-label">
-              {guestChip}
-            </span>
-          )}
-        </div>
+        <p className="text-sm font-medium text-muted">{t("thisWeek")}</p>
 
-        <p className="mt-1 text-sm font-semibold tracking-widest text-emphasis-label uppercase">
-          {t("thisWeek")}
-        </p>
-
-        <div className="mt-5 grid grid-cols-3 gap-3">
+        <div className="mt-4 grid grid-cols-3 gap-3">
           <ProgressRing
-            color="var(--color-water-glow)"
+            color="var(--color-water)"
             label={t("water")}
             value={summary.water_ml}
             target={WATER_TARGET_ML * DAYS_IN_WEEK}
             display={`${litres}L`}
           />
           <ProgressRing
-            color="var(--color-sleep-glow)"
+            color="var(--color-sleep)"
             label={t("sleep")}
             value={nightlyMinutes}
             target={SLEEP_TARGET_MINUTES}
             display={sleepHours === null ? "—" : `${sleepHours}h`}
           />
           <ProgressRing
+            color="var(--color-move)"
             label={t("workouts")}
             value={summary.workouts_completed}
             target={summary.workouts_scheduled}
@@ -151,55 +150,65 @@ export function TrackingTiles({
       )}
 
       <Card>
-        <div className="flex flex-col gap-5">
-          <div>
+        <div className="flex flex-col divide-y divide-line">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-4">
             <div className="flex items-center gap-3">
-              <IconChip name="droplet" tone="water" size="sm" />
-              <p className="font-semibold text-ink">{t("logWaterLabel")}</p>
+              <Icon name="droplet" className="size-5 text-water" />
+              <p className="font-medium text-ink">{t("logWaterLabel")}</p>
             </div>
-            <div className="mt-3">
-              <Button
-                disabled={pending !== null}
-                loading={pending === "water"}
-                onClick={() => {
-                  void send("water", { type: "water", value: GLASS_ML });
-                }}
-              >
-                {t("addGlass", { ml: GLASS_ML })}
-              </Button>
-            </div>
+            <Button
+              inline
+              variant="secondary"
+              disabled={pending !== null}
+              loading={pending === "water"}
+              onClick={() => {
+                void send("water", { type: "water", value: GLASS_ML });
+              }}
+            >
+              {t("addGlass", { ml: GLASS_ML })}
+            </Button>
           </div>
 
-          <div className="border-t border-line pt-5">
+          <div className="flex flex-col gap-3 pt-4">
             <div className="flex items-center gap-3">
-              <IconChip name="moon" tone="sleep" size="sm" />
-              <p className="font-semibold text-ink">{t("logSleepLabel")}</p>
+              <Icon name="moon" className="size-5 text-sleep" />
+              <p className="font-medium text-ink">{t("logSleepLabel")}</p>
             </div>
-            <div className="mt-3 flex items-center gap-3">
+            {/*
+              Wraps rather than squeezes: at 390px with the system text size
+              turned up, the stepper and the button do not fit on one line, and
+              a button pushed past the card's edge is worse than one on a line
+              of its own.
+            */}
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+              <div className="flex items-center gap-1">
+                <Button
+                  inline
+                  variant="ghost"
+                  disabled={pending !== null || sleepMinutes <= SLEEP_STEP_MINUTES}
+                  onClick={() => {
+                    setSleepMinutes(sleepMinutes - SLEEP_STEP_MINUTES);
+                  }}
+                >
+                  −
+                </Button>
+                <span className="min-w-14 text-center text-xl font-semibold text-ink tabular-nums">
+                  {(sleepMinutes / 60).toFixed(1)}h
+                </span>
+                <Button
+                  inline
+                  variant="ghost"
+                  disabled={pending !== null || sleepMinutes >= 960}
+                  onClick={() => {
+                    setSleepMinutes(sleepMinutes + SLEEP_STEP_MINUTES);
+                  }}
+                >
+                  +
+                </Button>
+              </div>
               <Button
+                inline
                 variant="secondary"
-                disabled={pending !== null || sleepMinutes <= SLEEP_STEP_MINUTES}
-                onClick={() => {
-                  setSleepMinutes(sleepMinutes - SLEEP_STEP_MINUTES);
-                }}
-              >
-                −
-              </Button>
-              <span className="min-w-20 text-center font-display text-2xl font-semibold text-ink tabular-nums">
-                {(sleepMinutes / 60).toFixed(1)}h
-              </span>
-              <Button
-                variant="secondary"
-                disabled={pending !== null || sleepMinutes >= 960}
-                onClick={() => {
-                  setSleepMinutes(sleepMinutes + SLEEP_STEP_MINUTES);
-                }}
-              >
-                +
-              </Button>
-            </div>
-            <div className="mt-3">
-              <Button
                 disabled={pending !== null}
                 loading={pending === "sleep"}
                 onClick={() => {

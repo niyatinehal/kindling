@@ -68,7 +68,7 @@ export function ThemeToggle() {
       type="button"
       onClick={switchTheme}
       aria-label={theme === "dark" ? t("switchToLight") : t("switchToDark")}
-      className="grid min-h-11 min-w-11 place-items-center rounded-full border border-line bg-surface text-ink shadow-card transition hover:bg-canvas"
+      className="grid min-h-11 min-w-11 place-items-center rounded-full text-muted transition hover:bg-surface hover:text-ink"
     >
       <Icon name={theme === "dark" ? "sun" : "moon"} className="size-5" />
     </button>

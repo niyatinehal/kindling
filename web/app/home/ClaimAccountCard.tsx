@@ -55,8 +55,8 @@ export function ClaimAccountCard() {
   }
 
   return (
-    <Card tone="emphasis">
-      <h2 className="text-sm font-semibold tracking-widest uppercase">{t("claimTitle")}</h2>
+    <Card>
+      <h2 className="font-semibold text-ink">{t("claimTitle")}</h2>
 
       {error !== undefined && (
         <div className="mt-3">
@@ -68,10 +68,10 @@ export function ClaimAccountCard() {
         // The field goes away once it has been used. Leaving it there invites a
         // second attempt, which sends a second message and invalidates the
         // link in the first one.
-        <p className="mt-2 text-lg leading-relaxed">{t("claimSent")}</p>
+        <p className="mt-1.5 leading-relaxed text-muted">{t("claimSent")}</p>
       ) : (
         <>
-          <p className="mt-2 text-lg leading-relaxed">{t("claimBody")}</p>
+          <p className="mt-1.5 leading-relaxed text-muted">{t("claimBody")}</p>
           <div className="mt-4 flex flex-col gap-3">
             <Field label={t("claimLabel")} value={contact} onChange={setContact} />
             <Button

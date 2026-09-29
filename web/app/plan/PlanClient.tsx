@@ -153,7 +153,9 @@ export function PlanClient({
               about the person changed, so the button asks what changed.
             */
             <>
-              <LinkButton href="/onboarding/profile?next=plan">{t("regenerate")}</LinkButton>
+              <LinkButton href="/onboarding/profile?next=plan" variant="secondary">
+                {t("regenerate")}
+              </LinkButton>
               <p className="text-sm text-muted">{t("regenerateHint")}</p>
             </>
           )}
@@ -174,11 +176,11 @@ export function PlanClient({
             return (
               <div
                 key={dayKey}
-                className="flex min-h-14 items-center justify-between gap-3 rounded-card border border-dashed border-line px-5 text-muted"
+                className="flex min-h-12 items-center justify-between gap-3 px-5 text-muted"
               >
-                <h2 className="text-sm font-bold tracking-widest uppercase">{tDay(dayKey)}</h2>
+                <h2 className="font-medium">{tDay(dayKey)}</h2>
                 <span className="inline-flex items-center gap-2 text-sm font-medium">
-                  <Icon name="moon" className="size-4 text-sleep" />
+                  <Icon name="moon" className="size-4" />
                   {t("restLabel")}
                 </span>
               </div>
@@ -186,14 +188,9 @@ export function PlanClient({
           }
 
           return (
-            <div
-              key={dayKey}
-              className={isToday ? "rounded-[1.75rem] p-1 ring-2 ring-accent" : undefined}
-            >
+            <div key={dayKey} className={isToday ? "rounded-card ring-1 ring-accent" : undefined}>
               <Card>
-                <h2 className="text-sm font-bold tracking-widest text-accent uppercase">
-                  {tDay(dayKey)}
-                </h2>
+                <h2 className="font-semibold text-ink">{tDay(dayKey)}</h2>
 
                 <ol className="mt-2 flex flex-col divide-y divide-line">
                   {day.exercises.map((exercise, index) => (
@@ -201,12 +198,12 @@ export function PlanClient({
                       <div className="flex items-center gap-3">
                         <span
                           aria-hidden="true"
-                          className="grid size-9 shrink-0 place-items-center rounded-full bg-move-soft text-sm font-bold text-move tabular-nums"
+                          className="grid size-8 shrink-0 place-items-center rounded-full bg-canvas text-sm font-semibold text-muted tabular-nums"
                         >
                           {index + 1}
                         </span>
                         <div className="flex flex-col">
-                          <span className="text-[1.0625rem] font-semibold text-ink">
+                          <span className="text-[1.0625rem] font-medium text-ink">
                             {tExercise.has(exercise.exercise_key)
                               ? tExercise(exercise.exercise_key)
                               : exercise.exercise_key}
@@ -226,7 +223,7 @@ export function PlanClient({
                         Monday would be logging something that has not happened.
                       */}
                       {isToday && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 ps-11">
                           {ticks[exercise.id] === "completed" ? (
                             <span className="inline-flex items-center gap-1.5 rounded-full bg-move-soft px-3 py-1 text-sm font-semibold text-move">
                               <Icon name="check" className="size-4" />
@@ -237,6 +234,7 @@ export function PlanClient({
                           ) : (
                             <>
                               <Button
+                                inline
                                 onClick={() => {
                                   void tick(exercise.id, "completed");
                                 }}
@@ -244,7 +242,8 @@ export function PlanClient({
                                 {tTrack("markDone")}
                               </Button>
                               <Button
-                                variant="secondary"
+                                inline
+                                variant="ghost"
                                 onClick={() => {
                                   void tick(exercise.id, "skipped");
                                 }}
@@ -269,19 +268,17 @@ export function PlanClient({
         so it can never claim a reason that did not change the plan.
       */}
       {plan !== null && exclusions.length > 0 && (
-        <Card tone="emphasis">
-          <div className="flex items-center gap-3">
-            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-emphasis-label/15 text-emphasis-label">
-              <Icon name="shield" className="size-[1.375rem]" />
-            </span>
-            <h2 className="font-display text-xl leading-snug font-semibold">{t("whyTitle")}</h2>
+        <Card>
+          <div className="flex items-center gap-2.5">
+            <Icon name="shield" className="size-5 text-accent" />
+            <h2 className="font-semibold text-ink">{t("whyTitle")}</h2>
           </div>
-          <p className="mt-3 leading-relaxed opacity-90">{t("whyBody")}</p>
+          <p className="mt-2 leading-relaxed text-muted">{t("whyBody")}</p>
           <ul className="mt-3 flex flex-wrap gap-2">
             {exclusions.map((reason) => (
               <li
                 key={reason}
-                className="rounded-full bg-emphasis-label/15 px-3 py-1 text-sm font-semibold text-emphasis-label"
+                className="rounded-full bg-move-soft px-3 py-1 text-sm font-medium text-move"
               >
                 {tReason.has(reason) ? tReason(reason) : reason}
               </li>

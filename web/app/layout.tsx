@@ -2,7 +2,7 @@ import "./globals.css";
 
 import { SerwistProvider } from "@serwist/turbopack/react";
 import type { Viewport } from "next";
-import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import { cookies } from "next/headers";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
@@ -16,13 +16,6 @@ import { CHROME_COLOUR, THEME_COOKIE, isTheme, type Theme } from "../src/theme/t
  * a font CDN would quietly be one. `swap` shows the system face until these
  * arrive rather than blank text, which matters on a slow phone connection.
  */
-const heading = Fraunces({
-  subsets: ["latin"],
-  axes: ["SOFT", "WONK", "opsz"],
-  variable: "--font-heading",
-  display: "swap",
-});
-
 const body = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-body",
@@ -99,7 +92,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     */
     <html
       lang={locale}
-      className={`${heading.variable} ${body.variable}`}
+      className={body.variable}
       {...(theme !== undefined && { "data-theme": theme })}
     >
       <body className="font-sans">

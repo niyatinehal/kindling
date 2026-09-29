@@ -95,9 +95,7 @@ export function FamilyClient({ initialFamily }: { initialFamily: FamilySummary |
 
           <Card>
             <div className="flex flex-col gap-4">
-              <h2 className="text-sm font-semibold tracking-widest text-muted uppercase">
-                {t("createTitle")}
-              </h2>
+              <h2 className="font-semibold text-ink">{t("createTitle")}</h2>
               <Field label={t("nameLabel")} value={name} onChange={setName} maxLength={120} />
               <Button
                 disabled={pending !== null || name.trim() === ""}
@@ -115,9 +113,7 @@ export function FamilyClient({ initialFamily }: { initialFamily: FamilySummary |
 
           <Card>
             <div className="flex flex-col gap-4">
-              <h2 className="text-sm font-semibold tracking-widest text-muted uppercase">
-                {t("joinTitle")}
-              </h2>
+              <h2 className="font-semibold text-ink">{t("joinTitle")}</h2>
               <p className="text-sm text-muted">{t("joinHint")}</p>
               <Field
                 label={t("codeLabel")}
@@ -142,9 +138,7 @@ export function FamilyClient({ initialFamily }: { initialFamily: FamilySummary |
       ) : (
         <>
           <Card>
-            <h2 className="text-sm font-semibold tracking-widest text-muted uppercase">
-              {t("membersTitle")}
-            </h2>
+            <h2 className="font-semibold text-ink">{t("membersTitle")}</h2>
             <ul className="mt-3 flex flex-col gap-3">
               {family.members.map((m) => (
                 <li key={m.user_id} className="flex items-center gap-3">
@@ -184,9 +178,7 @@ export function FamilyClient({ initialFamily }: { initialFamily: FamilySummary |
           {isAdmin && (
             <Card>
               <div className="flex flex-col gap-4">
-                <h2 className="text-sm font-semibold tracking-widest text-muted uppercase">
-                  {t("inviteTitle")}
-                </h2>
+                <h2 className="font-semibold text-ink">{t("inviteTitle")}</h2>
                 <ChoiceGroup
                   legend={t("inviteRoleLabel")}
                   choices={INVITABLE_ROLES.map((value) => ({ value, label: tRole(value) }))}

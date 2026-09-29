@@ -288,7 +288,7 @@ export function Wizard({
         reason: the text above it already carries the information.
       */}
       <div className="flex flex-col gap-2.5">
-        <p className="text-sm font-semibold tracking-widest text-muted uppercase">
+        <p className="text-sm font-medium text-muted">
           {t("stepOf", { current: step + 1, total: TOTAL })} ·{" "}
           <span className="text-accent">{t(`steps.${STEPS[step] ?? "about"}`)}</span>
         </p>

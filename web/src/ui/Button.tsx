@@ -20,6 +20,7 @@ export function Button({
   type = "button",
   disabled = false,
   loading = false,
+  inline = false,
 }: {
   children: ReactNode;
   onClick?: () => void;
@@ -35,6 +36,12 @@ export function Button({
    * inconsistently.
    */
   loading?: boolean;
+  /**
+   * Size to the label instead of filling the row. For secondary actions that
+   * sit beside something else — a full-width button says "this is the thing
+   * to do on this screen", and only one thing on a screen should say that.
+   */
+  inline?: boolean;
 }) {
   return (
     <button
@@ -42,7 +49,7 @@ export function Button({
       disabled={disabled || loading}
       aria-busy={loading}
       {...(onClick !== undefined && { onClick })}
-      className={`${BUTTON_SHAPE} disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none ${VARIANT_CLASSES[variant]}`}
+      className={`${BUTTON_SHAPE} ${inline ? "w-auto shrink-0 px-4 whitespace-nowrap" : "w-full px-6"} disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none ${VARIANT_CLASSES[variant]}`}
     >
       {loading && <Spinner />}
       {children}

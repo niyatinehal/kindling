@@ -35,7 +35,7 @@
   --c-accent-bright: #16a34a;
   --c-accent-glow: #4ade80;
   --c-muted: #5d7166;
-  --c-line: #dde7de;
+  --c-line: #e4ebe5;
 
   /*
    * The emphasis card gets its own three, rather than reusing `ink` as a
@@ -49,8 +49,8 @@
   --c-on-emphasis: #f4f7f2;
   --c-emphasis-label: #4ade80;
 
-  --c-shadow-card: 0 1px 2px rgb(11 61 46 / 0.04), 0 12px 32px -16px rgb(11 61 46 / 0.22);
-  --c-shadow-button: 0 8px 20px -10px rgb(21 128 61 / 0.55);
+  --c-shadow-card: 0 1px 2px rgb(11 61 46 / 0.03), 0 6px 20px -14px rgb(11 61 46 / 0.12);
+  --c-shadow-button: none;
 
   /*
    * One colour per thing you track, so a glance tells water from sleep before
@@ -191,14 +191,14 @@
   --color-family-soft: var(--c-family-soft);
 
   --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-heading), ui-serif, Georgia, serif;
+  --font-display: var(--font-body), ui-sans-serif, system-ui, sans-serif;
 
   /*
    * Rounder than it was. The people this is for are not choosing a tool, they
    * are being talked into a habit, and soft corners read as friendly rather
    * than clinical.
    */
-  --radius-card: 1.5rem;
+  --radius-card: 1.25rem;
   --radius-control: 1rem;
   --shadow-card: var(--c-shadow-card);
   --shadow-button: var(--c-shadow-button);
@@ -220,15 +220,14 @@ body {
 }
 
 /*
- * Headings get the display face, and only headings: Fraunces is warm at 30px
- * and hard work at 15px, and the body copy is what a parent actually reads.
- * SOFT rounds the serifs off, which is most of the friendliness.
+ * One typeface, and headings set apart by size and weight rather than by a
+ * second face. Tight tracking is what makes large sans headings look
+ * deliberate instead of like bold body text.
  */
 h1,
 .font-display {
   font-family: var(--font-display);
-  font-variation-settings: "SOFT" 100, "WONK" 0;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.025em;
 }
 
 /*

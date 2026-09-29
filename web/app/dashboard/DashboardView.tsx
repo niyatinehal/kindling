@@ -100,9 +100,7 @@ export function DashboardView({ summary }: { summary: TrackingSummary }) {
       )}
 
       <Card>
-        <h2 className="text-sm font-semibold tracking-widest text-muted uppercase">
-          {t("waterChart")}
-        </h2>
+        <h2 className="font-semibold text-ink">{t("waterChart")}</h2>
         <p className="mt-1 mb-3 text-sm text-muted">
           {t("waterChartHint", { litres: (WATER_TARGET_ML / 1000).toFixed(1) })}
         </p>
@@ -118,9 +116,7 @@ export function DashboardView({ summary }: { summary: TrackingSummary }) {
       </Card>
 
       <Card>
-        <h2 className="text-sm font-semibold tracking-widest text-muted uppercase">
-          {t("sleepChart")}
-        </h2>
+        <h2 className="font-semibold text-ink">{t("sleepChart")}</h2>
         <p className="mt-1 mb-3 text-sm text-muted">{t("sleepChartHint")}</p>
         <BarChart
           color="var(--color-sleep)"
@@ -135,9 +131,7 @@ export function DashboardView({ summary }: { summary: TrackingSummary }) {
       </Card>
 
       <Card>
-        <h2 className="text-sm font-semibold tracking-widest text-muted uppercase">
-          {t("workoutChart")}
-        </h2>
+        <h2 className="font-semibold text-ink">{t("workoutChart")}</h2>
         <p className="mt-1 mb-3 text-sm text-muted">{t("workoutChartHint")}</p>
         <BarChart
           color="var(--color-move)"
@@ -152,9 +146,7 @@ export function DashboardView({ summary }: { summary: TrackingSummary }) {
       </Card>
 
       <Card>
-        <h2 className="text-sm font-semibold tracking-widest text-muted uppercase">
-          {t("mealChart")}
-        </h2>
+        <h2 className="font-semibold text-ink">{t("mealChart")}</h2>
         <p className="mt-1 mb-3 text-sm text-muted">{t("mealChartHint")}</p>
         <BarChart
           color="var(--color-meal)"

@@ -62,8 +62,8 @@ export default function LandingPage() {
   return (
     <Screen>
       <div className="flex flex-col gap-3 pt-2">
-        <h1 className="text-[2.75rem] leading-[1.05] font-semibold text-ink">{t("title")}</h1>
-        <p className="text-xl leading-snug text-muted">{t("subtitle")}</p>
+        <h1 className="text-[2.5rem] leading-[1.08] font-semibold text-ink">{t("title")}</h1>
+        <p className="text-lg leading-snug text-muted">{t("subtitle")}</p>
       </div>
 
       {/*
@@ -71,26 +71,30 @@ export default function LandingPage() {
         literally what they get after signing in.
       */}
       <Hero>
-        <p className="text-sm font-semibold tracking-widest text-emphasis-label uppercase">
-          {t("previewLabel")}
-        </p>
+        <p className="text-sm font-medium text-muted">{t("previewLabel")}</p>
 
         <div className="mt-5 grid grid-cols-3 gap-3">
           <ProgressRing
-            color="var(--color-water-glow)"
+            color="var(--color-water)"
             label={t("water")}
             value={12500}
             target={WATER_TARGET_ML * DAYS_IN_WEEK}
             display="12.5L"
           />
           <ProgressRing
-            color="var(--color-sleep-glow)"
+            color="var(--color-sleep)"
             label={t("sleep")}
             value={400}
             target={SLEEP_TARGET_MINUTES}
             display="6.7h"
           />
-          <ProgressRing label={t("workouts")} value={3} target={4} display="3" />
+          <ProgressRing
+            color="var(--color-move)"
+            label={t("workouts")}
+            value={3}
+            target={4}
+            display="3"
+          />
         </div>
       </Hero>
 
@@ -98,19 +102,24 @@ export default function LandingPage() {
         <WeekStrip days={EXAMPLE_WEEK} target={WATER_TARGET_ML} label={t("weekWater")} />
       </Card>
 
-      {FEATURES.map(({ key, icon, tone }) => (
-        <Card key={key}>
-          <div className="flex gap-4">
+      {/*
+        One list rather than three boxes: three equal cards stacked under the
+        preview made the page read as a wall of panels. As a list, the eye
+        runs down the three promises in one pass.
+      */}
+      <ul className="flex flex-col gap-6 px-1 py-2">
+        {FEATURES.map(({ key, icon, tone }) => (
+          <li key={key} className="flex gap-4">
             <IconChip name={icon} tone={tone} />
             <div>
-              <h2 className="font-display text-xl leading-snug font-semibold text-ink">
+              <h2 className="leading-snug font-semibold text-ink">
                 {t(`${key}Title` as "planTitle")}
               </h2>
-              <p className="mt-1.5 leading-relaxed text-muted">{t(`${key}Body` as "planBody")}</p>
+              <p className="mt-1 leading-relaxed text-muted">{t(`${key}Body` as "planBody")}</p>
             </div>
-          </div>
-        </Card>
-      ))}
+          </li>
+        ))}
+      </ul>
 
       {/*
         Guest first and sign-in second, which is the opposite of the order this

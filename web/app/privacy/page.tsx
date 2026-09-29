@@ -45,7 +45,7 @@ export default function PrivacyPage() {
 
       {SECTIONS.map((section) => (
         <Card key={section.id}>
-          <h2 className="text-sm font-semibold tracking-widest text-muted uppercase">
+          <h2 className="font-semibold text-ink">
             {t(`${section.id}.heading` as "collect.heading")}
           </h2>
           <div className="mt-3 flex flex-col gap-3">

@@ -3,7 +3,7 @@ import { useTranslations } from "next-intl";
 import type { TrackingSummary } from "../../src/tracking/summaryTypes";
 import { WATER_TARGET_ML } from "../../src/tracking/targets";
 import { Card } from "../../src/ui/Card";
-import { IconChip } from "../../src/ui/Icon";
+import { Icon } from "../../src/ui/Icon";
 import { LinkButton } from "../../src/ui/LinkButton";
 import { Screen } from "../../src/ui/Screen";
 import { Tile } from "../../src/ui/Tile";
@@ -83,13 +83,8 @@ export function HomeView({
         empty because no tracking endpoint exists yet.
       */}
       <Card>
-        <div className="flex items-center gap-3">
-          <IconChip name="activity" tone="move" size="sm" />
-          <p className="text-sm font-bold tracking-widest text-accent uppercase">
-            {t("todayLabel")}
-          </p>
-        </div>
-        <p className="mt-3 text-lg leading-relaxed">
+        <p className="text-sm font-medium text-muted">{t("todayLabel")}</p>
+        <p className="mt-1.5 text-lg leading-relaxed">
           {hasProfile ? t("todayPlanReady") : t("todayNoProfile")}
         </p>
         <div className="mt-4">
@@ -148,7 +143,7 @@ export function HomeView({
       */}
       <Card>
         <div className="flex items-center gap-3">
-          <IconChip name="users" tone="family" />
+          <Icon name="users" className="size-5 text-family" />
           {inFamily !== null && (
             <p className="text-muted">{inFamily ? t("inFamily") : t("noFamily")}</p>
           )}

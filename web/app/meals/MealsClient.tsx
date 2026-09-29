@@ -12,7 +12,7 @@ import { Button } from "../../src/ui/Button";
 import { Card } from "../../src/ui/Card";
 import { ChoiceGroup } from "../../src/ui/ChoiceGroup";
 import { Field } from "../../src/ui/Field";
-import { Icon, IconChip } from "../../src/ui/Icon";
+import { Icon } from "../../src/ui/Icon";
 import { Screen } from "../../src/ui/Screen";
 
 const SLOTS = ["breakfast", "lunch", "dinner", "snack"] as const;
@@ -129,14 +129,9 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
 
       <Card>
         <div className="flex flex-col gap-5">
-          <div className="flex gap-3">
-            <IconChip name="utensils" tone="meal" />
-            <div>
-              <h2 className="font-display text-xl leading-snug font-semibold text-ink">
-                {t("pantryTitle")}
-              </h2>
-              <p className="mt-1 text-sm leading-relaxed text-muted">{t("pantryHint")}</p>
-            </div>
+          <div>
+            <h2 className="text-lg font-semibold text-ink">{t("pantryTitle")}</h2>
+            <p className="mt-1 leading-relaxed text-muted">{t("pantryHint")}</p>
           </div>
 
           {PANTRY_GROUPS.map((group) => (
@@ -181,7 +176,7 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
         <Card key={suggestion.recipe_key}>
           <div className="flex flex-col gap-2">
             <div className="flex items-baseline justify-between gap-3">
-              <h3 className="font-display text-xl font-semibold text-ink">
+              <h3 className="text-lg font-semibold text-ink">
                 {tRecipe.has(suggestion.recipe_key)
                   ? tRecipe(suggestion.recipe_key)
                   : suggestion.recipe_key}
@@ -201,7 +196,7 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
             </p>
 
             {suggestion.missing.length === 0 ? (
-              <p className="inline-flex items-center gap-1.5 self-start rounded-full bg-move-soft px-3 py-1 text-sm font-semibold text-move">
+              <p className="inline-flex items-center gap-1.5 self-start text-sm font-semibold text-move">
                 <Icon name="check" className="size-4" />
                 {t("canCookNow")}
               </p>
@@ -247,6 +242,7 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
                 <span className="text-sm font-semibold text-accent">{t("eaten")}</span>
               ) : (
                 <Button
+                  inline
                   variant="secondary"
                   onClick={() => {
                     void logMeal({ recipeKey: suggestion.recipe_key });
@@ -268,14 +264,9 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
       */}
       <Card>
         <div className="flex flex-col gap-3">
-          <div className="flex gap-3">
-            <IconChip name="plus" tone="meal" />
-            <div>
-              <h2 className="font-display text-xl leading-snug font-semibold text-ink">
-                {t("customTitle")}
-              </h2>
-              <p className="mt-1 text-sm leading-relaxed text-muted">{t("customHint")}</p>
-            </div>
+          <div>
+            <h2 className="text-lg font-semibold text-ink">{t("customTitle")}</h2>
+            <p className="mt-1 leading-relaxed text-muted">{t("customHint")}</p>
           </div>
           <Field
             label={t("customLabel")}

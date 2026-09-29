@@ -77,10 +77,10 @@ export function IconChip({
   tone: Tone;
   size?: "sm" | "md" | "lg";
 }) {
-  const box = { sm: "size-9 rounded-xl", md: "size-11 rounded-2xl", lg: "size-14 rounded-2xl" }[
+  const box = { sm: "size-9 rounded-full", md: "size-10 rounded-full", lg: "size-12 rounded-full" }[
     size
   ];
-  const glyph = { sm: "size-[1.125rem]", md: "size-[1.375rem]", lg: "size-7" }[size];
+  const glyph = { sm: "size-[1.125rem]", md: "size-5", lg: "size-6" }[size];
   return (
     <span className={`grid shrink-0 place-items-center ${box} ${TONE_CLASSES[tone]}`}>
       <Icon name={name} className={glyph} />

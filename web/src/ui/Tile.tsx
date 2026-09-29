@@ -1,4 +1,4 @@
-import { Icon, IconChip } from "./Icon";
+import { IconChip } from "./Icon";
 import type { IconName, Tone } from "./Icon";
 
 /**
@@ -22,16 +22,10 @@ export function Tile({
   return (
     <a
       href={href}
-      className="group flex min-h-32 flex-col justify-between gap-4 rounded-card border border-line bg-surface p-4 text-ink shadow-card transition hover:border-accent/40 motion-safe:active:scale-[0.98]"
+      className="flex min-h-28 flex-col justify-between gap-4 rounded-card border border-line bg-surface p-4 text-ink shadow-card transition hover:border-accent/40 motion-safe:active:scale-[0.98]"
     >
-      <div className="flex items-start justify-between">
-        <IconChip name={icon} tone={tone} />
-        <Icon
-          name="arrowRight"
-          className="size-5 text-muted transition motion-safe:group-hover:translate-x-0.5"
-        />
-      </div>
-      <span className="text-[1.0625rem] leading-snug font-semibold">{children}</span>
+      <IconChip name={icon} tone={tone} size="sm" />
+      <span className="leading-snug font-semibold">{children}</span>
     </a>
   );
 }

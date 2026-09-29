@@ -50,7 +50,7 @@ export function ChoiceGroup<T extends string>({
 
   return (
     <fieldset>
-      <legend className="mb-2 block text-sm font-semibold text-muted">{legend}</legend>
+      <legend className="mb-2.5 block text-sm font-medium text-muted">{legend}</legend>
       <div className={layout === "chips" ? "flex flex-wrap gap-2" : "flex flex-col gap-2"}>
         {choices.map((choice) => {
           const isSelected = selected.includes(choice.value);
@@ -75,12 +75,12 @@ export function ChoiceGroup<T extends string>({
                 key={choice.value}
                 className={`inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full border px-4 text-base transition has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent motion-safe:active:scale-95 ${
                   isSelected
-                    ? "border-accent bg-accent font-semibold text-surface"
+                    ? "border-accent bg-move-soft font-semibold text-ink"
                     : "border-line bg-surface text-ink hover:border-accent/50"
                 }`}
               >
                 {input}
-                {isSelected && <Icon name="check" className="size-4" />}
+                {isSelected && <Icon name="check" className="size-4 text-accent" />}
                 <span>{choice.label}</span>
               </label>
             );
@@ -91,7 +91,7 @@ export function ChoiceGroup<T extends string>({
               key={choice.value}
               className={`flex min-h-13 cursor-pointer items-center gap-3 rounded-control border px-4 py-2 text-[1.0625rem] transition ${
                 isSelected
-                  ? "border-accent bg-move-soft font-semibold text-ink ring-1 ring-accent"
+                  ? "border-accent bg-move-soft font-semibold text-ink"
                   : "border-line bg-surface text-ink hover:border-accent/50"
               }`}
             >

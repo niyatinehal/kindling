@@ -13,8 +13,7 @@ import type { ReactNode } from "react";
  */
 const TONES = {
   surface: "bg-surface text-ink border border-line",
-  emphasis:
-    "bg-emphasis bg-[radial-gradient(120%_90%_at_100%_0%,rgb(74_222_128/0.16),transparent_60%)] text-on-emphasis",
+  emphasis: "bg-emphasis text-on-emphasis",
 } as const;
 
 export function Card({
@@ -24,7 +23,5 @@ export function Card({
   children: ReactNode;
   tone?: keyof typeof TONES;
 }) {
-  return (
-    <section className={`rounded-card p-5 shadow-card sm:p-6 ${TONES[tone]}`}>{children}</section>
-  );
+  return <section className={`rounded-card p-5 shadow-card ${TONES[tone]}`}>{children}</section>;
 }

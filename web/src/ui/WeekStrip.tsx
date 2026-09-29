@@ -25,12 +25,12 @@ export function WeekStrip({
 }) {
   return (
     <div>
-      <p className="text-[0.6875rem] font-bold tracking-widest text-muted uppercase">{label}</p>
+      <p className="text-sm font-medium text-muted">{label}</p>
 
       {days.length === 0 ? (
         <p className="mt-2 text-sm text-muted">{empty}</p>
       ) : (
-        <div className="mt-3 flex h-14 items-end gap-2">
+        <div className="mt-3 flex h-12 items-end gap-3 px-1">
           {days.map(({ date, value }) => {
             const fraction = value === 0 ? null : fractionOf(value, target);
 
@@ -38,12 +38,12 @@ export function WeekStrip({
               <div
                 key={date}
                 data-day={date}
-                className="flex h-full flex-1 items-end overflow-hidden rounded-md bg-water-soft"
+                className="flex h-full flex-1 items-end overflow-hidden rounded-[5px] bg-canvas"
               >
                 {fraction !== null && (
                   <div
                     data-fill={String(fraction)}
-                    className="w-full rounded-md bg-water"
+                    className="w-full rounded-[5px] bg-water"
                     style={{ height: `${Math.max(fraction * 100, 8)}%` }}
                   />
                 )}
