@@ -13,7 +13,7 @@ import type { ReactNode } from "react";
  */
 const TONES = {
   surface: "bg-surface text-ink border border-line/70",
-  emphasis: "bg-raised text-ink",
+  emphasis: "bg-emphasis text-on-emphasis",
 } as const;
 
 export function Card({

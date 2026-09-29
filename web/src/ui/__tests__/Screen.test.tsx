@@ -39,6 +39,8 @@ describe("Screen", () => {
   it("carries the theme toggle onto every screen, titled or not", () => {
     renderScreen(<Screen>content</Screen>);
 
-    expect(screen.getByRole("button", { name: messages.theme.switchToDark })).toBeInTheDocument();
+    // Nobody has chosen a theme here, so the default (dark) is showing and the
+    // toggle offers the other one.
+    expect(screen.getByRole("button", { name: messages.theme.switchToLight })).toBeInTheDocument();
   });
 });
