@@ -268,11 +268,14 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
       */}
       <Card>
         <div className="flex flex-col gap-3">
-          <div>
-            <h2 className="text-sm font-semibold tracking-widest text-muted uppercase">
-              {t("customTitle")}
-            </h2>
-            <p className="mt-1 text-sm text-muted">{t("customHint")}</p>
+          <div className="flex gap-3">
+            <IconChip name="plus" tone="meal" />
+            <div>
+              <h2 className="font-display text-xl leading-snug font-semibold text-ink">
+                {t("customTitle")}
+              </h2>
+              <p className="mt-1 text-sm leading-relaxed text-muted">{t("customHint")}</p>
+            </div>
           </div>
           <Field
             label={t("customLabel")}

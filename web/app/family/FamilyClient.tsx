@@ -9,6 +9,7 @@ import type { FamilySummary } from "../../src/family/currentFamily";
 import { Alert } from "../../src/ui/Alert";
 import { BackLink } from "../../src/ui/BackLink";
 import { Button } from "../../src/ui/Button";
+import { Avatar } from "../../src/ui/Avatar";
 import { Card } from "../../src/ui/Card";
 import { LinkButton } from "../../src/ui/LinkButton";
 import { ChoiceGroup } from "../../src/ui/ChoiceGroup";
@@ -146,12 +147,17 @@ export function FamilyClient({ initialFamily }: { initialFamily: FamilySummary |
             </h2>
             <ul className="mt-3 flex flex-col gap-3">
               {family.members.map((m) => (
-                <li key={m.user_id} className="flex items-center justify-between gap-3">
-                  <span className="text-[1.0625rem] text-ink">{m.display_name}</span>
-                  <span className="text-sm text-muted">
-                    {tRole.has(m.role) ? tRole(m.role) : m.role}
-                    {m.status !== "active" && ` · ${t("removed")}`}
-                  </span>
+                <li key={m.user_id} className="flex items-center gap-3">
+                  <Avatar name={m.display_name} size="sm" />
+                  <div className="flex flex-col">
+                    <span className="text-[1.0625rem] font-semibold text-ink">
+                      {m.display_name}
+                    </span>
+                    <span className="text-sm text-muted">
+                      {tRole.has(m.role) ? tRole(m.role) : m.role}
+                      {m.status !== "active" && ` · ${t("removed")}`}
+                    </span>
+                  </div>
                 </li>
               ))}
             </ul>

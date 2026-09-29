@@ -107,6 +107,7 @@ export function DashboardView({ summary }: { summary: TrackingSummary }) {
           {t("waterChartHint", { litres: (WATER_TARGET_ML / 1000).toFixed(1) })}
         </p>
         <BarChart
+          color="var(--color-water)"
           data={series(
             (day) => day.water_ml,
             (value, date) => `${date}: ${(value / 1000).toFixed(1)}L`,
@@ -122,6 +123,7 @@ export function DashboardView({ summary }: { summary: TrackingSummary }) {
         </h2>
         <p className="mt-1 mb-3 text-sm text-muted">{t("sleepChartHint")}</p>
         <BarChart
+          color="var(--color-sleep)"
           data={series(
             (day) => day.sleep_minutes,
             (value, date) =>
@@ -138,6 +140,7 @@ export function DashboardView({ summary }: { summary: TrackingSummary }) {
         </h2>
         <p className="mt-1 mb-3 text-sm text-muted">{t("workoutChartHint")}</p>
         <BarChart
+          color="var(--color-move)"
           data={series(
             (day) => day.workouts_completed,
             (value, date) =>
@@ -154,6 +157,7 @@ export function DashboardView({ summary }: { summary: TrackingSummary }) {
         </h2>
         <p className="mt-1 mb-3 text-sm text-muted">{t("mealChartHint")}</p>
         <BarChart
+          color="var(--color-meal)"
           data={series(
             (day) => day.meals_logged,
             (value, date) =>

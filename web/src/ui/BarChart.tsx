@@ -38,12 +38,18 @@ export function BarChart({
   target,
   targetLabel,
   formatValue,
+  color = "var(--color-accent)",
 }: {
   data: readonly BarDatum[];
   /** An optional reference line — a daily goal, drawn behind the marks. */
   target?: number | undefined;
   targetLabel?: string | undefined;
   formatValue?: ((value: number) => string) | undefined;
+  /**
+   * Bars and target line. Each dashboard chart passes its category's colour,
+   * which palette.test.ts holds to 3:1 on a card, the same bar the accent met.
+   */
+  color?: string;
 }) {
   const width = 320;
   const height = PLOT_HEIGHT + LABEL_BAND + VALUE_BAND;
@@ -76,7 +82,8 @@ export function BarChart({
           // 5.02:1 on a light card, 7.63:1 on a dark one. This was
           // `accent-glow`, which measures 1.74:1 on white — the line the whole
           // chart is read against, all but invisible.
-          stroke="var(--color-accent)"
+          stroke={color}
+          strokeDasharray="4 4"
           strokeWidth={1}
         />
       )}
@@ -111,7 +118,7 @@ export function BarChart({
                   `V ${VALUE_BAND + PLOT_HEIGHT}`,
                   "Z",
                 ].join(" ")}
-                fill="var(--color-accent)"
+                fill={color}
               >
                 <title>{datum.title}</title>
               </path>

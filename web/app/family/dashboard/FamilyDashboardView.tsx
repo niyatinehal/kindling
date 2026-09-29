@@ -2,6 +2,7 @@ import { useTranslations } from "next-intl";
 
 import type { MemberPanel } from "../../../src/family/familyDashboard";
 import { BackLink } from "../../../src/ui/BackLink";
+import { Avatar } from "../../../src/ui/Avatar";
 import { Card } from "../../../src/ui/Card";
 import { Meter } from "../../../src/ui/Meter";
 import { Screen } from "../../../src/ui/Screen";
@@ -38,11 +39,16 @@ export function FamilyDashboardView({ members }: { members: MemberPanel[] | null
 
           {members.map((member) => (
             <Card key={member.user_id}>
-              <div className="flex items-baseline justify-between gap-3">
-                <h2 className="text-lg font-semibold text-ink">{member.display_name}</h2>
-                <span className="text-sm text-muted">
-                  {tRole.has(member.role) ? tRole(member.role) : member.role}
-                </span>
+              <div className="flex items-center gap-3">
+                <Avatar name={member.display_name} />
+                <div className="flex flex-col">
+                  <h2 className="font-display text-xl leading-tight font-semibold text-ink">
+                    {member.display_name}
+                  </h2>
+                  <span className="text-sm text-muted">
+                    {tRole.has(member.role) ? tRole(member.role) : member.role}
+                  </span>
+                </div>
               </div>
 
               {sharesNothing(member) ? (
