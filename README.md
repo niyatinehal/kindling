@@ -13,6 +13,7 @@ what the others get to see.
 ![Android](https://img.shields.io/badge/Android-6.0%2B-3DDC84?logo=android&logoColor=white)
 ![Web](https://img.shields.io/badge/web-installable%20PWA-0A84FF)
 ![No ads](https://img.shields.io/badge/ads%20%26%20tracking-none-5C2D91)
+[![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 [![CI](https://github.com/niyatinehal/kindling/actions/workflows/ci.yml/badge.svg)](https://github.com/niyatinehal/kindling/actions/workflows/ci.yml)
 
 <img src="docs/screenshot-home-light.jpg" width="24%" alt="The home screen, with an example week of water, sleep and workouts" />
@@ -106,3 +107,8 @@ signed with. If it doesn't, the app still opens, but as a browser tab with the a
 showing.
 
 </details>
+
+## License
+
+[MIT](LICENSE). The code is free to use, change and share. The name, the hosted app and its
+users' data are not part of it: a fork runs its own database and signs its own APK.
