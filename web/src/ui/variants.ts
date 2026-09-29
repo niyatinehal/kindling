@@ -30,7 +30,7 @@ export const VARIANT_CLASSES = {
  * anyone who has asked their OS for less movement.
  */
 export const BUTTON_SHAPE =
-  "flex min-h-13 w-full items-center justify-center gap-2 rounded-full px-6 text-[1.0625rem] font-semibold transition motion-safe:active:scale-[0.98]";
+  "flex min-h-13 w-full items-center justify-center gap-2 rounded-full px-6 py-3 text-center text-[1.0625rem] leading-snug font-semibold transition motion-safe:active:scale-[0.98]";
 
 export type Variant = keyof typeof VARIANT_CLASSES;
 
