@@ -1,9 +1,7 @@
-import type React from "react";
-
 import { fractionOf } from "../tracking/targets";
 
-const SIZE = 96;
-const STROKE = 7;
+const SIZE = 88;
+const STROKE = 5;
 const RADIUS = (SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
@@ -36,7 +34,7 @@ export function ProgressRing({
   value: number;
   target: number;
   display: string;
-  /** The fill. Defaults to the brand glow; the hero passes each category's own. */
+  /** The fill. Defaults to the accent, which every ring on the hero now uses. */
   color?: string;
 }) {
   const fraction = fractionOf(value, target);
@@ -65,8 +63,6 @@ export function ProgressRing({
               r={RADIUS}
               fill="none"
               stroke={color}
-              className="dark:[filter:drop-shadow(0_0_6px_var(--ring))]"
-              style={{ "--ring": color } as React.CSSProperties}
               strokeWidth={STROKE}
               strokeLinecap="round"
               strokeDasharray={CIRCUMFERENCE}
@@ -74,7 +70,9 @@ export function ProgressRing({
             />
           )}
         </svg>
-        <span className="absolute text-xl font-bold tracking-tight tabular-nums">{display}</span>
+        <span className="absolute text-lg font-semibold tracking-tight tabular-nums">
+          {display}
+        </span>
       </div>
       <span className="text-sm text-muted">{label}</span>
     </div>

@@ -123,12 +123,12 @@ export function TrackingTiles({
               month: "long",
             })}
           </p>
-          <h1 className="mt-0.5 text-[2.5rem] leading-tight font-bold tracking-tight text-ink">
+          <h1 className="mt-0.5 text-[1.75rem] leading-tight font-semibold tracking-tight text-ink">
             {greeting}
           </h1>
         </div>
         {guestChip !== undefined && (
-          <span className="rounded-full bg-move-soft px-3 py-1 text-sm font-semibold text-move">
+          <span className="rounded-md border border-line px-2.5 py-0.5 text-sm font-medium text-muted">
             {guestChip}
           </span>
         )}
@@ -139,21 +139,18 @@ export function TrackingTiles({
 
         <div className="mt-5 grid grid-cols-3 gap-2">
           <ProgressRing
-            color="var(--color-water)"
             label={t("water")}
             value={summary.water_ml}
             target={WATER_TARGET_ML * DAYS_IN_WEEK}
             display={`${litres}L`}
           />
           <ProgressRing
-            color="var(--color-sleep)"
             label={t("sleep")}
             value={nightlyMinutes}
             target={SLEEP_TARGET_MINUTES}
             display={sleepHours === null ? "—" : `${sleepHours}h`}
           />
           <ProgressRing
-            color="var(--color-move)"
             label={t("workouts")}
             value={summary.workouts_completed}
             target={summary.workouts_scheduled}
@@ -170,7 +167,7 @@ export function TrackingTiles({
         <div className="flex flex-col divide-y divide-line">
           <div className="flex flex-wrap items-center justify-between gap-3 pb-4">
             <div className="flex items-center gap-3">
-              <Icon name="droplet" className="size-5 text-water" />
+              <Icon name="droplet" className="size-5 text-muted" />
               <p className="font-medium text-ink">{t("logWaterLabel")}</p>
             </div>
             <Button
@@ -188,7 +185,7 @@ export function TrackingTiles({
 
           <div className="flex flex-col gap-3 pt-4">
             <div className="flex items-center gap-3">
-              <Icon name="moon" className="size-5 text-sleep" />
+              <Icon name="moon" className="size-5 text-muted" />
               <p className="font-medium text-ink">{t("logSleepLabel")}</p>
             </div>
             {/*
@@ -198,10 +195,10 @@ export function TrackingTiles({
               of its own.
             */}
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-2">
                 <Button
                   inline
-                  variant="ghost"
+                  variant="secondary"
                   disabled={pending !== null || sleepMinutes <= SLEEP_STEP_MINUTES}
                   onClick={() => {
                     setSleepMinutes(sleepMinutes - SLEEP_STEP_MINUTES);
@@ -214,7 +211,7 @@ export function TrackingTiles({
                 </span>
                 <Button
                   inline
-                  variant="ghost"
+                  variant="secondary"
                   disabled={pending !== null || sleepMinutes >= 960}
                   onClick={() => {
                     setSleepMinutes(sleepMinutes + SLEEP_STEP_MINUTES);

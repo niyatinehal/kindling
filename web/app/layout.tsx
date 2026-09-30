@@ -2,7 +2,7 @@ import "./globals.css";
 
 import { SerwistProvider } from "@serwist/turbopack/react";
 import type { Viewport } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Inter } from "next/font/google";
 import { cookies } from "next/headers";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
@@ -22,7 +22,7 @@ import {
  * a font CDN would quietly be one. `swap` shows the system face until these
  * arrive rather than blank text, which matters on a slow phone connection.
  */
-const body = Plus_Jakarta_Sans({
+const body = Inter({
   subsets: ["latin"],
   variable: "--font-body",
   display: "swap",

@@ -105,7 +105,6 @@ export function DashboardView({ summary }: { summary: TrackingSummary }) {
           {t("waterChartHint", { litres: (WATER_TARGET_ML / 1000).toFixed(1) })}
         </p>
         <BarChart
-          color="var(--color-water)"
           data={series(
             (day) => day.water_ml,
             (value, date) => `${date}: ${(value / 1000).toFixed(1)}L`,
@@ -119,7 +118,6 @@ export function DashboardView({ summary }: { summary: TrackingSummary }) {
         <h2 className="font-semibold text-ink">{t("sleepChart")}</h2>
         <p className="mt-1 mb-3 text-sm text-muted">{t("sleepChartHint")}</p>
         <BarChart
-          color="var(--color-sleep)"
           data={series(
             (day) => day.sleep_minutes,
             (value, date) =>
@@ -134,7 +132,6 @@ export function DashboardView({ summary }: { summary: TrackingSummary }) {
         <h2 className="font-semibold text-ink">{t("workoutChart")}</h2>
         <p className="mt-1 mb-3 text-sm text-muted">{t("workoutChartHint")}</p>
         <BarChart
-          color="var(--color-move)"
           data={series(
             (day) => day.workouts_completed,
             (value, date) =>
@@ -149,7 +146,6 @@ export function DashboardView({ summary }: { summary: TrackingSummary }) {
         <h2 className="font-semibold text-ink">{t("mealChart")}</h2>
         <p className="mt-1 mb-3 text-sm text-muted">{t("mealChartHint")}</p>
         <BarChart
-          color="var(--color-meal)"
           data={series(
             (day) => day.meals_logged,
             (value, date) =>
@@ -167,8 +163,8 @@ export function DashboardView({ summary }: { summary: TrackingSummary }) {
 
 function Stat({ value, label }: { value: string; label: string }) {
   return (
-    <div className="rounded-card border border-line bg-surface p-4 text-center">
-      <div className="text-2xl font-bold text-ink">{value}</div>
+    <div className="rounded-card bg-surface p-4 text-center">
+      <div className="text-2xl font-semibold tracking-tight text-ink tabular-nums">{value}</div>
       <div className="mt-1 text-xs text-muted">{label}</div>
     </div>
   );

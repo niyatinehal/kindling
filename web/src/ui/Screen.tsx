@@ -15,7 +15,7 @@ import { ThemeToggle } from "./ThemeToggle";
  */
 export function Screen({ children, title }: { children: ReactNode; title?: string }) {
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-6 px-5 pt-6 pb-14">
+    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-8 px-5 pt-6 pb-16">
       {/*
         The row exists even with no title, so the toggle keeps the same position
         on every screen. `justify-between` with an empty first child would
@@ -23,7 +23,7 @@ export function Screen({ children, title }: { children: ReactNode; title?: strin
       */}
       <div className="flex items-start justify-between gap-3">
         {title !== undefined && (
-          <h1 className="pt-1 text-[2rem] leading-tight font-bold tracking-tight text-ink">
+          <h1 className="pt-1 text-[1.625rem] leading-tight font-semibold tracking-tight text-ink">
             {title}
           </h1>
         )}

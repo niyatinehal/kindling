@@ -67,6 +67,7 @@ const PAIRS: { name: string; fg: string; bg: string; min: number }[] = [
   { name: "primary button", fg: "--c-surface", bg: "--c-accent", min: 4.5 },
   { name: "secondary button", fg: "--c-ink", bg: "--c-surface", min: 7 },
   { name: "ghost button", fg: "--c-accent", bg: "--c-canvas", min: 4.5 },
+  { name: "destructive button", fg: "--c-danger", bg: "--c-canvas", min: 4.5 },
   { name: "emphasis card text", fg: "--c-on-emphasis", bg: "--c-emphasis", min: 7 },
   { name: "emphasis card label", fg: "--c-emphasis-label", bg: "--c-emphasis", min: 4.5 },
   // Non-text: the ring fill and the chart's target line.

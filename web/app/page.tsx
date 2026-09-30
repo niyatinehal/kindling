@@ -1,12 +1,17 @@
 import { useTranslations } from "next-intl";
 
+import { DishArt } from "../src/art/DishArt";
+import { ExerciseArt } from "../src/art/ExerciseArt";
+import { HeroArt } from "../src/art/HeroArt";
 import { SLEEP_TARGET_MINUTES, WATER_TARGET_ML } from "../src/tracking/targets";
 import { Card } from "../src/ui/Card";
 import { Hero } from "../src/ui/Hero";
-import { Icon, IconChip } from "../src/ui/Icon";
-import type { IconName, Tone } from "../src/ui/Icon";
+import { Icon } from "../src/ui/Icon";
+import type { IconName } from "../src/ui/Icon";
 import { LinkButton } from "../src/ui/LinkButton";
+import { MediaCard } from "../src/ui/MediaCard";
 import { ProgressRing } from "../src/ui/ProgressRing";
+import { Rail } from "../src/ui/Rail";
 import { Screen } from "../src/ui/Screen";
 import { WeekStrip } from "../src/ui/WeekStrip";
 import { GuestEntryButton } from "./GuestEntryButton";
@@ -35,11 +40,29 @@ const EXAMPLE_WEEK = [
   { date: "day-7", value: 1250 },
 ];
 
+/**
+ * What the picture rows show. Invented in the same sense as EXAMPLE_WEEK, and
+ * sitting under the same "example" framing: real exercises and real dishes
+ * from the libraries, but nobody's actual plan.
+ */
+const EXAMPLE_EXERCISES = [
+  { key: "chair_sit_to_stand", sets: 3, reps: 10 },
+  { key: "band_row", sets: 3, reps: 12 },
+  { key: "glute_bridge", sets: 3, reps: 12 },
+  { key: "brisk_walk", seconds: 600 },
+] as const;
+
+const EXAMPLE_DISHES = [
+  { key: "palak_paneer", minutes: 30, kcal: 380 },
+  { key: "poha", minutes: 20, kcal: 300 },
+  { key: "dal_chawal", minutes: 35, kcal: 420 },
+] as const;
+
 const FEATURES = [
-  { key: "plan", icon: "activity", tone: "move" },
-  { key: "meals", icon: "utensils", tone: "meal" },
-  { key: "family", icon: "users", tone: "family" },
-] as const satisfies readonly { key: string; icon: IconName; tone: Tone }[];
+  { key: "plan", icon: "activity" },
+  { key: "meals", icon: "utensils" },
+  { key: "family", icon: "users" },
+] as const satisfies readonly { key: string; icon: IconName }[];
 
 /**
  * What somebody sees when they follow a link to this app.
@@ -58,14 +81,29 @@ const FEATURES = [
  */
 export default function LandingPage() {
   const t = useTranslations("landing");
+  const tPlan = useTranslations("plan");
+  const tExercise = useTranslations("plan.exercises");
+  const tRecipe = useTranslations("meals.recipes");
+  const tHome = useTranslations("home");
 
   return (
     <Screen>
-      <div className="flex flex-col gap-3 pt-2">
-        <h1 className="text-[2.5rem] leading-[1.05] font-bold tracking-tight text-ink">
-          {t("title")}
-        </h1>
-        <p className="text-lg leading-snug text-muted">{t("subtitle")}</p>
+      {/*
+        The opening is a picture of the family the app is for, left clear:
+        the scene is lit so the family is the brightest thing in it, and a
+        caption laid over it would dim and cover them. The name follows
+        underneath, as the page's one h1.
+      */}
+      <div className="flex flex-col gap-4">
+        <div className="aspect-[4/5] overflow-hidden rounded-card bg-raised">
+          <HeroArt name="family" />
+        </div>
+        <div className="flex flex-col gap-2 px-1">
+          <h1 className="text-[2rem] leading-tight font-semibold tracking-tight text-ink">
+            {t("title")}
+          </h1>
+          <p className="text-[1.0625rem] leading-snug text-muted">{t("subtitle")}</p>
+        </div>
       </div>
 
       {/*
@@ -77,26 +115,18 @@ export default function LandingPage() {
 
         <div className="mt-5 grid grid-cols-3 gap-3">
           <ProgressRing
-            color="var(--color-water)"
             label={t("water")}
             value={12500}
             target={WATER_TARGET_ML * DAYS_IN_WEEK}
             display="12.5L"
           />
           <ProgressRing
-            color="var(--color-sleep)"
             label={t("sleep")}
             value={400}
             target={SLEEP_TARGET_MINUTES}
             display="6.7h"
           />
-          <ProgressRing
-            color="var(--color-move)"
-            label={t("workouts")}
-            value={3}
-            target={4}
-            display="3"
-          />
+          <ProgressRing label={t("workouts")} value={3} target={4} display="3" />
         </div>
       </Hero>
 
@@ -104,15 +134,47 @@ export default function LandingPage() {
         <WeekStrip days={EXAMPLE_WEEK} target={WATER_TARGET_ML} label={t("weekWater")} />
       </Card>
 
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold text-ink">{t("examplePlan")}</h2>
+        <Rail label={t("examplePlan")} size="lg">
+          {EXAMPLE_EXERCISES.map((exercise) => (
+            <MediaCard
+              key={exercise.key}
+              art={<ExerciseArt exercise={exercise.key} />}
+              title={tExercise(exercise.key)}
+              meta={
+                "seconds" in exercise
+                  ? tPlan("duration", { seconds: exercise.seconds })
+                  : tPlan("setsReps", { sets: exercise.sets, reps: exercise.reps })
+              }
+            />
+          ))}
+        </Rail>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold text-ink">{t("exampleDishes")}</h2>
+        <Rail label={t("exampleDishes")} size="lg">
+          {EXAMPLE_DISHES.map((dish) => (
+            <MediaCard
+              key={dish.key}
+              art={<DishArt recipe={dish.key} />}
+              title={tRecipe(dish.key)}
+              meta={tHome("dishMeta", { minutes: dish.minutes, kcal: dish.kcal })}
+            />
+          ))}
+        </Rail>
+      </section>
+
       {/*
         One list rather than three boxes: three equal cards stacked under the
         preview made the page read as a wall of panels. As a list, the eye
         runs down the three promises in one pass.
       */}
       <ul className="flex flex-col gap-6 px-1 py-2">
-        {FEATURES.map(({ key, icon, tone }) => (
+        {FEATURES.map(({ key, icon }) => (
           <li key={key} className="flex gap-4">
-            <IconChip name={icon} tone={tone} />
+            <Icon name={icon} className="mt-0.5 size-5 text-muted" />
             <div>
               <h2 className="leading-snug font-semibold text-ink">
                 {t(`${key}Title` as "planTitle")}

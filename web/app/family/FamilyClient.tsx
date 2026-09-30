@@ -209,7 +209,7 @@ export function FamilyClient({ initialFamily }: { initialFamily: FamilySummary |
                 {issuedCode !== undefined && (
                   <div>
                     <p className="text-sm text-muted">{t("inviteIssued")}</p>
-                    <p className="mt-1 font-mono text-2xl font-bold tracking-[0.2em] text-ink">
+                    <p className="mt-1 font-mono text-2xl font-semibold tracking-[0.2em] text-ink">
                       {issuedCode}
                     </p>
                     <p className="mt-1 text-sm text-muted">{t("inviteOnce")}</p>

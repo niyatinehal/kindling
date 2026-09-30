@@ -4,6 +4,8 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { readJsonBody } from "../../src/api/readJsonBody";
+import { DishArt } from "../../src/art/DishArt";
+import { HeroArt } from "../../src/art/HeroArt";
 import { PANTRY_GROUPS } from "../../src/meals/mealTypes";
 import type { MealSuggestion } from "../../src/meals/mealTypes";
 import { Alert } from "../../src/ui/Alert";
@@ -112,6 +114,11 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
     <Screen title={t("title")}>
       <BackLink href="/home">{t("backHome")}</BackLink>
 
+      {/* A table of home cooking to open on, before the list of ingredients. */}
+      <div className="aspect-video overflow-hidden rounded-card bg-raised">
+        <HeroArt name="food" />
+      </div>
+
       {error !== undefined && (
         <Alert>{tError.has(error) ? tError(error) : tError("UNKNOWN")}</Alert>
       )}
@@ -173,18 +180,27 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
       )}
 
       {suggestions?.map((suggestion) => (
-        <Card key={suggestion.recipe_key}>
-          <div className="flex flex-col gap-2">
-            <div className="flex items-baseline justify-between gap-3">
-              <h3 className="text-lg font-semibold text-ink">
-                {tRecipe.has(suggestion.recipe_key)
-                  ? tRecipe(suggestion.recipe_key)
-                  : suggestion.recipe_key}
-              </h3>
-              <span className="rounded-full bg-meal-soft px-2.5 py-0.5 text-xs font-semibold text-meal">
-                {tSlot(suggestion.slot as "lunch")}
-              </span>
-            </div>
+        <article
+          key={suggestion.recipe_key}
+          className="overflow-hidden rounded-card bg-surface shadow-card"
+        >
+          {/*
+            The dish first, as a picture, with the meal it suits laid over its
+            corner — the one fact worth reading before the name.
+          */}
+          <div className="relative aspect-[16/9] overflow-hidden">
+            <DishArt recipe={suggestion.recipe_key} />
+            <span className="absolute start-3 top-3 rounded-md bg-surface/90 px-2 py-0.5 text-xs font-medium text-ink backdrop-blur-sm">
+              {tSlot(suggestion.slot as "lunch")}
+            </span>
+          </div>
+
+          <div className="flex flex-col gap-2 p-5">
+            <h3 className="text-lg font-semibold text-ink">
+              {tRecipe.has(suggestion.recipe_key)
+                ? tRecipe(suggestion.recipe_key)
+                : suggestion.recipe_key}
+            </h3>
 
             {/* §16.2: nutrition is always labelled an estimate, never a fact. */}
             <p className="text-sm text-muted">
@@ -196,7 +212,7 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
             </p>
 
             {suggestion.missing.length === 0 ? (
-              <p className="inline-flex items-center gap-1.5 self-start text-sm font-semibold text-move">
+              <p className="inline-flex items-center gap-1.5 self-start text-sm font-medium text-accent">
                 <Icon name="check" className="size-4" />
                 {t("canCookNow")}
               </p>
@@ -253,7 +269,7 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
               )}
             </div>
           </div>
-        </Card>
+        </article>
       ))}
 
       {/*

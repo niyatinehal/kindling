@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { readJsonBody } from "../../src/api/readJsonBody";
+import { ExerciseArt } from "../../src/art/ExerciseArt";
 import { readPlan } from "../../src/plan/planTypes";
 import type { PlanView } from "../../src/plan/planTypes";
 import { Alert } from "../../src/ui/Alert";
@@ -12,6 +13,7 @@ import { Button } from "../../src/ui/Button";
 import { Card } from "../../src/ui/Card";
 import { Icon } from "../../src/ui/Icon";
 import { LinkButton } from "../../src/ui/LinkButton";
+import { MediaCard } from "../../src/ui/MediaCard";
 import { Screen } from "../../src/ui/Screen";
 
 const DAY_KEYS = ["1", "2", "3", "4", "5", "6", "7"] as const;
@@ -188,60 +190,59 @@ export function PlanClient({
           }
 
           return (
-            <div
-              key={dayKey}
-              className={
-                isToday
-                  ? "rounded-card ring-1 ring-accent dark:shadow-[0_0_32px_-12px_var(--color-accent)]"
-                  : undefined
-              }
-            >
-              <Card>
-                <h2 className="font-semibold text-ink">{tDay(dayKey)}</h2>
+            <section key={dayKey} className="flex flex-col gap-3">
+              <div className="flex items-baseline justify-between gap-3">
+                <h2 className="text-lg font-semibold text-ink">{tDay(dayKey)}</h2>
+                {isToday && <span className="text-sm font-medium text-accent">{t("today")}</span>}
+              </div>
 
-                <ol className="mt-2 flex flex-col divide-y divide-line">
-                  {day.exercises.map((exercise, index) => (
-                    <li key={exercise.id} className="flex flex-col gap-3 py-3 last:pb-0">
-                      <div className="flex items-center gap-3">
-                        <span
-                          aria-hidden="true"
-                          className="grid size-8 shrink-0 place-items-center rounded-full bg-canvas text-sm font-semibold text-muted tabular-nums"
-                        >
-                          {index + 1}
-                        </span>
-                        <div className="flex flex-col">
-                          <span className="text-[1.0625rem] font-medium text-ink">
-                            {tExercise.has(exercise.exercise_key)
-                              ? tExercise(exercise.exercise_key)
-                              : exercise.exercise_key}
-                          </span>
-                          <span className="text-sm text-muted">
-                            {exercise.sets !== null && exercise.reps !== null
-                              ? t("setsReps", { sets: exercise.sets, reps: exercise.reps })
-                              : t("duration", { seconds: exercise.duration_seconds ?? 0 })}
-                            {exercise.rest_seconds !== null &&
-                              ` · ${t("restBetween", { seconds: exercise.rest_seconds })}`}
-                          </span>
-                        </div>
-                      </div>
-
+              {/*
+                Two across rather than a list: each exercise is a picture first,
+                and two pictures side by side still leave the name legible at
+                phone width. Today's day goes full width — it is the one being
+                done, so its pictures are the ones worth seeing large.
+              */}
+              <ol className={`grid gap-3 ${isToday ? "grid-cols-1" : "grid-cols-2"}`}>
+                {day.exercises.map((exercise) => (
+                  <li key={exercise.id}>
+                    <MediaCard
+                      art={<ExerciseArt exercise={exercise.exercise_key} />}
+                      title={
+                        tExercise.has(exercise.exercise_key)
+                          ? tExercise(exercise.exercise_key)
+                          : exercise.exercise_key
+                      }
+                      meta={
+                        <>
+                          {exercise.sets !== null && exercise.reps !== null
+                            ? t("setsReps", { sets: exercise.sets, reps: exercise.reps })
+                            : t("duration", { seconds: exercise.duration_seconds ?? 0 })}
+                          {exercise.rest_seconds !== null &&
+                            ` · ${t("restBetween", { seconds: exercise.rest_seconds })}`}
+                        </>
+                      }
+                    >
                       {/*
                         Only today's day gets buttons. Ticking Thursday off on a
                         Monday would be logging something that has not happened.
                       */}
                       {isToday && (
-                        <div className="flex items-center gap-1 ps-11">
+                        // Stacked, not side by side: half a phone screen is too
+                        // narrow for both, and letting them wrap left Skip
+                        // stranded under Done at an odd width.
+                        <div className="mt-auto flex flex-col gap-1 pt-2">
                           {ticks[exercise.id] === "completed" ? (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-move-soft px-3 py-1 text-sm font-semibold text-move">
+                            <span className="inline-flex min-h-12 items-center gap-1.5 text-sm font-medium text-accent">
                               <Icon name="check" className="size-4" />
                               {tTrack("done")}
                             </span>
                           ) : ticks[exercise.id] === "skipped" ? (
-                            <span className="text-sm text-muted">{tTrack("skipped")}</span>
+                            <span className="inline-flex min-h-12 items-center text-sm text-muted">
+                              {tTrack("skipped")}
+                            </span>
                           ) : (
                             <>
                               <Button
-                                inline
                                 variant="secondary"
                                 onClick={() => {
                                   void tick(exercise.id, "completed");
@@ -250,7 +251,6 @@ export function PlanClient({
                                 {tTrack("markDone")}
                               </Button>
                               <Button
-                                inline
                                 variant="ghost"
                                 onClick={() => {
                                   void tick(exercise.id, "skipped");
@@ -262,11 +262,11 @@ export function PlanClient({
                           )}
                         </div>
                       )}
-                    </li>
-                  ))}
-                </ol>
-              </Card>
-            </div>
+                    </MediaCard>
+                  </li>
+                ))}
+              </ol>
+            </section>
           );
         })}
 
@@ -284,10 +284,7 @@ export function PlanClient({
           <p className="mt-2 leading-relaxed text-muted">{t("whyBody")}</p>
           <ul className="mt-3 flex flex-wrap gap-2">
             {exclusions.map((reason) => (
-              <li
-                key={reason}
-                className="rounded-full bg-move-soft px-3 py-1 text-sm font-medium text-move"
-              >
+              <li key={reason} className="rounded-md bg-raised px-2.5 py-1 text-sm text-ink">
                 {tReason.has(reason) ? tReason(reason) : reason}
               </li>
             ))}

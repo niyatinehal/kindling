@@ -87,6 +87,15 @@ describe("plan screen", () => {
     expect(screen.getByText(/40s/)).toBeInTheDocument();
   });
 
+  it("gives every exercise its own picture", () => {
+    renderPlan({ initialPlan: plan });
+
+    const drawn = [...document.querySelectorAll("[data-exercise]")].map((svg) =>
+      svg.getAttribute("data-exercise"),
+    );
+    expect(drawn).toEqual(["band_row", "plank"]);
+  });
+
   // Every day of the week is shown, so a rest day reads as intentional rather
   // than as a plan that forgot Tuesday.
   it("names the untrained days as rest rather than hiding them", () => {

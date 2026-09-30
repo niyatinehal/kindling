@@ -12,7 +12,7 @@ import type { ReactNode } from "react";
  * the page, in dark it lifts above it.
  */
 const TONES = {
-  surface: "bg-surface text-ink border border-line/70",
+  surface: "bg-surface text-ink",
   emphasis: "bg-emphasis text-on-emphasis",
 } as const;
 

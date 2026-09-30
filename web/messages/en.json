@@ -15,7 +15,9 @@
     "familyBody": "Join a household and choose category by category what you share. Turning something off hides it — being the admin does not override that.",
     "tryGuest": "Look around — no account needed",
     "signIn": "Sign in",
-    "privacy": "What we store, and why"
+    "privacy": "What we store, and why",
+    "examplePlan": "From an example plan",
+    "exampleDishes": "Dishes it might suggest"
   },
   "signin": {
     "title": "Sign in",
@@ -62,7 +64,12 @@
     "claimBody": "You're using this as a guest, so everything you log lives only in this browser. Add an email or phone number and it stays yours — on any device, and after you clear this one.",
     "claimLabel": "Email or phone number",
     "claimAction": "Keep my account",
-    "claimSent": "Check your messages and follow the link to finish. Nothing you've logged is lost in the meantime."
+    "claimSent": "Check your messages and follow the link to finish. Nothing you've logged is lost in the meantime.",
+    "todayWorkout": "Today's workout",
+    "restToday": "Rest day today. Nothing scheduled.",
+    "dishIdeas": "Dishes to try",
+    "dishMeta": "{minutes} min · about {kcal} kcal",
+    "workoutMore": "{count, plural, =0 {Just this one today} one {and # more exercise} other {and # more exercises}}"
   },
   "onboarding": {
     "title": "Build your plan",
@@ -248,7 +255,8 @@
       "stationary_bike": "Stationary bike"
     },
     "backHome": "Back to home",
-    "regenerateHint": "Your plan comes from your details, so change what's different and we'll build a new one."
+    "regenerateHint": "Your plan comes from your details, so change what's different and we'll build a new one.",
+    "today": "Today"
   },
   "error": {
     "title": "Something went wrong",

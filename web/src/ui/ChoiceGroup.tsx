@@ -73,10 +73,10 @@ export function ChoiceGroup<T extends string>({
             return (
               <label
                 key={choice.value}
-                className={`inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full border px-4 text-base transition has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent motion-safe:active:scale-95 ${
+                className={`inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-control border px-3.5 text-base transition has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent motion-safe:active:scale-95 ${
                   isSelected
-                    ? "border-accent bg-move-soft font-semibold text-ink"
-                    : "border-transparent bg-raised text-ink hover:border-line"
+                    ? "border-accent bg-surface font-medium text-ink"
+                    : "border-line bg-surface text-ink hover:bg-raised"
                 }`}
               >
                 {input}
@@ -91,8 +91,8 @@ export function ChoiceGroup<T extends string>({
               key={choice.value}
               className={`flex min-h-13 cursor-pointer items-center gap-3 rounded-control border px-4 py-2 text-[1.0625rem] transition ${
                 isSelected
-                  ? "border-accent bg-move-soft font-semibold text-ink"
-                  : "border-transparent bg-raised text-ink hover:border-line"
+                  ? "border-accent bg-surface font-medium text-ink"
+                  : "border-line bg-surface text-ink hover:bg-raised"
               }`}
             >
               {input}

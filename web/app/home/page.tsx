@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
 
 import { hasFamily } from "../../src/family/hasFamily";
+import { dishIdeas } from "../../src/meals/dishIdeas";
 import { currentStep } from "../../src/onboarding/currentStep";
 import { hasProfile } from "../../src/onboarding/hasProfile";
 import { isGuestSession } from "../../src/onboarding/isGuestSession";
+import { currentPlan } from "../../src/plan/currentPlan";
 import { trackingState } from "../../src/tracking/summary";
 import { HomeView } from "./HomeView";
 
@@ -29,12 +31,21 @@ export default async function HomePage() {
   // Resolved only after the guard has decided this request belongs here, so a
   // redirected caller pays for none of them. Concurrent because no answer
   // depends on another and every one is a round trip.
-  const [isGuest, profileExists, familyExists, tracking] = await Promise.all([
+  const [isGuest, profileExists, familyExists, tracking, plan, dishes] = await Promise.all([
     isGuestSession(),
     hasProfile(),
     hasFamily(),
     trackingState(),
+    currentPlan(),
+    dishIdeas(),
   ]);
+
+  // ISO weekday in UTC, the same reckoning the plan screen uses, so the two
+  // never disagree about which day "today" is. An empty list is a rest day;
+  // `null` means there is no plan at all.
+  const isoToday = new Date().getUTCDay() === 0 ? 7 : new Date().getUTCDay();
+  const todayExercises =
+    plan === null ? null : (plan.days.find((day) => day.day_of_week === isoToday)?.exercises ?? []);
 
   return (
     <HomeView
@@ -42,6 +53,8 @@ export default async function HomePage() {
       hasProfile={profileExists}
       inFamily={familyExists}
       summary={tracking.summary}
+      todayExercises={todayExercises}
+      dishes={dishes}
     />
   );
 }

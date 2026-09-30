@@ -17,7 +17,7 @@ import { Button } from "../../src/ui/Button";
  * memory, cannot be styled to say what is about to happen, and on a phone
  * appears somewhere the person's thumb already is.
  *
- * `ghost`, the quietest variant, and last on the screen — beside Sign out,
+ * `danger`, as quiet as a ghost button but red, and last on the screen — beside Sign out,
  * which is the other thing people come to this corner for. The confirmation
  * step is what separates them, because on a phone the two are one mis-tap
  * apart.
@@ -61,7 +61,7 @@ export function DeleteAccountButton() {
           <Alert>{tError.has(error) ? tError(error) : tError("UNKNOWN")}</Alert>
         )}
         <Button
-          variant="ghost"
+          variant="danger"
           onClick={() => {
             setAsking(true);
           }}
@@ -81,7 +81,7 @@ export function DeleteAccountButton() {
       <p className="text-muted">{t("deleteWarning")}</p>
 
       <Button
-        variant="ghost"
+        variant="danger"
         loading={deleting}
         onClick={() => {
           void remove();

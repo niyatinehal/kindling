@@ -12,26 +12,30 @@
  * (#15803D, 5.02:1 against white). `bg-accent-bright` (#16A34A) measures
  * 3.30:1 and fails AA for normal text, so it never appears here.
  *
- * `ghost` is `Button`-only: nothing in this app renders a ghost link, so
+ * `danger` is for the one irreversible action, so it cannot be mistaken for an
+ * ordinary accent-coloured link beside it.
+ *
+ * `ghost` and `danger` are `Button`-only: nothing in this app renders either as a link, so
  * `LinkButton` is typed to the variants it can actually style rather than
  * being handed one it has no look for.
  */
 export const VARIANT_CLASSES = {
-  primary: "bg-accent text-surface font-bold shadow-button hover:brightness-110",
-  secondary: "bg-raised text-ink hover:brightness-110 dark:hover:brightness-125",
-  ghost: "bg-transparent text-accent hover:bg-canvas",
+  primary: "bg-accent text-surface hover:brightness-110",
+  secondary: "border border-line bg-surface text-ink hover:bg-raised",
+  ghost: "bg-transparent text-accent hover:bg-raised",
+  danger: "bg-transparent text-danger hover:bg-raised",
 } as const;
 
 /**
- * The shape both primitives share. Pills, because a full-width rounded
- * rectangle reads as a form field at a glance, and the one thing a button must
- * never be mistaken for is something you type into. `active:scale` is the
- * press a thumb expects from a phone app; `motion-safe` keeps it away from
- * anyone who has asked their OS for less movement.
+ * The shape both primitives share. A rectangle with the control radius, not a
+ * pill: pills were a large part of why the app read as a toy. Fields sit on a
+ * raised fill and buttons do not, which keeps the two apart at a glance.
+ * `active:scale` is the press a thumb expects from a phone app; `motion-safe`
+ * keeps it away from anyone who has asked their OS for less movement.
  */
 export const BUTTON_SHAPE =
-  "flex min-h-12 items-center justify-center gap-2 rounded-full py-2.5 text-center text-[1.0625rem] leading-snug font-semibold transition motion-safe:active:scale-[0.98]";
+  "flex min-h-12 items-center justify-center gap-2 rounded-control py-2.5 text-center text-base leading-snug font-medium transition motion-safe:active:scale-[0.99]";
 
 export type Variant = keyof typeof VARIANT_CLASSES;
 
-export type LinkVariant = Exclude<Variant, "ghost">;
+export type LinkVariant = Exclude<Variant, "ghost" | "danger">;

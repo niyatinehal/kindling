@@ -9,11 +9,19 @@ jest.mock("next/navigation", () => ({
 }));
 
 import messages from "../../messages/en.json";
+import type { MealSuggestion } from "../meals/mealTypes";
+import type { PlanExerciseView } from "../plan/planTypes";
 import { EMPTY_SUMMARY } from "../tracking/summaryTypes";
 import { HomeView } from "../../app/home/HomeView";
 
 function renderView(
-  props: { isGuest?: boolean; hasProfile?: boolean; inFamily?: boolean | null } = {},
+  props: {
+    isGuest?: boolean;
+    hasProfile?: boolean;
+    inFamily?: boolean | null;
+    todayExercises?: PlanExerciseView[] | null;
+    dishes?: MealSuggestion[];
+  } = {},
 ) {
   render(
     <NextIntlClientProvider locale="en" messages={messages}>
@@ -200,5 +208,69 @@ describe("the family card", () => {
       "href",
       "/family",
     );
+  });
+
+  describe("picture rows", () => {
+    const exercise = (id: string, key: string): PlanExerciseView => ({
+      id,
+      exercise_key: key,
+      sets: 3,
+      reps: 12,
+      duration_seconds: null,
+      rest_seconds: 45,
+    });
+
+    const dish: MealSuggestion = {
+      recipe_key: "poha",
+      slot: "breakfast",
+      uses_on_hand: [],
+      missing: ["poha", "onion"],
+      approx_kcal: 300,
+      protein_g: 8,
+      minutes: 20,
+      cautions: [],
+      meets_protein: false,
+      pair_with: null,
+      protein_target_g: 15,
+    };
+
+    it("shows today's exercises as cards once there is a plan", () => {
+      renderView({
+        hasProfile: true,
+        todayExercises: [exercise("a", "plank"), exercise("b", "glute_bridge")],
+      });
+
+      expect(screen.getAllByText(messages.home.todayWorkout).length).toBeGreaterThan(0);
+      // The first exercise leads as the big card, and the whole card goes to the plan.
+      expect(
+        screen.getByRole("link", { name: new RegExp(messages.plan.exercises.plank) }),
+      ).toHaveAttribute("href", "/plan");
+      expect(screen.getByText(messages.plan.exercises.glute_bridge)).toBeInTheDocument();
+      expect(screen.queryByText(messages.home.todayPlanReady)).not.toBeInTheDocument();
+    });
+
+    it("says it is a rest day rather than showing an empty row", () => {
+      renderView({ hasProfile: true, todayExercises: [] });
+
+      expect(screen.getByText(messages.home.restToday)).toBeInTheDocument();
+    });
+
+    it("keeps the plain card when there is no plan yet", () => {
+      renderView({ hasProfile: true, todayExercises: null });
+
+      expect(screen.getByText(messages.home.todayPlanReady)).toBeInTheDocument();
+      expect(screen.queryByText(messages.home.todayWorkout)).not.toBeInTheDocument();
+    });
+
+    it("offers dish ideas, and leaves the row out when there are none", () => {
+      renderView({ hasProfile: true, dishes: [dish] });
+      expect(screen.getByRole("heading", { name: messages.home.dishIdeas })).toBeInTheDocument();
+      expect(screen.getByText(messages.meals.recipes.poha)).toBeInTheDocument();
+    });
+
+    it("shows no dish row at all without any ideas", () => {
+      renderView({ hasProfile: true });
+      expect(screen.queryByText(messages.home.dishIdeas)).not.toBeInTheDocument();
+    });
   });
 });

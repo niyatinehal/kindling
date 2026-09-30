@@ -3,7 +3,7 @@
  *
  * Inline rather than a package because there are sixteen of them and they
  * never change; an icon library would ship hundreds to use these. They share
- * one grid (24px, 2px round stroke), which is what makes a set look like a set.
+ * one grid (24px, 1.75px round stroke), which is what makes a set look like a set.
  *
  * Always decorative: every icon sits beside words that say the same thing, so
  * each is `aria-hidden` and none has a label of its own. An icon that is the
@@ -44,7 +44,7 @@ export function Icon({ name, className = "size-5" }: { name: IconName; className
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={1.75}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
@@ -52,39 +52,5 @@ export function Icon({ name, className = "size-5" }: { name: IconName; className
     >
       <path d={PATHS[name]} />
     </svg>
-  );
-}
-
-/**
- * The tinted square an icon sits in. Categories get their own colour pair
- * from globals.css, so water is blue everywhere it appears.
- */
-export const TONE_CLASSES = {
-  water: "bg-water-soft text-water",
-  sleep: "bg-sleep-soft text-sleep",
-  move: "bg-move-soft text-move",
-  meal: "bg-meal-soft text-meal",
-  family: "bg-family-soft text-family",
-} as const;
-
-export type Tone = keyof typeof TONE_CLASSES;
-
-export function IconChip({
-  name,
-  tone,
-  size = "md",
-}: {
-  name: IconName;
-  tone: Tone;
-  size?: "sm" | "md" | "lg";
-}) {
-  const box = { sm: "size-9 rounded-full", md: "size-10 rounded-full", lg: "size-12 rounded-full" }[
-    size
-  ];
-  const glyph = { sm: "size-[1.125rem]", md: "size-5", lg: "size-6" }[size];
-  return (
-    <span className={`grid shrink-0 place-items-center ${box} ${TONE_CLASSES[tone]}`}>
-      <Icon name={name} className={glyph} />
-    </span>
   );
 }

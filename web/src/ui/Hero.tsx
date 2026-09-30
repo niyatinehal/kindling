@@ -8,8 +8,7 @@ import type { ReactNode } from "react";
  * had already started to differ by a padding value.
  *
  * No card around it. The rings are the most important thing on the screen,
- * and on a near-black page they read best with nothing framing them — the
- * glow does the job a border would.
+ * and they read best with nothing framing them.
  */
 export function Hero({ children }: { children: ReactNode }) {
   return <div className="py-2 text-ink">{children}</div>;

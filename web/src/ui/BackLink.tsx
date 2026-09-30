@@ -13,7 +13,7 @@ export function BackLink({ href, children }: { href: string; children: React.Rea
   return (
     <a
       href={href}
-      className="-ms-2 inline-flex min-h-12 items-center gap-1 self-start rounded-full ps-1 pe-3 text-[1.0625rem] font-semibold text-accent transition hover:bg-surface"
+      className="-ms-2 inline-flex min-h-12 items-center gap-1 self-start rounded-control ps-1 pe-3 text-base font-medium text-accent transition hover:bg-surface"
     >
       <Icon name="chevronLeft" className="size-5" />
       {children}

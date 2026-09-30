@@ -1,10 +1,17 @@
 import { useTranslations } from "next-intl";
 
+import { DishArt } from "../../src/art/DishArt";
+import { ExerciseArt } from "../../src/art/ExerciseArt";
+import type { MealSuggestion } from "../../src/meals/mealTypes";
+import type { PlanExerciseView } from "../../src/plan/planTypes";
 import type { TrackingSummary } from "../../src/tracking/summaryTypes";
 import { WATER_TARGET_ML } from "../../src/tracking/targets";
 import { Card } from "../../src/ui/Card";
+import { FeatureCard } from "../../src/ui/FeatureCard";
 import { LinkButton } from "../../src/ui/LinkButton";
+import { MediaCard } from "../../src/ui/MediaCard";
 import { NavList, NavRow } from "../../src/ui/NavList";
+import { Rail } from "../../src/ui/Rail";
 import { Screen } from "../../src/ui/Screen";
 import { WeekStrip } from "../../src/ui/WeekStrip";
 import { ClaimAccountCard } from "./ClaimAccountCard";
@@ -33,6 +40,8 @@ export function HomeView({
   hasProfile = false,
   inFamily = null,
   summary,
+  todayExercises = null,
+  dishes = [],
 }: {
   isGuest?: boolean;
   hasProfile?: boolean;
@@ -44,8 +53,16 @@ export function HomeView({
    */
   inFamily?: boolean | null;
   summary: TrackingSummary;
+  /** Today's exercises from the current plan; `[]` is a rest day, `null` no plan. */
+  todayExercises?: PlanExerciseView[] | null;
+  /** A few diet-safe dishes to show as ideas. Empty leaves the row out. */
+  dishes?: MealSuggestion[];
 }) {
   const t = useTranslations("home");
+  const tPlan = useTranslations("plan");
+  const tExercise = useTranslations("plan.exercises");
+  const tRecipe = useTranslations("meals.recipes");
+  const exerciseName = (key: string) => (tExercise.has(key) ? tExercise(key) : key);
 
   return (
     <Screen>
@@ -81,19 +98,87 @@ export function HomeView({
         still promises nothing it cannot deliver — the stat tiles below stay
         empty because no tracking endpoint exists yet.
       */}
-      <Card>
-        <p className="text-sm font-medium text-muted">{t("todayLabel")}</p>
-        <p className="mt-1.5 text-lg leading-relaxed">
-          {hasProfile ? t("todayPlanReady") : t("todayNoProfile")}
-        </p>
-        <div className="mt-4">
-          {hasProfile ? (
-            <LinkButton href="/plan">{t("viewPlan")}</LinkButton>
+      {hasProfile && todayExercises !== null ? (
+        <section className="flex flex-col gap-3">
+          {/*
+            Today's first exercise, large, as the way into the plan — the whole
+            card is the link. The rest of the day follows as a row, so the
+            screen leads with a picture of what to do rather than a sentence.
+          */}
+          {todayExercises[0] === undefined ? (
+            <>
+              <h2 className="text-lg font-semibold text-ink">{t("todayWorkout")}</h2>
+              <p className="text-muted">
+                {t("restToday")}{" "}
+                <a href="/plan" className="font-medium text-accent">
+                  {t("viewPlan")}
+                </a>
+              </p>
+            </>
           ) : (
-            <LinkButton href="/onboarding/profile">{t("startIntake")}</LinkButton>
+            <>
+              <FeatureCard
+                href="/plan"
+                picture={<ExerciseArt exercise={todayExercises[0].exercise_key} />}
+                eyebrow={t("todayWorkout")}
+                title={exerciseName(todayExercises[0].exercise_key)}
+                detail={t("workoutMore", { count: todayExercises.length - 1 })}
+              />
+              {todayExercises.length > 1 && (
+                <Rail label={t("todayWorkout")}>
+                  {todayExercises.slice(1).map((exercise) => (
+                    <MediaCard
+                      key={exercise.id}
+                      art={<ExerciseArt exercise={exercise.exercise_key} />}
+                      title={exerciseName(exercise.exercise_key)}
+                      meta={
+                        exercise.sets !== null && exercise.reps !== null
+                          ? tPlan("setsReps", { sets: exercise.sets, reps: exercise.reps })
+                          : tPlan("duration", { seconds: exercise.duration_seconds ?? 0 })
+                      }
+                    />
+                  ))}
+                </Rail>
+              )}
+            </>
           )}
-        </div>
-      </Card>
+        </section>
+      ) : (
+        <Card>
+          <p className="text-sm font-medium text-muted">{t("todayLabel")}</p>
+          <p className="mt-1.5 text-lg leading-relaxed">
+            {hasProfile ? t("todayPlanReady") : t("todayNoProfile")}
+          </p>
+          <div className="mt-4">
+            {hasProfile ? (
+              <LinkButton href="/plan">{t("viewPlan")}</LinkButton>
+            ) : (
+              <LinkButton href="/onboarding/profile">{t("startIntake")}</LinkButton>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/*
+        Ideas, not recommendations: they are filtered by diet but ranked with an
+        empty pantry, so the order means little. The meal planner below is where
+        a real suggestion comes from.
+      */}
+      {hasProfile && dishes.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-lg font-semibold text-ink">{t("dishIdeas")}</h2>
+          <Rail label={t("dishIdeas")} size="lg">
+            {dishes.map((dish) => (
+              <MediaCard
+                key={dish.recipe_key}
+                art={<DishArt recipe={dish.recipe_key} />}
+                title={tRecipe.has(dish.recipe_key) ? tRecipe(dish.recipe_key) : dish.recipe_key}
+                meta={t("dishMeta", { minutes: dish.minutes, kcal: dish.approx_kcal })}
+              />
+            ))}
+          </Rail>
+        </section>
+      )}
 
       {/*
         Not a chart — /dashboard already draws those. This answers the cruder
@@ -133,14 +218,13 @@ export function HomeView({
       <NavList>
         {hasProfile && (
           <>
-            <NavRow href="/meals" icon="utensils" tone="meal" label={t("mealsCta")} />
-            <NavRow href="/dashboard" icon="chart" tone="water" label={t("viewDashboard")} />
+            <NavRow href="/meals" icon="utensils" label={t("mealsCta")} />
+            <NavRow href="/dashboard" icon="chart" label={t("viewDashboard")} />
           </>
         )}
         <NavRow
           href="/family"
           icon="users"
-          tone="family"
           label={
             inFamily === null ? t("openFamily") : inFamily ? t("viewFamily") : t("setUpFamily")
           }

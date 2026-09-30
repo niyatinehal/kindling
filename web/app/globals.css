@@ -19,67 +19,86 @@
  * The contrast figures are measured, not estimated:
  *
  *                              light          dark
- *   ink on canvas ......... 11.29:1 AAA   14.18:1 AAA
- *   muted on canvas ........ 4.83:1 AA     7.82:1 AAA
- *   white/dark on accent ... 5.02:1 AA     7.63:1 AAA
- *   emphasis label ......... 7.00:1 AAA    6.23:1 AA
+ *   ink on canvas ......... 16.42:1 AAA   15.67:1 AAA
+ *   muted on canvas ........ 5.91:1 AA     6.84:1 AA
+ *   white/dark on accent ... 5.47:1 AA     7.22:1 AAA
+ *   danger on canvas ....... 6.08:1 AA     6.60:1 AA
  *
- * Two rules survive from the light-only palette and still hold. `accent` is
- * the only colour that ever carries `surface` text. `accent-bright` and
- * `accent-glow` are for large accents, progress fills and non-text only —
- * accent-glow measures 1.74:1 on a white card, so it may never sit on one.
- * It exists for `emphasis-label`, where the ground is dark in both themes.
+ * Neutral ink, one restrained accent, and no glow. `accent` is the only colour
+ * that ever carries `surface` text, and `danger` is kept for the one
+ * irreversible action rather than borrowing the accent's "go ahead".
+ * `accent-glow` is for non-text on dark grounds only — it cannot pass on a
+ * white card, so it may never sit on one.
  *
  * Pinned by `src/theme/__tests__/palette.test.ts`, which recomputes every
  * figure above and fails the build if one drops below its threshold.
  */
 :root {
-  --c-ink: #0b3d2e;
+  --c-ink: #111827;
   --c-canvas: #f4f7f2;
   --c-surface: #ffffff;
-  --c-accent: #15803d;
-  --c-accent-bright: #16a34a;
-  --c-accent-glow: #4ade80;
-  --c-muted: #5d7166;
-  --c-line: #e4ebe5;
+  --c-accent: #0f766e;
+  --c-accent-bright: #0f766e;
+  --c-accent-glow: #6ccfbf;
+  --c-muted: #57606a;
+  --c-line: #e3e7e4;
+  --c-danger: #b42318;
 
   /*
    * The emphasis card gets its own three, rather than reusing `ink` as a
    * ground. `ink` means "the darkest colour" when it is text and "the card you
    * should look at" when it is a background, and those two meanings point in
    * opposite directions the moment a theme swaps: remapping `ink` to a light
-   * value turns the card inside out and puts the glow label on near-white at
-   * 1.55:1.
+   * value turns the card inside out and puts the glow label on near-white.
    */
-  --c-emphasis: #0b3d2e;
+  --c-emphasis: #111827;
   --c-on-emphasis: #f4f7f2;
-  --c-emphasis-label: #4ade80;
+  --c-emphasis-label: #6ccfbf;
 
-  --c-shadow-card: 0 1px 2px rgb(11 61 46 / 0.03), 0 6px 20px -14px rgb(11 61 46 / 0.12);
+  --c-shadow-card: 0 1px 2px rgb(17 24 39 / 0.04);
   --c-shadow-button: none;
-  --c-raised: #f6f9f6;
+  --c-raised: #f5f7f6;
 
   /*
    * One colour per thing you track, so a glance tells water from sleep before
-   * a word is read. Each has a strong value for icons and fills and a soft one
-   * for the chip behind it; `-glow` is for the dark emphasis hero, which is
-   * dark in both themes and so shares one value. None of these carry body
-   * text — the pairs in palette.test.ts hold them to the 3:1 WCAG asks of
-   * meaningful graphics.
+   * a word is read. Muted on purpose: these mark data — a ring, a bar, an icon —
+   * and saturated primaries are what made the screens read as a toy. Each has
+   * a strong value and a soft one for the chip behind it; `-glow` is for the
+   * emphasis ground, which is dark in both themes and so shares one value.
+   * None of these carry body text — the pairs in palette.test.ts hold them to
+   * the 3:1 WCAG asks of meaningful graphics.
    */
-  --c-water: #0369a1;
-  --c-water-soft: #e0f2fe;
-  --c-water-glow: #7dd3fc;
-  --c-sleep: #4f46e5;
-  --c-sleep-soft: #e0e7ff;
-  --c-sleep-glow: #a5b4fc;
-  --c-move: #15803d;
-  --c-move-soft: #dcfce7;
-  --c-meal: #c2410c;
-  --c-meal-soft: #ffedd5;
-  --c-meal-glow: #fdba74;
-  --c-family: #a21caf;
-  --c-family-soft: #fae8ff;
+  --c-water: #2b6cb0;
+  --c-water-soft: #ebf2fa;
+  --c-water-glow: #8fb8e3;
+  --c-sleep: #5b54b8;
+  --c-sleep-soft: #efeefa;
+  --c-sleep-glow: #b3adea;
+  --c-move: #0f766e;
+  --c-move-soft: #e6f4f2;
+  --c-meal: #b45309;
+  --c-meal-soft: #fcf4ec;
+  --c-meal-glow: #e0b184;
+  --c-family: #9d3b7f;
+  --c-family-soft: #f8ecf4;
+
+  /*
+   * The illustrated scenes: a room, a table, a sky. Daylight here, a lamp-lit
+   * evening in dark, so the pictures sit in the page instead of glaring out of
+   * it. Scenery only — nothing is ever written on these.
+   */
+  --c-art-wall: #f1ebe2;
+  --c-art-wall-low: #e6ddd0;
+  --c-art-floor: #d8c3a5;
+  --c-art-floor-line: #c9b18f;
+  --c-art-sky: #cfe4ef;
+  --c-art-sky-low: #eef5f2;
+  --c-art-frame: #ffffff;
+  --c-art-table: #eee4d6;
+  --c-art-table-line: #e2d5c3;
+  --c-art-light: #fff6e0;
+  --c-art-grass: #a8cc94;
+  --c-art-hill: #c7dcc0;
 }
 
 /*
@@ -94,78 +113,106 @@
  * black makes every edge vibrate against it, and this value is the one the
  * Android app already paints its status bar.
  *
- * Shadows are gone and glow takes over: nothing darkens further against a
- * near-black page, so depth comes from `--c-raised` surfaces and from light —
- * the primary button and the rings give off their own colour.
+ * No shadows and no glow: nothing darkens further against a near-black page,
+ * and light bleeding off rings and buttons read as a game, not a health tool.
+ * Depth comes from `--c-raised` surfaces and hairline borders alone.
  */
 :root:not([data-theme="light"]) {
   color-scheme: dark;
 
-  --c-ink: #f2f7f4;
+  --c-ink: #eef1ef;
   --c-canvas: #0f1a14;
-  --c-surface: #16231c;
-  --c-raised: #1e2e25;
-  --c-accent: #4ade80;
-  --c-accent-bright: #22c55e;
-  --c-accent-glow: #4ade80;
-  --c-muted: #9fb4a8;
-  --c-line: #26382e;
+  --c-surface: #151e19;
+  --c-raised: #1b2520;
+  --c-accent: #5eb8a8;
+  --c-accent-bright: #5eb8a8;
+  --c-accent-glow: #5eb8a8;
+  --c-muted: #98a39d;
+  --c-line: #243029;
+  --c-danger: #f07b70;
 
-  --c-emphasis: #1e2e25;
-  --c-on-emphasis: #f2f7f4;
-  --c-emphasis-label: #4ade80;
+  --c-emphasis: #1b2520;
+  --c-on-emphasis: #eef1ef;
+  --c-emphasis-label: #5eb8a8;
 
   --c-shadow-card: none;
-  --c-shadow-button: 0 0 28px -8px rgb(74 222 128 / 0.55);
+  --c-shadow-button: none;
 
-  --c-water: #67cbff;
-  --c-water-soft: #11293a;
-  --c-water-glow: #67cbff;
-  --c-sleep: #ab9eff;
-  --c-sleep-soft: #221f44;
-  --c-sleep-glow: #ab9eff;
-  --c-move: #4ade80;
-  --c-move-soft: #133322;
-  --c-meal: #ffa564;
-  --c-meal-soft: #37220f;
-  --c-meal-glow: #ffa564;
-  --c-family: #f78fd2;
-  --c-family-soft: #3a1732;
+  --c-water: #7ea9d6;
+  --c-water-soft: #18232e;
+  --c-water-glow: #7ea9d6;
+  --c-sleep: #a39ce0;
+  --c-sleep-soft: #211f33;
+  --c-sleep-glow: #a39ce0;
+  --c-move: #5eb8a8;
+  --c-move-soft: #14261f;
+  --c-meal: #d6a06a;
+  --c-meal-soft: #2a2016;
+  --c-meal-glow: #d6a06a;
+  --c-family: #d08fbd;
+  --c-family-soft: #2a1b26;
+
+  --c-art-wall: #2b302f;
+  --c-art-wall-low: #232827;
+  --c-art-floor: #3b3129;
+  --c-art-floor-line: #332a23;
+  --c-art-sky: #2c3d57;
+  --c-art-sky-low: #4d5a6e;
+  --c-art-frame: #4a504d;
+  --c-art-table: #2a2e2c;
+  --c-art-table-line: #313634;
+  --c-art-light: #f3c77a;
+  --c-art-grass: #2e4430;
+  --c-art-hill: #34463a;
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  --c-ink: #f2f7f4;
+  --c-ink: #eef1ef;
   --c-canvas: #0f1a14;
-  --c-surface: #16231c;
-  --c-raised: #1e2e25;
-  --c-accent: #4ade80;
-  --c-accent-bright: #22c55e;
-  --c-accent-glow: #4ade80;
-  --c-muted: #9fb4a8;
-  --c-line: #26382e;
+  --c-surface: #151e19;
+  --c-raised: #1b2520;
+  --c-accent: #5eb8a8;
+  --c-accent-bright: #5eb8a8;
+  --c-accent-glow: #5eb8a8;
+  --c-muted: #98a39d;
+  --c-line: #243029;
+  --c-danger: #f07b70;
 
-  --c-emphasis: #1e2e25;
-  --c-on-emphasis: #f2f7f4;
-  --c-emphasis-label: #4ade80;
+  --c-emphasis: #1b2520;
+  --c-on-emphasis: #eef1ef;
+  --c-emphasis-label: #5eb8a8;
 
   --c-shadow-card: none;
-  --c-shadow-button: 0 0 28px -8px rgb(74 222 128 / 0.55);
+  --c-shadow-button: none;
 
-  --c-water: #67cbff;
-  --c-water-soft: #11293a;
-  --c-water-glow: #67cbff;
-  --c-sleep: #ab9eff;
-  --c-sleep-soft: #221f44;
-  --c-sleep-glow: #ab9eff;
-  --c-move: #4ade80;
-  --c-move-soft: #133322;
-  --c-meal: #ffa564;
-  --c-meal-soft: #37220f;
-  --c-meal-glow: #ffa564;
-  --c-family: #f78fd2;
-  --c-family-soft: #3a1732;
+  --c-water: #7ea9d6;
+  --c-water-soft: #18232e;
+  --c-water-glow: #7ea9d6;
+  --c-sleep: #a39ce0;
+  --c-sleep-soft: #211f33;
+  --c-sleep-glow: #a39ce0;
+  --c-move: #5eb8a8;
+  --c-move-soft: #14261f;
+  --c-meal: #d6a06a;
+  --c-meal-soft: #2a2016;
+  --c-meal-glow: #d6a06a;
+  --c-family: #d08fbd;
+  --c-family-soft: #2a1b26;
+
+  --c-art-wall: #2b302f;
+  --c-art-wall-low: #232827;
+  --c-art-floor: #3b3129;
+  --c-art-floor-line: #332a23;
+  --c-art-sky: #2c3d57;
+  --c-art-sky-low: #4d5a6e;
+  --c-art-frame: #4a504d;
+  --c-art-table: #2a2e2c;
+  --c-art-table-line: #313634;
+  --c-art-light: #f3c77a;
+  --c-art-grass: #2e4430;
+  --c-art-hill: #34463a;
 }
 
 @theme inline {
@@ -178,6 +225,7 @@
   --color-accent-glow: var(--c-accent-glow);
   --color-muted: var(--c-muted);
   --color-line: var(--c-line);
+  --color-danger: var(--c-danger);
 
   --color-emphasis: var(--c-emphasis);
   --color-on-emphasis: var(--c-on-emphasis);
@@ -201,12 +249,12 @@
   --font-display: var(--font-body), ui-sans-serif, system-ui, sans-serif;
 
   /*
-   * Rounder than it was. The people this is for are not choosing a tool, they
-   * are being talked into a habit, and soft corners read as friendly rather
-   * than clinical.
+   * Tight corners. Large radii and pill buttons made every screen read as a
+   * children's app; 12px on cards and 8px on controls is the range serious
+   * products sit in, and still soft enough not to feel clinical.
    */
-  --radius-card: 1.5rem;
-  --radius-control: 1rem;
+  --radius-card: 0.75rem;
+  --radius-control: 0.5rem;
   --shadow-card: var(--c-shadow-card);
   --shadow-button: var(--c-shadow-button);
 }
@@ -227,14 +275,18 @@ body {
 }
 
 /*
- * One typeface, and headings set apart by size and weight rather than by a
- * second face. Tight tracking is what makes large sans headings look
- * deliberate instead of like bold body text.
+ * One typeface, and headings set apart by size rather than by weight: they are
+ * semibold, never heavy. Slight negative tracking keeps large Inter tidy.
+ * Figures are tabular everywhere, so numbers in a column line up.
  */
 h1,
 .font-display {
   font-family: var(--font-display);
-  letter-spacing: -0.025em;
+  letter-spacing: -0.02em;
+}
+
+body {
+  font-feature-settings: "cv11", "tnum";
 }
 
 /*
