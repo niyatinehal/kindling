@@ -25,6 +25,7 @@
     "prisma:migrate": "npm run prisma:migrate -w api",
     "prisma:studio": "npm run prisma:studio -w api",
     "db:seed": "npm run db:seed -w api",
+    "eval:pantry": "npm run eval:pantry -w api",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:start": "supabase start",

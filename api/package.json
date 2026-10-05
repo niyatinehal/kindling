@@ -22,7 +22,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "db:seed": "prisma db seed",
-    "errors": "tsx scripts/recentErrors.ts"
+    "errors": "tsx scripts/recentErrors.ts",
+    "eval:pantry": "tsx scripts/evalPantry.ts"
   },
   "keywords": [],
   "author": "",

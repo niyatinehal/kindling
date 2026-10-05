@@ -1,0 +1,22 @@
+{
+  "cases": [
+    {
+      "id": "hinglish-quantities",
+      "text": "do pyaaz, thode tamatar aur ek packet poha",
+      "expected": ["onion", "tomato", "poha"],
+      "tags": ["hinglish", "quantities"]
+    },
+    {
+      "id": "english-negation",
+      "text": "eggs, bread, no milk left",
+      "expected": ["egg"],
+      "tags": ["english", "negation", "junk"]
+    },
+    {
+      "id": "junk-only",
+      "text": "nothing really, just some maggi",
+      "expected": [],
+      "tags": ["junk"]
+    }
+  ]
+}
