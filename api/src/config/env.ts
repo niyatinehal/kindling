@@ -35,6 +35,32 @@ const envSchema = z.object({
     (value) => (value === "" ? undefined : value),
     z.string().min(1).optional(),
   ),
+  // Which model providers to use, in order: the first answers, and the next is
+  // tried only if it fails fast (a quota error, an outage). Each needs its own
+  // key below; one without a key is skipped.
+  LLM_PROVIDERS: z
+    .string()
+    .default("anthropic")
+    .transform((value) => value.split(",").map((name) => name.trim()))
+    .pipe(
+      z
+        .array(z.enum(["anthropic", "gemini"]))
+        .min(1)
+        .refine((names) => new Set(names).size === names.length, {
+          message: "each provider may be listed once",
+        }),
+    ),
+  // Google Gemini key for the "gemini" provider. Use a billing-enabled
+  // project: the free tier allows Google to use what is sent to improve its
+  // products, which the privacy page says does not happen.
+  GEMINI_API_KEY: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().min(1).optional(),
+  ),
+  GEMINI_MODEL: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().min(1).optional(),
+  ),
   // Redis for the photo-reading job queue. Optional: unset, photo input is off
   // and everything else works, including typed pantry parsing.
   REDIS_URL: z.preprocess(
@@ -44,11 +70,6 @@ const envSchema = z.object({
 });
 
 export type Env = z.infer<typeof envSchema>;
-
-/** The API key, but only when the kill switch is on. Undefined means "feature off". */
-export function llmApiKey(env: Env): string | undefined {
-  return env.LLM_ENABLED ? env.LLM_API_KEY : undefined;
-}
 
 /**
  * Validates environment variables, failing fast at boot rather than on first

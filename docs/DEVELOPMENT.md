@@ -538,8 +538,12 @@ always-empty database.
 Off by default. Typed pantry text is read by the built-in synonym table, and nothing leaves the
 server. The model path (Claude Haiku, through the Anthropic API) is used only when all of these hold:
 
-- `LLM_ENABLED=true` **and** `LLM_API_KEY` is set. Either one missing means off, not a boot
-  failure; the service logs a warning at boot if the switch is on without a key.
+- `LLM_ENABLED=true` **and** at least one provider in `LLM_PROVIDERS` has its key set:
+  `LLM_API_KEY` for `anthropic` (Claude Haiku), `GEMINI_API_KEY` for `gemini`. A provider listed
+  without a key is skipped with a boot warning; none usable means off, not a boot failure.
+  List two (`LLM_PROVIDERS=anthropic,gemini`) and the second is tried whenever the first fails
+  fast — out of quota, rate-limited, down — inside the same time budget. Use a billing-enabled
+  Gemini project: the free tier lets Google use what is sent, and the privacy page says otherwise.
 - The person has turned on smarter reading on the meals screen.
 - They are not a child member of a family, and their birth year does not say they may be under 18.
 

@@ -118,14 +118,18 @@ export async function explainDishes(
   const started = Date.now();
   const record = (
     outcome: LlmCallRecord["outcome"],
-    details: Partial<Pick<LlmCallRecord, "inputTokens" | "outputTokens" | "costMicroUsd">> & {
+    details: Partial<
+      Pick<LlmCallRecord, "inputTokens" | "outputTokens" | "costMicroUsd" | "model">
+    > & {
       latencyMs?: number;
     } = {},
   ) =>
     deps.store.recordCall({
       userId: input.userId,
       feature: "dish_explain",
-      model: deps.llm.model,
+      // The model that answered, when one did; with a fallback chain that is
+      // not knowable from the client alone.
+      model: details.model ?? deps.llm.model,
       promptVersion: DISH_PROMPT_VERSION,
       outcome,
       inputTokens: details.inputTokens ?? null,
@@ -171,6 +175,7 @@ export async function explainDishes(
           inputTokens: attempt.usage.inputTokens,
           outputTokens: attempt.usage.outputTokens,
           costMicroUsd: costMicroUsd(attempt.model, attempt.usage),
+          model: attempt.model,
           latencyMs: attempt.latencyMs,
         });
       } else {

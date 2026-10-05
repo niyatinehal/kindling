@@ -151,14 +151,18 @@ export async function parsePantry(
   const started = Date.now();
   const record = (
     outcome: LlmCallRecord["outcome"],
-    details: Partial<Pick<LlmCallRecord, "inputTokens" | "outputTokens" | "costMicroUsd">> & {
+    details: Partial<
+      Pick<LlmCallRecord, "inputTokens" | "outputTokens" | "costMicroUsd" | "model">
+    > & {
       latencyMs?: number;
     } = {},
   ) =>
     deps.store.recordCall({
       userId: input.userId,
       feature: "pantry_parse",
-      model: deps.llm.model,
+      // The model that answered, when one did; with a fallback chain that is
+      // not knowable from the client alone.
+      model: details.model ?? deps.llm.model,
       promptVersion: PANTRY_PROMPT_VERSION,
       outcome,
       inputTokens: details.inputTokens ?? null,
@@ -205,6 +209,7 @@ export async function parsePantry(
         inputTokens: attempt.usage.inputTokens,
         outputTokens: attempt.usage.outputTokens,
         costMicroUsd: costMicroUsd(attempt.model, attempt.usage),
+        model: attempt.model,
         latencyMs: attempt.latencyMs,
       });
       return;

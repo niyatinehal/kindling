@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { llmApiKey, loadEnv } from "../../src/config/env.js";
+import { loadEnv } from "../../src/config/env.js";
+import { createLlmFromEnv } from "../../src/llm/fromEnv.js";
 
 const valid = {
   DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
@@ -60,26 +61,58 @@ describe("loadEnv", () => {
   });
 
   describe("AI pantry parsing", () => {
+    const quiet = () => undefined;
+
     it("is off by default, with no key needed", () => {
       const env = loadEnv(valid);
 
       expect(env.LLM_ENABLED).toBe(false);
-      expect(llmApiKey(env)).toBeUndefined();
+      expect(env.LLM_PROVIDERS).toEqual(["anthropic"]);
+      expect(createLlmFromEnv(env, quiet).enabled).toBe(false);
     });
 
-    it("hands out the key only when the switch is on", () => {
-      expect(llmApiKey(loadEnv({ ...valid, LLM_API_KEY: "sk-test" }))).toBeUndefined();
-      expect(llmApiKey(loadEnv({ ...valid, LLM_ENABLED: "true", LLM_API_KEY: "sk-test" }))).toBe(
-        "sk-test",
+    it("uses a provider only when the switch is on and its key is set", () => {
+      expect(createLlmFromEnv(loadEnv({ ...valid, LLM_API_KEY: "sk-test" }), quiet).enabled).toBe(
+        false,
       );
+      const on = createLlmFromEnv(
+        loadEnv({ ...valid, LLM_ENABLED: "true", LLM_API_KEY: "sk-test" }),
+        quiet,
+      );
+      expect(on.enabled).toBe(true);
+      expect(on.model).toBe("claude-haiku-4-5");
     });
 
     // Turned on without a key is "off", not a boot failure.
-    it("treats an enabled switch with a missing or blank key as off", () => {
-      expect(llmApiKey(loadEnv({ ...valid, LLM_ENABLED: "true" }))).toBeUndefined();
+    it("treats an enabled switch with a missing or blank key as off, and says so", () => {
+      const warnings: string[] = [];
+      const warn = (message: string) => warnings.push(message);
+
+      expect(createLlmFromEnv(loadEnv({ ...valid, LLM_ENABLED: "true" }), warn).enabled).toBe(
+        false,
+      );
       expect(
-        llmApiKey(loadEnv({ ...valid, LLM_ENABLED: "true", LLM_API_KEY: "" })),
-      ).toBeUndefined();
+        createLlmFromEnv(loadEnv({ ...valid, LLM_ENABLED: "true", LLM_API_KEY: "" }), warn).enabled,
+      ).toBe(false);
+      expect(warnings.join("\n")).toMatch(/LLM_API_KEY is not set/);
+    });
+
+    it("chains providers in the order listed, skipping one without a key", () => {
+      const env = (extra: Record<string, string>) =>
+        loadEnv({ ...valid, LLM_ENABLED: "true", LLM_PROVIDERS: "gemini,anthropic", ...extra });
+
+      expect(createLlmFromEnv(env({ GEMINI_API_KEY: "g", LLM_API_KEY: "a" }), quiet).model).toBe(
+        "gemini-3.6-flash|claude-haiku-4-5",
+      );
+      expect(createLlmFromEnv(env({ GEMINI_API_KEY: "g" }), quiet).model).toBe("gemini-3.6-flash");
+      expect(
+        createLlmFromEnv(env({ GEMINI_API_KEY: "g", GEMINI_MODEL: "gemini-other" }), quiet).model,
+      ).toBe("gemini-other");
+    });
+
+    it("rejects an unknown or repeated provider", () => {
+      expect(() => loadEnv({ ...valid, LLM_PROVIDERS: "openai" })).toThrow(/LLM_PROVIDERS/);
+      expect(() => loadEnv({ ...valid, LLM_PROVIDERS: "gemini,gemini" })).toThrow(/LLM_PROVIDERS/);
     });
 
     it("accepts a redis:// or rediss:// URL for the photo queue, and treats blank as unset", () => {

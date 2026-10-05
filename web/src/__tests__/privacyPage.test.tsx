@@ -65,6 +65,8 @@ describe("the privacy policy", () => {
     expect(messages.privacy.why.aiPantry).toMatch(/off unless you turn it on/);
     expect(messages.privacy.why.aiPantry).toMatch(/under 18/);
     expect(messages.privacy.sharing.processors).toMatch(/Anthropic/);
+    expect(messages.privacy.sharing.processors).toMatch(/Google/);
+    expect(messages.privacy.why.aiPantry).toMatch(/Gemini/);
   });
 
   // Photos are the most personal thing this feature handles: a fridge photo can

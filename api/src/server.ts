@@ -1,12 +1,11 @@
-import { llmApiKey, loadEnv } from "./config/env.js";
+import { loadEnv } from "./config/env.js";
 import { createPrismaClient, disconnect, pingDatabase } from "./db/prisma.js";
 import { createApp } from "./app.js";
 import { createSupabaseVerifier } from "./auth/verifyToken.js";
 import { Redis } from "ioredis";
 
-import { createAnthropicLlmClient } from "./llm/anthropicClient.js";
 import { createCircuitBreaker } from "./llm/breaker.js";
-import { disabledLlmClient } from "./llm/client.js";
+import { createLlmFromEnv } from "./llm/fromEnv.js";
 import { createPhotoProcessor } from "./meals/parsePhoto.js";
 import { createBullPhotoQueue, startPhotoWorker } from "./meals/photoQueue.js";
 import { createPlanGenerator } from "./workouts/planGenerator.js";
@@ -14,14 +13,7 @@ import { createPlanGenerator } from "./workouts/planGenerator.js";
 const env = loadEnv(process.env);
 const prisma = createPrismaClient(env.DATABASE_URL);
 
-const apiKey = llmApiKey(env);
-if (env.LLM_ENABLED && apiKey === undefined) {
-  // Said once at boot rather than silently: someone turned the feature on and
-  // it is not on, which they will want to know before a user does.
-  console.warn("LLM_ENABLED is set but LLM_API_KEY is not; AI pantry parsing is off");
-}
-
-const llm = apiKey === undefined ? disabledLlmClient : createAnthropicLlmClient({ apiKey });
+const llm = createLlmFromEnv(env);
 const llmBreaker = createCircuitBreaker();
 
 // Photo reading runs as a BullMQ job, in this same process: one instance is
