@@ -1,4 +1,5 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "@jest/globals";
+import { randomUUID } from "node:crypto";
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
 
@@ -7,8 +8,13 @@ import { createBullPhotoQueue, startPhotoWorker } from "../../src/meals/photoQue
 
 const redisUrl = process.env["TEST_REDIS_URL"] ?? "redis://127.0.0.1:63799";
 const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
+/**
+ * A queue of this run's own. The real name is shared with any dev server
+ * pointed at the same Redis, whose worker would otherwise take these jobs.
+ */
+const QUEUE = `pantry-photo-test-${randomUUID()}`;
 /** The raw queue, for looking at what Redis actually holds for a job. */
-const raw = new Queue<PhotoInput>("pantry-photo", { connection });
+const raw = new Queue<PhotoInput>(QUEUE, { connection });
 
 const PHOTO: PhotoInput = {
   userId: "user-1",
@@ -50,7 +56,7 @@ afterAll(async () => {
 
 describe("the BullMQ photo queue", () => {
   it("reports a job as queued until a worker takes it", async () => {
-    const queue = createBullPhotoQueue(connection);
+    const queue = createBullPhotoQueue(connection, QUEUE);
     closers.push(() => queue.close());
 
     const jobId = await queue.enqueue(PHOTO);
@@ -60,8 +66,8 @@ describe("the BullMQ photo queue", () => {
   });
 
   it("runs the job and gives the result to its owner only", async () => {
-    const queue = createBullPhotoQueue(connection);
-    const worker = startPhotoWorker(connection, () => Promise.resolve(DONE));
+    const queue = createBullPhotoQueue(connection, QUEUE);
+    const worker = startPhotoWorker(connection, () => Promise.resolve(DONE), QUEUE);
     closers.push(
       () => worker.close(),
       () => queue.close(),
@@ -79,13 +85,17 @@ describe("the BullMQ photo queue", () => {
   it("removes the image from Redis before the photo is processed", async () => {
     let release: () => void = () => undefined;
     let seen: string | undefined;
-    const queue = createBullPhotoQueue(connection);
-    const worker = startPhotoWorker(connection, (input) => {
-      seen = input.imageBase64;
-      return new Promise<PhotoOutcome>((resolve) => {
-        release = () => resolve(DONE);
-      });
-    });
+    const queue = createBullPhotoQueue(connection, QUEUE);
+    const worker = startPhotoWorker(
+      connection,
+      (input) => {
+        seen = input.imageBase64;
+        return new Promise<PhotoOutcome>((resolve) => {
+          release = () => resolve(DONE);
+        });
+      },
+      QUEUE,
+    );
     closers.push(
       () => worker.close(),
       () => queue.close(),
@@ -106,8 +116,8 @@ describe("the BullMQ photo queue", () => {
   });
 
   it("reports a job whose processor threw as failed, without the error", async () => {
-    const queue = createBullPhotoQueue(connection);
-    const worker = startPhotoWorker(connection, () => Promise.reject(new Error("boom")));
+    const queue = createBullPhotoQueue(connection, QUEUE);
+    const worker = startPhotoWorker(connection, () => Promise.reject(new Error("boom")), QUEUE);
     closers.push(
       () => worker.close(),
       () => queue.close(),

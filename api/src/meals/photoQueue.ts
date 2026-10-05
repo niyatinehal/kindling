@@ -7,7 +7,8 @@ import type { Redis } from "ioredis";
 import { redact } from "../observability/redact.js";
 import type { PhotoInput, PhotoOutcome } from "./parsePhoto.js";
 
-const QUEUE_NAME = "pantry-photo";
+/** Overridable so a test can run on a queue no other process is working. */
+export const PHOTO_QUEUE_NAME = "pantry-photo";
 /** How long a finished job's result stays readable. The result is only ingredient keys. */
 const RESULT_TTL_SECONDS = 10 * 60;
 /**
@@ -33,8 +34,11 @@ export type PhotoQueue = {
 
 type StoredJob = PhotoInput;
 
-export function createBullPhotoQueue(connection: Redis): PhotoQueue {
-  const queue = new Queue<StoredJob, PhotoOutcome>(QUEUE_NAME, { connection });
+export function createBullPhotoQueue(
+  connection: Redis,
+  name: string = PHOTO_QUEUE_NAME,
+): PhotoQueue {
+  const queue = new Queue<StoredJob, PhotoOutcome>(name, { connection });
 
   return {
     async enqueue(input) {
@@ -84,9 +88,10 @@ export function createBullPhotoQueue(connection: Redis): PhotoQueue {
 export function startPhotoWorker(
   connection: Redis,
   process: (input: PhotoInput) => Promise<PhotoOutcome>,
+  name: string = PHOTO_QUEUE_NAME,
 ): { close(): Promise<void> } {
   const worker = new Worker<StoredJob, PhotoOutcome>(
-    QUEUE_NAME,
+    name,
     async (job: Job<StoredJob, PhotoOutcome>) => {
       const { imageBase64, ...rest } = job.data;
       await job.updateData({ ...rest, imageBase64: "" });
