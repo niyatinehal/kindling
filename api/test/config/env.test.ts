@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { loadEnv } from "../../src/config/env.js";
+import { llmApiKey, loadEnv } from "../../src/config/env.js";
 
 const valid = {
   DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
@@ -57,5 +57,33 @@ describe("loadEnv", () => {
     expect(
       loadEnv({ ...valid, SUPABASE_SERVICE_ROLE_KEY: "svc-key" }).SUPABASE_SERVICE_ROLE_KEY,
     ).toBe("svc-key");
+  });
+
+  describe("AI pantry parsing", () => {
+    it("is off by default, with no key needed", () => {
+      const env = loadEnv(valid);
+
+      expect(env.LLM_ENABLED).toBe(false);
+      expect(llmApiKey(env)).toBeUndefined();
+    });
+
+    it("hands out the key only when the switch is on", () => {
+      expect(llmApiKey(loadEnv({ ...valid, LLM_API_KEY: "sk-test" }))).toBeUndefined();
+      expect(llmApiKey(loadEnv({ ...valid, LLM_ENABLED: "true", LLM_API_KEY: "sk-test" }))).toBe(
+        "sk-test",
+      );
+    });
+
+    // Turned on without a key is "off", not a boot failure.
+    it("treats an enabled switch with a missing or blank key as off", () => {
+      expect(llmApiKey(loadEnv({ ...valid, LLM_ENABLED: "true" }))).toBeUndefined();
+      expect(
+        llmApiKey(loadEnv({ ...valid, LLM_ENABLED: "true", LLM_API_KEY: "" })),
+      ).toBeUndefined();
+    });
+
+    it("rejects a switch value that is not a boolean word", () => {
+      expect(() => loadEnv({ ...valid, LLM_ENABLED: "maybe" })).toThrow(/LLM_ENABLED/);
+    });
   });
 });

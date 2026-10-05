@@ -3,6 +3,8 @@ import type { Express, NextFunction, Request, Response } from "express";
 
 import type { PrismaClient } from "../generated/prisma/client.js";
 import type { VerifiedToken } from "./auth/verifyToken.js";
+import { disabledLlmClient } from "./llm/client.js";
+import type { LlmClient } from "./llm/client.js";
 import type { PlanGenerator } from "./workouts/planGenerator.js";
 import { sendError } from "./http/errors.js";
 import { recordError } from "./observability/recordError.js";
@@ -23,6 +25,12 @@ export type AppDeps = {
   prisma: PrismaClient;
   verify: (token: string) => Promise<VerifiedToken>;
   planGenerator: PlanGenerator;
+  /**
+   * The model provider for free-text pantry parsing. Optional, and off when
+   * absent: every path that would use it falls back to the synonym table, so
+   * a deployment with no key configured is a working app, not a broken one.
+   */
+  llm?: LlmClient;
   /**
    * Shared secret the web app presents when reporting a failure it handled
    * itself. Optional: with it unset the reporting route is not mounted, so a
@@ -54,7 +62,14 @@ export function createApp(deps: AppDeps): Express {
   app.use("/api/v1/families", createFamilyRouter({ prisma: deps.prisma, verify: deps.verify }));
   app.use("/api/v1/invites", createInviteRouter({ prisma: deps.prisma, verify: deps.verify }));
   app.use("/api/v1/tracking", createTrackingRouter({ prisma: deps.prisma, verify: deps.verify }));
-  app.use("/api/v1/meals", createMealRouter({ prisma: deps.prisma, verify: deps.verify }));
+  app.use(
+    "/api/v1/meals",
+    createMealRouter({
+      prisma: deps.prisma,
+      verify: deps.verify,
+      llm: deps.llm ?? disabledLlmClient,
+    }),
+  );
   if (deps.internalReportToken !== undefined) {
     app.use(
       "/api/v1/internal",

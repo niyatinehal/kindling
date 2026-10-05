@@ -224,6 +224,15 @@ model Profile {
   /// it must never drive a hard exclusion, because prose is not a stable key.
   notes String?
 
+  /// Opt-in to having typed pantry text read by an outside AI service. Off by
+  /// default, and never consulted for a child account, which uses the synonym
+  /// table whatever this says. Only the pantry text is ever sent — nothing on
+  /// this row reaches the provider.
+  aiPantryConsent   Boolean   @default(false) @map("ai_pantry_consent")
+  /// When consent was given. Cleared on withdrawal, so it is null whenever the
+  /// flag is false.
+  aiPantryConsentAt DateTime? @map("ai_pantry_consent_at")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

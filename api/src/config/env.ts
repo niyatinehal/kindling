@@ -24,9 +24,25 @@ const envSchema = z.object({
   // on purpose: unset, the reporting route is not mounted at all, so a
   // deployment without one has no endpoint rather than an open one.
   INTERNAL_REPORT_TOKEN: z.string().min(16).optional(),
+  // Kill switch for AI pantry parsing. Off unless set to a true value, so the
+  // feature cannot be turned on by accident; off, every parse uses the synonym
+  // table. See src/llm/client.ts.
+  LLM_ENABLED: z.stringbool().default(false),
+  // Anthropic API key for the pantry parser. Optional: with it unset the
+  // feature is disabled rather than the service failing to boot. An empty
+  // value counts as unset, which is what a blank line in .env produces.
+  LLM_API_KEY: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().min(1).optional(),
+  ),
 });
 
 export type Env = z.infer<typeof envSchema>;
+
+/** The API key, but only when the kill switch is on. Undefined means "feature off". */
+export function llmApiKey(env: Env): string | undefined {
+  return env.LLM_ENABLED ? env.LLM_API_KEY : undefined;
+}
 
 /**
  * Validates environment variables, failing fast at boot rather than on first

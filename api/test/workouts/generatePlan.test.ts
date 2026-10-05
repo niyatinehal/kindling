@@ -24,6 +24,8 @@ const profile = (overrides: Partial<Profile> = {}): Profile => ({
   conditions: [],
   dietary: [],
   notes: null,
+  aiPantryConsent: false,
+  aiPantryConsentAt: null,
   createdAt: NOW,
   updatedAt: NOW,
   ...overrides,

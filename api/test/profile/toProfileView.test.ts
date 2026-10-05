@@ -23,6 +23,8 @@ const row = (overrides: Partial<Profile> = {}): Profile => ({
   conditions: ["arthritis", "type_2_diabetes"],
   dietary: ["vegetarian"],
   notes: "left shoulder clicks when overhead",
+  aiPantryConsent: false,
+  aiPantryConsentAt: null,
   createdAt: NOW,
   updatedAt: NOW,
   ...overrides,

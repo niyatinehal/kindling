@@ -5,7 +5,8 @@ import type { PrismaClient } from "../../generated/prisma/client.js";
 import { createAuthMiddleware } from "../auth/middleware.js";
 import type { VerifiedToken } from "../auth/verifyToken.js";
 import { sendError } from "../http/errors.js";
-import { parsePantry } from "../meals/parsePantry.js";
+import type { LlmClient } from "../llm/client.js";
+import { isGuardedAccount, parsePantry } from "../meals/parsePantry.js";
 import { ALL_INGREDIENTS } from "../meals/recipeLibrary.js";
 import { suggestMeals } from "../meals/suggestMeals.js";
 import type { Ingredient } from "../meals/recipeLibrary.js";
@@ -32,9 +33,12 @@ const parsePantryBody = z.strictObject({
   text: z.string().trim().min(1).max(500),
 });
 
+const pantryConsentBody = z.strictObject({ enabled: z.boolean() });
+
 export function createMealRouter(deps: {
   prisma: PrismaClient;
   verify: (token: string) => Promise<VerifiedToken>;
+  llm: LlmClient;
 }): Router {
   const router = Router();
   const authenticate = createAuthMiddleware({ verify: deps.verify, prisma: deps.prisma });
@@ -102,8 +106,9 @@ export function createMealRouter(deps: {
    * to show as chips, never with suggestions: the confirmed list then goes to
    * `/suggest` unchanged, so the suggestion path stays deterministic.
    */
-  router.post("/parse-pantry", authenticate, (req, res) => {
-    if (req.user === undefined) {
+  router.post("/parse-pantry", authenticate, (req, res, next) => {
+    const user = req.user;
+    if (user === undefined) {
       sendError(res, 401, "UNAUTHENTICATED", "A Bearer token is required.");
       return;
     }
@@ -114,7 +119,117 @@ export function createMealRouter(deps: {
       return;
     }
 
-    res.status(200).json(parsePantry({ text: parsed.data.text }));
+    // Consent is read from the stored profile on every call, like diet is for
+    // /suggest: a client cannot claim consent it never gave, and withdrawing
+    // it takes effect on the very next parse.
+    deps.prisma.profile
+      .findUnique({
+        where: { userId: user.id },
+        select: { aiPantryConsent: true, birthYear: true },
+      })
+      .then((profile) =>
+        parsePantry(
+          {
+            text: parsed.data.text,
+            consented: profile?.aiPantryConsent ?? false,
+            role: user.role,
+            birthYear: profile?.birthYear ?? null,
+            requestId: req.requestId,
+          },
+          { llm: deps.llm },
+        ),
+      )
+      .then((result) => {
+        res.status(200).json(result);
+      })
+      .catch((error: unknown) => {
+        next(error);
+      });
+  });
+
+  /**
+   * The AI pantry toggle's state. `available` says whether the toggle should be
+   * offered at all: not while the kill switch is off, not before a profile
+   * exists to hold the flag, and never to a child or a minor.
+   */
+  router.get("/pantry-consent", authenticate, (req, res, next) => {
+    const user = req.user;
+    if (user === undefined) {
+      sendError(res, 401, "UNAUTHENTICATED", "A Bearer token is required.");
+      return;
+    }
+
+    deps.prisma.profile
+      .findUnique({
+        where: { userId: user.id },
+        select: { aiPantryConsent: true, birthYear: true },
+      })
+      .then((profile) => {
+        res.status(200).json({
+          enabled: profile?.aiPantryConsent ?? false,
+          available:
+            deps.llm.enabled &&
+            profile !== null &&
+            !isGuardedAccount({ role: user.role, birthYear: profile.birthYear }),
+        });
+      })
+      .catch((error: unknown) => {
+        next(error);
+      });
+  });
+
+  /**
+   * Gives or withdraws consent. Withdrawing is always allowed; giving it is
+   * refused for a child or a minor, since the parse would ignore it anyway and a
+   * stored "yes" from a minor is not a consent anyone should rely on.
+   */
+  router.put("/pantry-consent", authenticate, (req, res, next) => {
+    const user = req.user;
+    if (user === undefined) {
+      sendError(res, 401, "UNAUTHENTICATED", "A Bearer token is required.");
+      return;
+    }
+
+    const parsed = pantryConsentBody.safeParse(req.body);
+    if (!parsed.success) {
+      sendError(res, 400, "VALIDATION_FAILED", parsed.error.issues[0]?.message ?? "Invalid body.");
+      return;
+    }
+    const enabled = parsed.data.enabled;
+
+    deps.prisma.profile
+      .findUnique({
+        where: { userId: user.id },
+        select: { aiPantryConsent: true, birthYear: true },
+      })
+      .then(async (profile) => {
+        if (profile === null) {
+          sendError(res, 403, "PROFILE_REQUIRED", "Complete your profile first.");
+          return;
+        }
+        const guarded = isGuardedAccount({ role: user.role, birthYear: profile.birthYear });
+        if (enabled && guarded) {
+          sendError(res, 403, "FORBIDDEN_ROLE", "This account cannot turn on AI pantry reading.");
+          return;
+        }
+
+        // Re-giving consent keeps the original time; the timestamp records
+        // when it was given, not when the toggle was last touched.
+        if (profile.aiPantryConsent !== enabled) {
+          await deps.prisma.profile.update({
+            where: { userId: user.id },
+            data: { aiPantryConsent: enabled, aiPantryConsentAt: enabled ? new Date() : null },
+          });
+        }
+
+        res.status(200).json({
+          enabled,
+          available: deps.llm.enabled && !guarded,
+        });
+      })
+      .catch((error: unknown) => {
+        next(error);
+      });
   });
 
   return router;
