@@ -19,6 +19,15 @@ export type MealSuggestion = {
   protein_target_g: number;
 };
 
+/** What `/api/meals/parse` reads out of typed text, for the user to confirm. */
+export type PantryParse = {
+  recognised: string[];
+  unrecognised: string[];
+  source: "llm" | "cache" | "synonyms";
+  degraded: boolean;
+  parser: string;
+};
+
 /**
  * The pantry the intake screen offers, grouped so a list of 38 keys reads as a
  * kitchen rather than a wall of checkboxes. Grouping is presentation only — the

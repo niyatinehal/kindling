@@ -7,7 +7,7 @@ import { readJsonBody } from "../../src/api/readJsonBody";
 import { DishArt } from "../../src/art/DishArt";
 import { HeroArt } from "../../src/art/HeroArt";
 import { PANTRY_GROUPS } from "../../src/meals/mealTypes";
-import type { MealSuggestion } from "../../src/meals/mealTypes";
+import type { MealSuggestion, PantryParse } from "../../src/meals/mealTypes";
 import { Alert } from "../../src/ui/Alert";
 import { BackLink } from "../../src/ui/BackLink";
 import { Button } from "../../src/ui/Button";
@@ -23,12 +23,14 @@ const SLOTS = ["breakfast", "lunch", "dinner", "snack"] as const;
 const today = (): string => new Date().toISOString().slice(0, 10);
 
 /**
- * The meal planner: tick what is in the kitchen, get dishes back.
+ * The meal planner: say what is in the kitchen, get dishes back.
  *
- * The pantry is a checklist rather than a text box. FR-MEAL-1 allows either, and
- * the list is the half that works without a model — "atta", "wheat flour" and
- * "chakki fresh atta" are one ingredient, and resolving that from prose needs a
- * synonym table or an LLM. Ticking is also faster than typing on a phone.
+ * Two ways in, one list. The checklist is the source of truth; typing "thoda
+ * atta, 2 aloo" is a shortcut that ticks items on it. The API resolves the text
+ * against a synonym table and the result comes back as chips the user can untick
+ * before anything is suggested — so a wrong guess costs one tap, never a wrong
+ * meal. Anything it could not read is shown back as "not in our list yet" rather
+ * than silently dropped.
  *
  * Dietary constraints are NOT asked here. They are on the profile, which the API
  * reads server-side, so a vegetarian cannot be shown chicken by a client that
@@ -43,6 +45,9 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
   const tCaution = useTranslations("plan.reasons");
 
   const [selected, setSelected] = useState<string[]>([]);
+  const [pantryText, setPantryText] = useState("");
+  const [parsing, setParsing] = useState(false);
+  const [parsed, setParsed] = useState<PantryParse | null>(null);
   const [slot, setSlot] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<MealSuggestion[] | null>(null);
   const [busy, setBusy] = useState(false);
@@ -51,6 +56,32 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
   const [error, setError] = useState<string | undefined>(undefined);
 
   const label = (key: string) => (tIngredient.has(key) ? tIngredient(key) : key);
+
+  /**
+   * Ticks what the typed text names. Added to the current selection, never
+   * replacing it, so typing after ticking does not throw the ticks away.
+   */
+  async function readPantry(): Promise<void> {
+    setParsing(true);
+    setError(undefined);
+
+    const response = await fetch("/api/meals/parse", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text: pantryText.trim() }),
+    });
+    const body = await readJsonBody(response);
+    setParsing(false);
+
+    if (!response.ok || typeof body !== "object" || body === null || !("recognised" in body)) {
+      setError("PANTRY_PARSE_FAILED");
+      return;
+    }
+
+    const result = body as PantryParse;
+    setParsed(result);
+    setSelected((current) => [...new Set([...current, ...result.recognised])]);
+  }
 
   async function suggest(): Promise<void> {
     setBusy(true);
@@ -133,6 +164,50 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
           <p className="text-lg leading-relaxed">{t("noProfileNote")}</p>
         </Card>
       )}
+
+      <Card>
+        <div className="flex flex-col gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-ink">{t("typeTitle")}</h2>
+            <p className="mt-1 leading-relaxed text-muted">{t("typeHint")}</p>
+          </div>
+          <Field
+            label={t("typeLabel")}
+            value={pantryText}
+            onChange={setPantryText}
+            maxLength={500}
+          />
+          <Button
+            variant="secondary"
+            disabled={pantryText.trim() === "" || parsing}
+            loading={parsing}
+            onClick={() => {
+              void readPantry();
+            }}
+          >
+            {parsing ? t("typeReading") : t("typeRead")}
+          </Button>
+
+          {parsed !== null && parsed.recognised.length > 0 && (
+            <ChoiceGroup
+              legend={t("typeFound")}
+              choices={parsed.recognised.map((value) => ({ value, label: label(value) }))}
+              selected={selected}
+              onChange={setSelected}
+              multiple
+              layout="chips"
+            />
+          )}
+          {parsed !== null && parsed.recognised.length === 0 && (
+            <p className="text-muted">{t("typeNoneFound")}</p>
+          )}
+          {parsed !== null && parsed.unrecognised.length > 0 && (
+            <p className="text-sm text-muted">
+              {t("typeUnrecognised", { items: parsed.unrecognised.join(", ") })}
+            </p>
+          )}
+        </div>
+      </Card>
 
       <Card>
         <div className="flex flex-col gap-5">
