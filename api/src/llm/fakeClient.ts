@@ -1,7 +1,7 @@
 import type { ExtractArgs, LlmClient, LlmFailureReason, LlmResult } from "./client.js";
 
 /**
- * One scripted answer: either raw tool input, which goes through the caller's
+ * One scripted answer: either a raw answer, which goes through the caller's
  * real `validate` exactly as a provider's would, or a failure.
  */
 export type FakeStep =

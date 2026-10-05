@@ -4,7 +4,7 @@ import { proxyUpstream } from "../../../../src/api/proxy";
 import { callApi } from "../../../../src/api/upstream";
 import { createSupabaseServerClient } from "../../../../src/supabase/server";
 
-const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 /** Under the 4.5 MB a hosted function accepts; the screen shrinks photos well below this. */
 const MAX_BYTES = 4 * 1024 * 1024;
 

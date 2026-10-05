@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 
 import {
   PANTRY_PROMPT_V1,
-  PANTRY_TOOL_SCHEMA,
+  PANTRY_RESPONSE_SCHEMA,
   pantryOutput,
   pantryUserMessage,
   tidyPantryOutput,
@@ -12,7 +12,7 @@ import { ALL_INGREDIENTS } from "../../src/meals/recipeLibrary.js";
 describe("pantry prompt and schema", () => {
   // Generated, not hand-written, so the library and the schema cannot drift.
   it("constrains recognised items to exactly the ingredient vocabulary", () => {
-    expect(PANTRY_TOOL_SCHEMA.properties.recognised.items.enum).toEqual([...ALL_INGREDIENTS]);
+    expect(PANTRY_RESPONSE_SCHEMA.properties.recognised.items.enum).toEqual([...ALL_INGREDIENTS]);
     expect(PANTRY_PROMPT_V1).toContain(ALL_INGREDIENTS.join(", "));
   });
 

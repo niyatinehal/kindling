@@ -28,29 +28,8 @@ const envSchema = z.object({
   // feature cannot be turned on by accident; off, every parse uses the synonym
   // table. See src/llm/client.ts.
   LLM_ENABLED: z.stringbool().default(false),
-  // Anthropic API key for the pantry parser. Optional: with it unset the
-  // feature is disabled rather than the service failing to boot. An empty
-  // value counts as unset, which is what a blank line in .env produces.
-  LLM_API_KEY: z.preprocess(
-    (value) => (value === "" ? undefined : value),
-    z.string().min(1).optional(),
-  ),
-  // Which model providers to use, in order: the first answers, and the next is
-  // tried only if it fails fast (a quota error, an outage). Each needs its own
-  // key below; one without a key is skipped.
-  LLM_PROVIDERS: z
-    .string()
-    .default("anthropic")
-    .transform((value) => value.split(",").map((name) => name.trim()))
-    .pipe(
-      z
-        .array(z.enum(["anthropic", "gemini"]))
-        .min(1)
-        .refine((names) => new Set(names).size === names.length, {
-          message: "each provider may be listed once",
-        }),
-    ),
-  // Google Gemini key for the "gemini" provider. Use a billing-enabled
+  // Google Gemini key for the AI pantry features. Optional: with it unset they
+  // are off rather than the service failing to boot. Use a billing-enabled
   // project: the free tier allows Google to use what is sent to improve its
   // products, which the privacy page says does not happen.
   GEMINI_API_KEY: z.preprocess(

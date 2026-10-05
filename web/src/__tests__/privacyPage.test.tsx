@@ -61,10 +61,9 @@ describe("the privacy policy", () => {
     renderPolicy();
 
     expect(screen.getByText(messages.privacy.why.aiPantry)).toBeInTheDocument();
-    expect(messages.privacy.why.aiPantry).toMatch(/Anthropic/);
+    expect(messages.privacy.why.aiPantry).toMatch(/Google/);
     expect(messages.privacy.why.aiPantry).toMatch(/off unless you turn it on/);
     expect(messages.privacy.why.aiPantry).toMatch(/under 18/);
-    expect(messages.privacy.sharing.processors).toMatch(/Anthropic/);
     expect(messages.privacy.sharing.processors).toMatch(/Google/);
     expect(messages.privacy.why.aiPantry).toMatch(/Gemini/);
   });

@@ -352,7 +352,7 @@ export function MealsClient({
             >
               <input
                 type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
+                accept="image/jpeg,image/png,image/webp"
                 capture="environment"
                 className="sr-only"
                 disabled={readingPhoto}

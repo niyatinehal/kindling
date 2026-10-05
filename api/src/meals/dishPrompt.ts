@@ -27,7 +27,7 @@ Example:
 <dishes>{"recipe_key":"aloo_gobi","ingredients":["potato","cauliflower","onion","tomato","spices"],"you_have":["potato","cauliflower"],"you_still_need":[]}</dishes>
 aloo_gobi: "Your potatoes and cauliflower are all this one needs, so it can go on the stove straight away."
 
-Call the record_result tool once, with an entry for every dish.`;
+Answer with JSON in the format you have been given, with an entry for every dish.`;
 
 /** What the model is told about one dish: its ingredients and the user's overlap, nothing else. */
 export function dishUserMessage(
@@ -45,10 +45,10 @@ export function dishUserMessage(
 }
 
 /**
- * The tool schema for one request, with `recipe_key` constrained to exactly
+ * The response schema for one request, with `recipe_key` constrained to exactly
  * the dishes that were sent — the model cannot describe a dish it was not given.
  */
-export function dishToolSchema(recipeKeys: readonly string[]) {
+export function dishResponseSchema(recipeKeys: readonly string[]) {
   return {
     type: "object",
     properties: {

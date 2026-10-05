@@ -108,7 +108,7 @@ async function someoneWithData(email: string) {
     data: {
       userId: user.id,
       feature: "pantry_parse",
-      model: "claude-haiku-4-5",
+      model: "gemini-3.6-flash",
       promptVersion: "llm-pantry@1",
       outcome: "ok",
       inputTokens: 800,

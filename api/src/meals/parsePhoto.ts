@@ -4,7 +4,7 @@ import type { ImageMediaType, LlmClient } from "../llm/client.js";
 import { costMicroUsd } from "../llm/pricing.js";
 import { withOneRetry } from "../llm/retry.js";
 import { mayUseModel } from "./parsePantry.js";
-import { PANTRY_TOOL_SCHEMA, pantryOutput, tidyPantryOutput } from "./pantryPrompt.js";
+import { PANTRY_RESPONSE_SCHEMA, pantryOutput, tidyPantryOutput } from "./pantryPrompt.js";
 import { createPrismaPantryStore, startOfUtcDay } from "./pantryStore.js";
 import type { LlmCallRecord, PantryStore } from "./pantryStore.js";
 import { PHOTO_PROMPT_V1, PHOTO_PROMPT_VERSION, PHOTO_USER_TEXT } from "./photoPrompt.js";
@@ -117,7 +117,7 @@ export async function processPhoto(input: PhotoInput, deps: PhotoDeps): Promise<
         system: PHOTO_PROMPT_V1,
         user: PHOTO_USER_TEXT,
         image: { mediaType: input.mediaType, base64: input.imageBase64 },
-        schema: PANTRY_TOOL_SCHEMA,
+        schema: PANTRY_RESPONSE_SCHEMA,
         validate: (raw) => pantryOutput.parse(raw),
         timeoutMs,
       });

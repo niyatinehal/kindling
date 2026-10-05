@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 
 import { createGeminiLlmClient, toGeminiSchema } from "../../src/llm/geminiClient.js";
-import { PANTRY_TOOL_SCHEMA } from "../../src/meals/pantryPrompt.js";
+import { PANTRY_RESPONSE_SCHEMA } from "../../src/meals/pantryPrompt.js";
 
 type Sent = { url: string; init: RequestInit };
 
@@ -36,7 +36,7 @@ const reply = (text: string, extra: Record<string, unknown> = {}) =>
 const args = {
   system: "the system prompt",
   user: "<pantry>aloo</pantry>",
-  schema: PANTRY_TOOL_SCHEMA,
+  schema: PANTRY_RESPONSE_SCHEMA,
   validate: (raw: unknown) => {
     if (typeof raw !== "object" || raw === null || !("recognised" in raw)) throw new Error("bad");
     return raw as { recognised: string[] };
@@ -54,7 +54,7 @@ afterEach(() => {
 
 describe("toGeminiSchema", () => {
   it("translates the pantry schema into Gemini's dialect, keeping the enum", () => {
-    const schema = toGeminiSchema(PANTRY_TOOL_SCHEMA);
+    const schema = toGeminiSchema(PANTRY_RESPONSE_SCHEMA);
 
     expect(schema).toMatchObject({
       type: "OBJECT",

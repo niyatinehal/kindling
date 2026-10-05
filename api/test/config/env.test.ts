@@ -67,20 +67,25 @@ describe("loadEnv", () => {
       const env = loadEnv(valid);
 
       expect(env.LLM_ENABLED).toBe(false);
-      expect(env.LLM_PROVIDERS).toEqual(["anthropic"]);
       expect(createLlmFromEnv(env, quiet).enabled).toBe(false);
     });
 
-    it("uses a provider only when the switch is on and its key is set", () => {
-      expect(createLlmFromEnv(loadEnv({ ...valid, LLM_API_KEY: "sk-test" }), quiet).enabled).toBe(
+    it("uses Gemini only when the switch is on and the key is set", () => {
+      expect(createLlmFromEnv(loadEnv({ ...valid, GEMINI_API_KEY: "g" }), quiet).enabled).toBe(
         false,
       );
       const on = createLlmFromEnv(
-        loadEnv({ ...valid, LLM_ENABLED: "true", LLM_API_KEY: "sk-test" }),
+        loadEnv({ ...valid, LLM_ENABLED: "true", GEMINI_API_KEY: "g" }),
         quiet,
       );
       expect(on.enabled).toBe(true);
-      expect(on.model).toBe("claude-haiku-4-5");
+      expect(on.model).toBe("gemini-3.6-flash");
+      expect(
+        createLlmFromEnv(
+          loadEnv({ ...valid, LLM_ENABLED: "true", GEMINI_API_KEY: "g", GEMINI_MODEL: "gemini-x" }),
+          quiet,
+        ).model,
+      ).toBe("gemini-x");
     });
 
     // Turned on without a key is "off", not a boot failure.
@@ -92,27 +97,10 @@ describe("loadEnv", () => {
         false,
       );
       expect(
-        createLlmFromEnv(loadEnv({ ...valid, LLM_ENABLED: "true", LLM_API_KEY: "" }), warn).enabled,
+        createLlmFromEnv(loadEnv({ ...valid, LLM_ENABLED: "true", GEMINI_API_KEY: "" }), warn)
+          .enabled,
       ).toBe(false);
-      expect(warnings.join("\n")).toMatch(/LLM_API_KEY is not set/);
-    });
-
-    it("chains providers in the order listed, skipping one without a key", () => {
-      const env = (extra: Record<string, string>) =>
-        loadEnv({ ...valid, LLM_ENABLED: "true", LLM_PROVIDERS: "gemini,anthropic", ...extra });
-
-      expect(createLlmFromEnv(env({ GEMINI_API_KEY: "g", LLM_API_KEY: "a" }), quiet).model).toBe(
-        "gemini-3.6-flash|claude-haiku-4-5",
-      );
-      expect(createLlmFromEnv(env({ GEMINI_API_KEY: "g" }), quiet).model).toBe("gemini-3.6-flash");
-      expect(
-        createLlmFromEnv(env({ GEMINI_API_KEY: "g", GEMINI_MODEL: "gemini-other" }), quiet).model,
-      ).toBe("gemini-other");
-    });
-
-    it("rejects an unknown or repeated provider", () => {
-      expect(() => loadEnv({ ...valid, LLM_PROVIDERS: "openai" })).toThrow(/LLM_PROVIDERS/);
-      expect(() => loadEnv({ ...valid, LLM_PROVIDERS: "gemini,gemini" })).toThrow(/LLM_PROVIDERS/);
+      expect(warnings.join("\n")).toMatch(/GEMINI_API_KEY is not/);
     });
 
     it("accepts a redis:// or rediss:// URL for the photo queue, and treats blank as unset", () => {

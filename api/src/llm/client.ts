@@ -31,16 +31,16 @@ export type LlmResult<T> =
     };
 
 /** The image formats the provider accepts. */
-export type ImageMediaType = "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+export type ImageMediaType = "image/jpeg" | "image/png" | "image/webp";
 
 export type ExtractArgs<T> = {
   system: string;
   user: string;
   /** Sent before the text, in the same turn. Never stored by this client. */
   image?: { mediaType: ImageMediaType; base64: string };
-  /** JSON Schema for the tool input the provider is asked to fill. */
+  /** JSON Schema for the answer the provider is asked to give. */
   schema: object;
-  /** Parses the raw tool input, throwing on anything malformed. */
+  /** Parses the raw answer, throwing on anything malformed. */
   validate: (raw: unknown) => T;
   timeoutMs: number;
 };

@@ -7,7 +7,7 @@ import { ageFromBirthYear } from "../profile/toProfileView.js";
 import {
   PANTRY_PROMPT_V1,
   PANTRY_PROMPT_VERSION,
-  PANTRY_TOOL_SCHEMA,
+  PANTRY_RESPONSE_SCHEMA,
   pantryOutput,
   pantryUserMessage,
   tidyPantryOutput,
@@ -104,7 +104,7 @@ export async function askModel(
       const result = await llm.extract({
         system: PANTRY_PROMPT_V1,
         user: pantryUserMessage(text),
-        schema: PANTRY_TOOL_SCHEMA,
+        schema: PANTRY_RESPONSE_SCHEMA,
         validate: (raw) => pantryOutput.parse(raw),
         timeoutMs,
       });

@@ -4,7 +4,7 @@ import {
   checkExplanation,
   DISH_PROMPT_V1,
   dishOutput,
-  dishToolSchema,
+  dishResponseSchema,
   dishUserMessage,
 } from "../../src/meals/dishPrompt.js";
 import { RECIPES_BY_KEY } from "../../src/meals/recipeLibrary.js";
@@ -63,7 +63,7 @@ describe("checkExplanation — what a dish sentence may say", () => {
 
 describe("dish prompt and schema", () => {
   it("constrains recipe_key to exactly the dishes that were sent", () => {
-    const schema = dishToolSchema(["poha", "upma"]);
+    const schema = dishResponseSchema(["poha", "upma"]);
     expect(schema.properties.explanations.items.properties.recipe_key.enum).toEqual([
       "poha",
       "upma",

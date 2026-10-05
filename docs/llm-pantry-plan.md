@@ -133,14 +133,14 @@ export interface LlmClient {
 }
 ```
 
-The one implementation is `createAnthropicLlmClient` (`src/llm/anthropicClient.ts`), using the official SDK with `claude-haiku-4-5`. The provider stays behind this interface so swapping to OpenAI is one new file. The SDK's own retries are off (`maxRetries: 0`): it would retry timeouts and 429s, and retrying belongs to the caller.
+The one implementation is `createGeminiLlmClient` (`src/llm/geminiClient.ts`): Google's Gemini API over plain `fetch`, no SDK, with a pinned `gemini-3.6-flash` and thinking set to `low`. The provider stays behind this interface, so another vendor is one new file. Retrying belongs to the caller, and a 429 is answered straight away rather than waited out.
 
-### 2. Structured output through a tool schema with an enum
+### 2. Structured output through a response schema with an enum
 
-Force a single tool call (`tool_choice: { type: "tool" }`, `strict: true`) whose input schema lists every key in `ALL_INGREDIENTS` as an enum. Generate the schema from the array so the library and schema cannot drift, which matches how your Zod enum already works.
+Ask for JSON (`responseMimeType: "application/json"`) against a `responseSchema` that lists every key in `ALL_INGREDIENTS` as an enum. The client translates the standard JSON Schema below into Gemini's dialect (uppercase types, a short keyword list, `propertyOrdering`). Generate the schema from the array so the library and schema cannot drift, which matches how your Zod enum already works.
 
 ```ts
-const PANTRY_TOOL_SCHEMA = {
+const PANTRY_RESPONSE_SCHEMA = {
   type: "object",
   properties: {
     recognised: { type: "array", items: { type: "string", enum: ALL_INGREDIENTS } },
@@ -151,7 +151,7 @@ const PANTRY_TOOL_SCHEMA = {
 };
 ```
 
-Strict tool schemas do not accept `maxItems` or `maxLength`, so the count and length caps (40 recognised, 20 unrecognised, 40 characters each) are enforced in code instead. Then validate with a matching Zod `strictObject` anyway. Provider-side constraints reduce bad output but you never trust them alone.
+The count and length caps (40 recognised, 20 unrecognised, 40 characters each) are enforced in code, and `additionalProperties` has no Gemini equivalent, so the strict check happens there too. Then validate with a matching Zod `strictObject` anyway. Provider-side constraints reduce bad output but you never trust them alone.
 
 ### 3. The prompt
 
@@ -185,7 +185,7 @@ The endpoint answers within about 3 seconds in every case, because each LLM step
 | Cache           | Postgres table keyed by SHA-256 of normalised text plus prompt version, 30-day TTL                                                                                                                                                      | Users repeat the same pantries. A cache hit costs nothing and returns in milliseconds                              |
 | Rate limit      | 30 LLM parses per user per UTC day, counted in Postgres from `LlmCall` outcomes (not request ids, which a caller can set). Cache hits are free and not counted. Over the limit, the synonym table answers with `degraded: true`; no 429 | Caps cost per user without ever turning a parse into an error                                                      |
 | Cost tracking   | One `LlmCall` row per attempt: feature, model, tokens, latency, outcome, request id                                                                                                                                                     | Lets you report real numbers: p95 latency, cost per 1,000 parses, failure rate                                     |
-| Kill switch     | `LLM_ENABLED` and `LLM_API_KEY` validated in `config/env.ts`. The model is used only when the switch is true and a key is set; anything else means disabled, not a crash                                                                | Turn the feature off without a deploy-breaking error                                                               |
+| Kill switch     | `LLM_ENABLED` and `GEMINI_API_KEY` validated in `config/env.ts`. The model is used only when the switch is true and a key is set; anything else means disabled, not a crash                                                             | Turn the feature off without a deploy-breaking error                                                               |
 
 Why no queue here: you know BullMQ, and an interviewer may ask why you didn't use it. Parsing is a short request the user is actively waiting for, so a queue adds latency and polling complexity for no benefit. A queue becomes the right choice for Phase 3 photo parsing, which is slower, or for a nightly eval job.
 
@@ -335,9 +335,9 @@ Not started. It needs the full hand-written golden set and a real API key. Once 
 
 Add one bullet to the Kindling entry once Phase 2 is done, with your real eval numbers in place of the X values:
 
-> Built an opt-in LLM pantry parser that maps English and Hinglish text to a fixed ingredient vocabulary via schema-constrained tool calls and Zod validation, reaching X% precision / Y% recall on a 80-case golden set, with caching, rate limiting, a circuit breaker and automatic fallback to a rule-based synonym parser (p95 Z ms).
+> Built an opt-in LLM pantry parser that maps English and Hinglish text to a fixed ingredient vocabulary via schema-constrained structured output and Zod validation, reaching X% precision / Y% recall on a 80-case golden set, with caching, rate limiting, a circuit breaker and automatic fallback to a rule-based synonym parser (p95 Z ms).
 
-Skills line: LLM APIs (Anthropic / OpenAI), structured outputs and tool use, prompt versioning, LLM evals.
+Skills line: LLM APIs (Google Gemini), structured outputs, prompt versioning, LLM evals.
 
 Questions this prepares you for:
 
@@ -372,4 +372,6 @@ Once it's built, write it up as one blog post, for example "Adding an LLM to an 
 - **Phase 3 uses `ioredis`** as the Redis client BullMQ 6 needs. BullMQ 6 can also run on Postgres, but Redis was the chosen backend.
 - **Each model feature has its own daily limit:** 30 parses, 10 photos and 30 dish-sentence calls, counted per `LlmCall.feature`.
 - **The toggle wording now covers photos and dish sentences**, because those also send things out once it is on.
-- **Gemini is a second provider** (`src/llm/geminiClient.ts`), modelled on roadmap-city's `GeminiGenerationProvider`. It uses plain `fetch` with no SDK, a pinned `gemini-3.6-flash`, structured output through `responseSchema`, and thinking set to `low`. `LLM_PROVIDERS` picks the providers and their order. With two listed, a fallback chain tries the next one after a fast failure, within the same time budget. Unlike roadmap-city, a 429 is not waited out: a user is waiting, so it goes straight to the next provider or the synonym table. Rotating several accounts to get around quotas was ruled out, because it breaks Google's terms and the free tier's training terms contradict the privacy page.
+- **Gemini is the only provider; Claude was removed.** `src/llm/geminiClient.ts` is modelled on roadmap-city's `GeminiGenerationProvider`. It uses plain `fetch` with no SDK, a pinned `gemini-3.6-flash`, structured output through `responseSchema`, and thinking set to `low`. `@anthropic-ai/sdk`, the Anthropic client, `LLM_API_KEY` and the brief multi-provider fallback chain are gone; the chain is in commit `959398f` if a second provider is ever wanted. Unlike roadmap-city, a 429 is not waited out: a user is waiting, so it goes straight to the synonym table. Rotating several accounts to get around quotas was ruled out, because it breaks Google's terms and the free tier's training terms contradict the privacy page.
+- **The prompts no longer mention a tool call**, since Gemini answers through its response schema. V1 had never been evaluated or shipped, so it was edited in place rather than bumped to V2.
+- **Photos are JPEG, PNG or WebP.** GIF was dropped, because Gemini does not read it.

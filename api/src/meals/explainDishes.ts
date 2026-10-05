@@ -10,7 +10,7 @@ import {
   DISH_PROMPT_V1,
   DISH_PROMPT_VERSION,
   dishOutput,
-  dishToolSchema,
+  dishResponseSchema,
   dishUserMessage,
 } from "./dishPrompt.js";
 import { mayUseModel } from "./parsePantry.js";
@@ -165,7 +165,7 @@ export async function explainDishes(
       const attempt = await deps.llm.extract({
         system: DISH_PROMPT_V1,
         user: dishUserMessage(missing),
-        schema: dishToolSchema(keys),
+        schema: dishResponseSchema(keys),
         validate: (raw) => output.parse(raw),
         timeoutMs,
       });

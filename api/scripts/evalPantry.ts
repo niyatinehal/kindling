@@ -7,10 +7,10 @@
  * to beat. Prints micro precision and recall, p50 and p95 latency, and total
  * cost for each, and saves the run to eval/results/ named by prompt version.
  *
- *   npm run eval:pantry               # needs LLM_API_KEY; spends real money
+ *   npm run eval:pantry               # needs GEMINI_API_KEY; spends real money
  *   npm run eval:pantry -- --no-save  # print only
  *
- * Without LLM_API_KEY only the synonym table runs, which costs nothing.
+ * Without GEMINI_API_KEY only the synonym table runs, which costs nothing.
  *
  * The expected keys in eval/pantry-golden.json are written by hand, never by
  * the model: a golden set the model wrote measures agreement with itself.
@@ -21,7 +21,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 import { z } from "zod";
 
-import { createAnthropicLlmClient } from "../src/llm/anthropicClient.js";
+import { createGeminiLlmClient } from "../src/llm/geminiClient.js";
 import { costMicroUsd } from "../src/llm/pricing.js";
 import { askModel } from "../src/meals/parsePantry.js";
 import { PANTRY_PROMPT_VERSION, tidyPantryOutput } from "../src/meals/pantryPrompt.js";
@@ -122,11 +122,15 @@ async function main(): Promise<void> {
   });
   const paths: PathReport[] = [report(SYNONYM_PARSER, synonymCases, 0)];
 
-  const apiKey = process.env["LLM_API_KEY"];
+  const apiKey = process.env["GEMINI_API_KEY"];
+  const model = process.env["GEMINI_MODEL"];
   if (apiKey === undefined || apiKey === "") {
-    console.log("LLM_API_KEY is not set: running the synonym table only.\n");
+    console.log("GEMINI_API_KEY is not set: running the synonym table only.\n");
   } else {
-    const llm = createAnthropicLlmClient({ apiKey });
+    const llm = createGeminiLlmClient({
+      apiKey,
+      ...(model !== undefined && model !== "" && { model }),
+    });
     let totalCost = 0;
     const modelCases: CaseResult[] = [];
 
