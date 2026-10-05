@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { Router } from "express";
 import { z } from "zod";
 
@@ -5,8 +7,11 @@ import type { PrismaClient } from "../../generated/prisma/client.js";
 import { createAuthMiddleware } from "../auth/middleware.js";
 import type { VerifiedToken } from "../auth/verifyToken.js";
 import { sendError } from "../http/errors.js";
+import { createCircuitBreaker } from "../llm/breaker.js";
+import type { CircuitBreaker } from "../llm/breaker.js";
 import type { LlmClient } from "../llm/client.js";
 import { isGuardedAccount, parsePantry } from "../meals/parsePantry.js";
+import { createPrismaPantryStore } from "../meals/pantryStore.js";
 import { ALL_INGREDIENTS } from "../meals/recipeLibrary.js";
 import { suggestMeals } from "../meals/suggestMeals.js";
 import type { Ingredient } from "../meals/recipeLibrary.js";
@@ -39,9 +44,16 @@ export function createMealRouter(deps: {
   prisma: PrismaClient;
   verify: (token: string) => Promise<VerifiedToken>;
   llm: LlmClient;
+  /** One per process, shared by every request. Defaults to the standard thresholds. */
+  breaker?: CircuitBreaker;
 }): Router {
   const router = Router();
   const authenticate = createAuthMiddleware({ verify: deps.verify, prisma: deps.prisma });
+  const pantry = {
+    llm: deps.llm,
+    store: createPrismaPantryStore(deps.prisma),
+    breaker: deps.breaker ?? createCircuitBreaker(),
+  };
 
   /** The vocabulary the intake screen offers. Served so the client never hardcodes it. */
   router.get("/ingredients", authenticate, (_req, res) => {
@@ -131,12 +143,15 @@ export function createMealRouter(deps: {
         parsePantry(
           {
             text: parsed.data.text,
+            userId: user.id,
             consented: profile?.aiPantryConsent ?? false,
             role: user.role,
             birthYear: profile?.birthYear ?? null,
-            requestId: req.requestId,
+            // Always set by the requestId middleware; the fallback only keeps
+            // the daily count correct if this router is ever mounted without it.
+            requestId: req.requestId ?? randomUUID(),
           },
-          { llm: deps.llm },
+          pantry,
         ),
       )
       .then((result) => {

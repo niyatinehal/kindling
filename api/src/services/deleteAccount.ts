@@ -68,6 +68,12 @@ export async function deleteAccount(
 
     await tx.trackingLog.deleteMany({ where: { userId: input.userId } });
 
+    // Would cascade with the user anyway; deleted by name so this list stays
+    // the complete account of what an erasure removes. The shared pantry cache
+    // holds no user data and is keyed by nobody, so there is nothing of this
+    // person's in it to remove.
+    await tx.llmCall.deleteMany({ where: { userId: input.userId } });
+
     // Exercises before plans: plan_exercises is keyed to the plan, and another
     // member's log may still reference one, which its ON DELETE SET NULL
     // handles.

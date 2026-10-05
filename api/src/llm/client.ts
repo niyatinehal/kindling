@@ -43,6 +43,8 @@ export type ExtractArgs<T> = {
 export interface LlmClient {
   /** False for the kill-switched client, so callers and screens can skip the model entirely. */
   readonly enabled: boolean;
+  /** The model this client asks, recorded against every call — failures included. */
+  readonly model: string;
   extract<T>(args: ExtractArgs<T>): Promise<LlmResult<T>>;
 }
 
@@ -52,5 +54,6 @@ export interface LlmClient {
  */
 export const disabledLlmClient: LlmClient = {
   enabled: false,
+  model: "none",
   extract: () => Promise.resolve({ ok: false, reason: "disabled", retryable: false, latencyMs: 0 }),
 };

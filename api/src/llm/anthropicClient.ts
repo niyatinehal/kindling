@@ -41,6 +41,7 @@ export function createAnthropicLlmClient(deps: {
 
   return {
     enabled: true,
+    model,
 
     async extract<T>(args: ExtractArgs<T>): Promise<LlmResult<T>> {
       const started = Date.now();

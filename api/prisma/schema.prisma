@@ -65,6 +65,7 @@ model User {
   acceptedInvites FamilyInvite[]     @relation("InviteAcceptedBy")
   consents        ConsentRecord[]    @relation("UserConsents")
   grantedConsents ConsentRecord[]    @relation("ConsentGrantedBy")
+  llmCalls        LlmCall[]
 
   @@map("users")
 }
@@ -540,4 +541,60 @@ model ErrorEvent {
 
   @@index([occurredAt])
   @@map("error_events")
+}
+
+/// A shared cache of model answers to pantry text, so a pantry somebody has
+/// already typed costs nothing the second time.
+///
+/// Holds no user data and no raw text: the key is a SHA-256 of the normalised
+/// text plus the prompt version, and the value is only ingredient keys and the
+/// short phrases the model could not map. That is why it is shared across
+/// users rather than keyed to one, and why it has no user id to delete by.
+model PantryParseCache {
+  textHash      String   @id @map("text_hash")
+  promptVersion String   @map("prompt_version")
+  recognised    String[]
+  unrecognised  String[]
+  createdAt     DateTime @default(now()) @map("created_at")
+  expiresAt     DateTime @map("expires_at")
+
+  @@index([expiresAt])
+  @@map("pantry_parse_cache")
+}
+
+enum LlmCallOutcome {
+  ok
+  timeout
+  provider_error
+  invalid_output
+  cache_hit
+  breaker_open
+  rate_limited
+}
+
+/// One row per model attempt, and per parse that skipped the model on purpose
+/// (a cache hit, an open breaker, the daily limit). It is what the daily limit
+/// counts and what latency, cost and failure rates are reported from.
+///
+/// Numbers and outcomes only — never the text that was sent. Cascades with the
+/// user: these are operational records about a person's use, and an erased
+/// account takes them with it.
+model LlmCall {
+  id            String         @id @default(uuid(7)) @db.Uuid
+  userId        String         @map("user_id") @db.Uuid
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feature       String
+  model         String
+  promptVersion String         @map("prompt_version")
+  outcome       LlmCallOutcome
+  inputTokens   Int?           @map("input_tokens")
+  outputTokens  Int?           @map("output_tokens")
+  latencyMs     Int            @map("latency_ms")
+  /// Millionths of a US dollar, as an integer for the reason money is never a float.
+  costMicroUsd  Int?           @map("cost_micro_usd")
+  requestId     String         @map("request_id")
+  createdAt     DateTime       @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@map("llm_calls")
 }

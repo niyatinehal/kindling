@@ -104,6 +104,20 @@ async function someoneWithData(email: string) {
   await prisma.trackingLog.create({
     data: { userId: user.id, type: "water", status: "logged", loggedFor: new Date(), value: 250 },
   });
+  await prisma.llmCall.create({
+    data: {
+      userId: user.id,
+      feature: "pantry_parse",
+      model: "claude-haiku-4-5",
+      promptVersion: "llm-pantry@1",
+      outcome: "ok",
+      inputTokens: 800,
+      outputTokens: 30,
+      latencyMs: 640,
+      costMicroUsd: 950,
+      requestId: randomUUID(),
+    },
+  });
   return { user, token: await tokenFor(authUserId) };
 }
 
@@ -127,6 +141,7 @@ describe("DELETE /api/v1/auth/me", () => {
     expect(await prisma.trackingLog.count({ where: { userId: user.id } })).toBe(0);
     expect(await prisma.workoutPlan.count({ where: { userId: user.id } })).toBe(0);
     expect(await prisma.consentRecord.count({ where: { userId: user.id } })).toBe(0);
+    expect(await prisma.llmCall.count({ where: { userId: user.id } })).toBe(0);
   });
 
   it("leaves everybody else's data untouched", async () => {

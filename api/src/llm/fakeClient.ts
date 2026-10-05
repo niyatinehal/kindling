@@ -17,6 +17,7 @@ export type FakeStep =
  */
 export class FakeLlmClient implements LlmClient {
   readonly enabled = true;
+  readonly model = "fake";
   readonly calls: ExtractArgs<unknown>[] = [];
   private readonly steps: readonly FakeStep[];
 

@@ -53,6 +53,8 @@ beforeEach(async () => {
     verify,
   });
 
+  await prisma.pantryParseCache.deleteMany();
+  await prisma.llmCall.deleteMany();
   await prisma.trackingLog.deleteMany();
   await prisma.visibilitySetting.deleteMany();
   await prisma.familyInvite.deleteMany();
@@ -525,5 +527,181 @@ describe("/api/v1/meals/pantry-consent", () => {
     await expect(
       prisma.profile.update({ where: { userId: user.id }, data: { aiPantryConsent: true } }),
     ).rejects.toThrow();
+  });
+});
+
+describe("POST /api/v1/meals/parse-pantry — cache, limit and records", () => {
+  const MODEL_ANSWER = { recognised: ["paneer", "spinach"], unrecognised: [] };
+  const newestUser = () => prisma.user.findFirstOrThrow({ orderBy: { createdAt: "desc" } });
+
+  /** A registered adult with a profile who has turned AI reading on. */
+  const consentingAdult = async (server: ReturnType<typeof createApp>) => {
+    const token = await registered(["vegetarian"]);
+    await request(server)
+      .put("/api/v1/meals/pantry-consent")
+      .set(auth(token))
+      .send({ enabled: true });
+    return { token, user: await newestUser() };
+  };
+
+  const parseWith = (server: ReturnType<typeof createApp>, token: string, text: string) =>
+    request(server).post("/api/v1/meals/parse-pantry").set(auth(token)).send({ text });
+
+  /** Rows as though `count` parses had already reached the model today. */
+  const priorParses = (userId: string, count: number, createdAt = new Date()) =>
+    prisma.llmCall.createMany({
+      data: Array.from({ length: count }, () => ({
+        userId,
+        feature: "pantry_parse",
+        model: "fake",
+        promptVersion: "llm-pantry@1",
+        outcome: "ok" as const,
+        latencyMs: 300,
+        requestId: randomUUID(),
+        createdAt,
+      })),
+    });
+
+  it("writes an LlmCall row and a cache row, and no copy of the text", async () => {
+    const llm = new FakeLlmClient([{ output: MODEL_ANSWER }]);
+    const server = appWith(llm);
+    const { token, user } = await consentingAdult(server);
+
+    const response = await parseWith(server, token, "Palak aur paneer");
+
+    const calls = await prisma.llmCall.findMany({ where: { userId: user.id } });
+    const cache = await prisma.pantryParseCache.findMany();
+    expect(calls).toEqual([
+      expect.objectContaining({
+        feature: "pantry_parse",
+        outcome: "ok",
+        model: "fake",
+        promptVersion: "llm-pantry@1",
+        inputTokens: 100,
+        outputTokens: 20,
+        requestId: response.headers["x-request-id"],
+      }),
+    ]);
+    expect(cache).toEqual([
+      expect.objectContaining({
+        recognised: ["paneer", "spinach"],
+        unrecognised: [],
+        promptVersion: "llm-pantry@1",
+      }),
+    ]);
+    expect(cache[0]?.textHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(JSON.stringify({ calls, cache }).toLowerCase()).not.toContain("palak");
+  });
+
+  it("serves the second person to type the same pantry from the cache", async () => {
+    const llm = new FakeLlmClient([{ output: MODEL_ANSWER }]);
+    const server = appWith(llm);
+    const first = await consentingAdult(server);
+    const second = await consentingAdult(server);
+
+    await parseWith(server, first.token, "palak, paneer");
+    const response = await parseWith(server, second.token, "Paneer,  Palak");
+
+    expect(response.body).toMatchObject({ ...MODEL_ANSWER, source: "cache" });
+    expect(llm.calls).toHaveLength(1);
+  });
+
+  it("answers the 31st parse of the day from synonyms, without calling the model", async () => {
+    const llm = new FakeLlmClient([{ output: MODEL_ANSWER }]);
+    const server = appWith(llm);
+    const { token, user } = await consentingAdult(server);
+    await priorParses(user.id, 30);
+
+    const response = await parseWith(server, token, "palak aur paneer");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      recognised: ["spinach", "paneer"],
+      source: "synonyms",
+      degraded: true,
+    });
+    expect(llm.calls).toHaveLength(0);
+    expect(
+      await prisma.llmCall.count({ where: { userId: user.id, outcome: "rate_limited" } }),
+    ).toBe(1);
+  });
+
+  // A retry is two rows for one parse; the limit is on parses.
+  it("counts a retried parse once", async () => {
+    const llm = new FakeLlmClient([{ output: MODEL_ANSWER }]);
+    const server = appWith(llm);
+    const { token, user } = await consentingAdult(server);
+    await priorParses(user.id, 29);
+    const retried = randomUUID();
+    await prisma.llmCall.createMany({
+      data: (["provider_error", "ok"] as const).map((outcome) => ({
+        userId: user.id,
+        feature: "pantry_parse",
+        model: "fake",
+        promptVersion: "llm-pantry@1",
+        outcome,
+        latencyMs: 300,
+        requestId: retried,
+      })),
+    });
+
+    // 30 parses so far, in 31 rows: this one is over the limit, but only just
+    // — the failed first attempt of the retried parse is not counted.
+    const response = await parseWith(server, token, "palak aur paneer");
+
+    expect(response.body).toMatchObject({ source: "synonyms", degraded: true });
+  });
+
+  // The request id can come from the caller, so it must not be what the limit
+  // counts by — or sending the same one every time would mean unlimited calls.
+  it("cannot be walked around by reusing one request id", async () => {
+    const llm = new FakeLlmClient([{ output: MODEL_ANSWER }]);
+    const server = appWith(llm);
+    const { token, user } = await consentingAdult(server);
+    const reused = "same-id-every-time";
+    await prisma.llmCall.createMany({
+      data: Array.from({ length: 30 }, () => ({
+        userId: user.id,
+        feature: "pantry_parse",
+        model: "fake",
+        promptVersion: "llm-pantry@1",
+        outcome: "ok" as const,
+        latencyMs: 300,
+        requestId: reused,
+      })),
+    });
+
+    const response = await request(server)
+      .post("/api/v1/meals/parse-pantry")
+      .set(auth(token))
+      .set("x-request-id", reused)
+      .send({ text: "palak aur paneer" });
+
+    expect(response.body).toMatchObject({ source: "synonyms", degraded: true });
+    expect(llm.calls).toHaveLength(0);
+  });
+
+  it("does not count yesterday's parses against today", async () => {
+    const llm = new FakeLlmClient([{ output: MODEL_ANSWER }]);
+    const server = appWith(llm);
+    const { token, user } = await consentingAdult(server);
+    await priorParses(user.id, 30, new Date(Date.now() - 2 * 24 * 60 * 60 * 1000));
+
+    const response = await parseWith(server, token, "palak aur paneer");
+
+    expect(response.body).toMatchObject({ source: "llm" });
+  });
+
+  it("removes a person's LlmCall rows when their account is deleted", async () => {
+    const llm = new FakeLlmClient([{ output: MODEL_ANSWER }]);
+    const server = appWith(llm);
+    const { token, user } = await consentingAdult(server);
+    await parseWith(server, token, "palak aur paneer");
+    expect(await prisma.llmCall.count({ where: { userId: user.id } })).toBe(1);
+
+    const deleted = await request(server).delete("/api/v1/auth/me").set(auth(token));
+
+    expect(deleted.status).toBe(204);
+    expect(await prisma.llmCall.count({ where: { userId: user.id } })).toBe(0);
   });
 });
