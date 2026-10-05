@@ -76,10 +76,11 @@ Safari.
 - No analytics, no ads, no third-party tracking scripts.
 - The workout plan and meal suggestions are built by fixed rules in the app, not a machine-learning
   model. Nothing about your health, account or family is sent to an outside service.
-- One optional feature sends text out, and it is off unless you turn it on: with **smarter
-  reading** on the meals screen, what you type about your kitchen is sent to Anthropic's Claude to
-  be read into a list of ingredients. Only those words are sent, and child accounts and anyone who
-  may be under 18 can't turn it on.
+- One optional feature sends things out, and it is off unless you turn it on: with **smarter
+  reading** on the meals screen, what you type about your kitchen, or a photo of your fridge or a
+  receipt, is sent to Anthropic's Claude to be read into a list of ingredients, and it writes a
+  line about why each suggested dish fits. Nothing from your profile is sent, photos are never
+  stored, and child accounts and anyone who may be under 18 can't turn it on.
 - A family admin sees only the categories you chose to share.
 - You can delete your account from the home screen, and everything you logged goes with it,
   straight away.

@@ -28,7 +28,7 @@ Adding an LLM breaks a promise Kindling makes today, so the feature ships behind
 
 Design rules:
 
-- **Opt-in, off by default.** A new `aiPantryConsent` flag on the profile, set from a clear toggle: "Send what you type about your kitchen to an AI service to read it. Nothing about your health or family is sent." Without consent, `/meals/parse-pantry` uses only the synonym table.
+- **Opt-in, off by default.** A new `aiPantryConsent` flag on the profile, set from a clear toggle: "Send what you type or photograph in your kitchen to an AI service to read it, and let it say why each suggested dish fits. Nothing about your health or family is sent." Without consent, `/meals/parse-pantry` uses only the synonym table, and photos and dish sentences are not offered.
 - **Data minimisation.** The prompt contains the pantry text and the ingredient vocabulary. Nothing else: no user id, name, profile fields or family data.
 - **Guarded accounts.** Child accounts and minors never use the LLM path, whatever the toggle says, and cannot turn the toggle on. An account is guarded when either:
   - its family role is `child` (the role the auth middleware resolves from the database on every request), or
@@ -298,12 +298,38 @@ Build the fallback before the LLM, so every phase ends with something working an
    - Integration tests, and the account-deletion check
    - Golden set and eval script; record V1 numbers
    - Update the privacy page and README
-4. **Phase 3 (optional): improve and extend**
+4. **Phase 3 (optional): improve and extend** — photo input and dish sentences built; prompt iteration waits on the golden set
    - Iterate the prompt against the eval until precision and recall stop improving
    - Photo input: an image of the fridge or a shopping receipt, processed as a BullMQ job with the result polled by the client, image never stored
    - Short "why this dish" descriptions for the deterministic suggestions, where the model may only describe recipe keys it was given
 
 Commit in small, well-named steps like your existing history ("feat: fall back to synonyms when the model is slow"). Reviewers do read commit history on a project like this.
+
+## Phase 3 as built
+
+### Photo input
+
+`POST /meals/parse-photo` takes the photo as the raw request body (`image/jpeg`, `png`, `webp` or `gif`, up to 5 MB) and answers `202 { job_id }`. `GET /meals/parse-photo/:jobId` answers `queued`, `working`, `done` (with `recognised`, `unrecognised`, `parser: "llm-pantry-photo@1"`) or `failed` with a reason. Another person's job answers 404, the same as a missing one.
+
+- **Queue.** BullMQ on Redis (`REDIS_URL`, client `ioredis`), with the worker in the API process. One instance does not need a separate worker service. Without Redis, photo input is off and `pantry-consent` reports `photo: false`.
+- **The image is never stored by the app.** The worker removes the image from the job's stored data before it does anything else, so it exists in Redis only between upload and pickup. A job nobody picks up within five minutes is deleted unread, and results expire after ten minutes. The privacy page relies on Redis running without persistence, so a snapshot cannot write a waiting photo to disk.
+- **Checks.** Consent and the child or minor guard are checked at upload and again when the job runs, so a withdrawal in between stops the photo being sent. The file's first bytes must match its declared type. The phone shrinks the photo to about 1,568 px before upload, which also strips EXIF location data.
+- **Output** is the same enum-constrained list as typed text, from its own prompt `PHOTO_PROMPT_V1`, which treats any writing in the photo as data. The user confirms it as chips like any other parse.
+- **Limits.** 10 photos per user per day, a 20 s timeout per call inside a 40 s budget, and the same shared circuit breaker. Photos are never cached.
+
+### "Why this dish"
+
+`POST /meals/explain { recipe_keys, on_hand }` runs after `/meals/suggest` has answered, which stays unchanged. It returns up to one sentence per dish, generator `llm-dish@1`.
+
+- The model gets each dish's ingredient list and which of those are on hand. It never gets the profile, and it does not choose, rank or filter dishes.
+- `recipe_key` in the tool schema is an enum of exactly the dishes sent.
+- Every sentence is checked in code before it is shown. It must be 10 to 160 characters, contain no numbers, make no health, diet or nutrition claim, and name no ingredient outside that dish's own list (found with the synonym table). A failing sentence is dropped on its own; the rest are kept.
+- There is no fallback text. A dish without a sentence shows as it always has.
+- Sentences are cached for 30 days, keyed by prompt version, recipe and on-hand overlap, and shared across users. The feature has its own limit of 30 model calls per user per day.
+
+### Prompt iteration
+
+Not started. It needs the full hand-written golden set and a real API key. Once both exist, run `npm run eval:pantry`, record V1, then try V2 against it.
 
 ## Resume bullet and interview talking points
 
@@ -343,3 +369,6 @@ Once it's built, write it up as one blog post, for example "Adding an LLM to an 
 - **`LlmCall` cascades with the user and is also deleted explicitly in `deleteAccount`**, which lists everything an erasure removes.
 - **The golden set and results live in `api/eval/`**, next to the script that reads them. The three committed cases are different from the prompt's few-shot examples, so the eval does not grade the model on its own prompt.
 - **The privacy page moved to version 2026-10-05**, and new consent records point at it. People who registered earlier are not asked again, because smarter reading changes nothing for anyone who does not turn it on, and turning it on is itself the consent.
+- **Phase 3 uses `ioredis`** as the Redis client BullMQ 6 needs. BullMQ 6 can also run on Postgres, but Redis was the chosen backend.
+- **Each model feature has its own daily limit:** 30 parses, 10 photos and 30 dish-sentence calls, counted per `LlmCall.feature`.
+- **The toggle wording now covers photos and dish sentences**, because those also send things out once it is on.

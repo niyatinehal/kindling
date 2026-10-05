@@ -547,7 +547,13 @@ Even then every failure — a timeout, a provider error, output that fails valid
 breaker being open, or the 30-a-day limit — falls back to the synonym table with `degraded: true`.
 Nothing about a model ever turns a parse into an error response.
 
-On Render, set both variables in the dashboard; they are deliberately not in `render.yaml`, so a
+Photo reading also needs `REDIS_URL` (`redis://` or `rediss://`), for the BullMQ job queue the API
+runs in its own process. Without it, photo input is off and everything else works. The privacy page
+says a photo is held only until it is read, so point it at a Redis instance with persistence
+(RDB snapshots and AOF) turned off: a snapshot taken while a photo is waiting would put it on disk.
+Locally, `npm run test:db:up` starts one on port 63799 alongside the test database.
+
+On Render, set these variables in the dashboard; they are deliberately not in `render.yaml`, so a
 blueprint sync never asks for a key nobody meant to add. Use an API key from an Anthropic account
 whose terms you have checked for training and retention, because the privacy page makes claims about
 both. The design, and why it is built this way, is in [llm-pantry-plan.md](llm-pantry-plan.md).
