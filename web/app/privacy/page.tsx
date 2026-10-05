@@ -21,8 +21,8 @@ import { Screen } from "../../src/ui/Screen";
  * new one cannot be added to the messages file and silently never rendered.
  */
 const SECTIONS = [
-  { id: "collect", keys: ["account", "health", "activity", "family", "consent"] },
-  { id: "why", keys: ["body", "noProfiling"] },
+  { id: "collect", keys: ["account", "health", "activity", "family", "consent", "pantry"] },
+  { id: "why", keys: ["body", "noProfiling", "aiPantry"] },
   { id: "sharing", keys: ["body", "noSelling", "processors"] },
   { id: "where", keys: ["body"] },
   { id: "keep", keys: ["body"] },

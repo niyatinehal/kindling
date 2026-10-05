@@ -414,30 +414,31 @@ Run any of these from the repo root. Most are thin delegates that npm forwards i
 workspace (`npm run X` runs `npm run X -w api`); a few are shared infra that only makes sense once,
 at the root, because `web/` will need it too.
 
-| Script                     | Scope                 | What it does                                                                                                    |
-| -------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `npm run dev`              | root only             | `scripts/dev.sh` — the one-command dev script; brings up Supabase, the API and the web app together             |
-| `npm run dev:api`          | root → api (delegate) | Watch mode via `tsx`, loads `api/.env` with `--env-file` — what `npm run dev` used to mean                      |
-| `npm run stop`             | root only             | `supabase stop`                                                                                                 |
-| `npm run build`            | root → api (delegate) | Compiles `api/src/` to `api/dist/` (`tsconfig.build.json`)                                                      |
-| `npm start`                | root → api (delegate) | Runs `node dist/src/server.js` from `api/` — **no** `--env-file`; see note below                                |
-| `npm test`                 | root → api (delegate) | Jest unit project — 42 tests, no Docker required                                                                |
-| `npm run test:integration` | root → api (delegate) | Jest integration project — 24 tests, serialized via `--runInBand` (see jest.config.js), needs the test database |
-| `npm run test:all`         | root → api (delegate) | Both Jest projects in one run                                                                                   |
-| `npm run typecheck`        | root → api (delegate) | `prisma generate`, then `tsc --noEmit` over `api/src/`, `api/test/` and `api/prisma/`                           |
-| `npm run lint`             | root → api (delegate) | ESLint, type-aware; fails on warnings                                                                           |
-| `npm run lint:fix`         | root → api (delegate) | ESLint with `--fix`                                                                                             |
-| `npm run format`           | root only             | Prettier, writes changes, across both workspaces                                                                |
-| `npm run format:check`     | root only             | Prettier, check only — fails instead of rewriting                                                               |
-| `npm run db:start`         | root only             | `supabase start` — the local Postgres/Auth/Storage stack                                                        |
-| `npm run db:stop`          | root only             | `supabase stop`                                                                                                 |
-| `npm run db:status`        | root only             | `supabase status` — prints URLs and keys for the running stack                                                  |
-| `npm run test:db:up`       | root only             | Starts the disposable test Postgres (`docker-compose.test.yml`), waits for health                               |
-| `npm run test:db:down`     | root only             | Stops and removes the test Postgres                                                                             |
-| `npm run prisma:generate`  | root → api (delegate) | `prisma generate` — regenerates the client into `api/generated/prisma`                                          |
-| `npm run prisma:migrate`   | root → api (delegate) | `prisma migrate dev` — see the migration note below before using this                                           |
-| `npm run prisma:studio`    | root → api (delegate) | `prisma studio` — browse the database at `DIRECT_URL`                                                           |
-| `npm run db:seed`          | root → api (delegate) | `prisma db seed` — runs `prisma/seed.ts` against `DIRECT_URL`; requires `SUPABASE_SERVICE_ROLE_KEY`             |
+| Script                     | Scope                 | What it does                                                                                                                                                                                                          |
+| -------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`              | root only             | `scripts/dev.sh` — the one-command dev script; brings up Supabase, the API and the web app together                                                                                                                   |
+| `npm run dev:api`          | root → api (delegate) | Watch mode via `tsx`, loads `api/.env` with `--env-file` — what `npm run dev` used to mean                                                                                                                            |
+| `npm run stop`             | root only             | `supabase stop`                                                                                                                                                                                                       |
+| `npm run build`            | root → api (delegate) | Compiles `api/src/` to `api/dist/` (`tsconfig.build.json`)                                                                                                                                                            |
+| `npm start`                | root → api (delegate) | Runs `node dist/src/server.js` from `api/` — **no** `--env-file`; see note below                                                                                                                                      |
+| `npm test`                 | root → api (delegate) | Jest unit project — 42 tests, no Docker required                                                                                                                                                                      |
+| `npm run test:integration` | root → api (delegate) | Jest integration project — 24 tests, serialized via `--runInBand` (see jest.config.js), needs the test database                                                                                                       |
+| `npm run test:all`         | root → api (delegate) | Both Jest projects in one run                                                                                                                                                                                         |
+| `npm run typecheck`        | root → api (delegate) | `prisma generate`, then `tsc --noEmit` over `api/src/`, `api/test/` and `api/prisma/`                                                                                                                                 |
+| `npm run lint`             | root → api (delegate) | ESLint, type-aware; fails on warnings                                                                                                                                                                                 |
+| `npm run lint:fix`         | root → api (delegate) | ESLint with `--fix`                                                                                                                                                                                                   |
+| `npm run format`           | root only             | Prettier, writes changes, across both workspaces                                                                                                                                                                      |
+| `npm run format:check`     | root only             | Prettier, check only — fails instead of rewriting                                                                                                                                                                     |
+| `npm run db:start`         | root only             | `supabase start` — the local Postgres/Auth/Storage stack                                                                                                                                                              |
+| `npm run db:stop`          | root only             | `supabase stop`                                                                                                                                                                                                       |
+| `npm run db:status`        | root only             | `supabase status` — prints URLs and keys for the running stack                                                                                                                                                        |
+| `npm run test:db:up`       | root only             | Starts the disposable test Postgres (`docker-compose.test.yml`), waits for health                                                                                                                                     |
+| `npm run test:db:down`     | root only             | Stops and removes the test Postgres                                                                                                                                                                                   |
+| `npm run prisma:generate`  | root → api (delegate) | `prisma generate` — regenerates the client into `api/generated/prisma`                                                                                                                                                |
+| `npm run prisma:migrate`   | root → api (delegate) | `prisma migrate dev` — see the migration note below before using this                                                                                                                                                 |
+| `npm run prisma:studio`    | root → api (delegate) | `prisma studio` — browse the database at `DIRECT_URL`                                                                                                                                                                 |
+| `npm run db:seed`          | root → api (delegate) | `prisma db seed` — runs `prisma/seed.ts` against `DIRECT_URL`; requires `SUPABASE_SERVICE_ROLE_KEY`                                                                                                                   |
+| `npm run eval:pantry`      | root → api (delegate) | Scores the pantry parser against `api/eval/pantry-golden.json` — the model path (needs `LLM_API_KEY`, spends real money) and the synonym table — and saves the run to `api/eval/results/`. `-- --no-save` prints only |
 
 Raw Prisma CLI invocations that aren't wrapped in any script above — `prisma migrate deploy`,
 `prisma migrate diff`, `prisma validate` — have no root delegate. Run them with `cd api` first (or
@@ -531,6 +532,25 @@ Locally the Supabase CLI has no pooler, so both point at port 54322. In producti
 `SHADOW_DATABASE_URL` is optional and only needed to run the migration drift check
 (`prisma migrate diff`) locally — see `.env.example` for how it's used and why it must point at an
 always-empty database.
+
+### AI pantry parsing
+
+Off by default. Typed pantry text is read by the built-in synonym table, and nothing leaves the
+server. The model path (Claude Haiku, through the Anthropic API) is used only when all of these hold:
+
+- `LLM_ENABLED=true` **and** `LLM_API_KEY` is set. Either one missing means off, not a boot
+  failure; the service logs a warning at boot if the switch is on without a key.
+- The person has turned on smarter reading on the meals screen.
+- They are not a child member of a family, and their birth year does not say they may be under 18.
+
+Even then every failure — a timeout, a provider error, output that fails validation, the circuit
+breaker being open, or the 30-a-day limit — falls back to the synonym table with `degraded: true`.
+Nothing about a model ever turns a parse into an error response.
+
+On Render, set both variables in the dashboard; they are deliberately not in `render.yaml`, so a
+blueprint sync never asks for a key nobody meant to add. Use an API key from an Anthropic account
+whose terms you have checked for training and retention, because the privacy page makes claims about
+both. The design, and why it is built this way, is in [llm-pantry-plan.md](llm-pantry-plan.md).
 
 ## CI
 

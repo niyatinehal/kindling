@@ -55,6 +55,24 @@ describe("the privacy policy", () => {
     expect(screen.getByText(messages.privacy.sharing.noSelling)).toBeInTheDocument();
   });
 
+  // The one place anything typed leaves this app. The page has to name who
+  // receives it, say what is and is not sent, and say who cannot turn it on.
+  it("names the AI provider and what smarter reading sends", () => {
+    renderPolicy();
+
+    expect(screen.getByText(messages.privacy.why.aiPantry)).toBeInTheDocument();
+    expect(messages.privacy.why.aiPantry).toMatch(/Anthropic/);
+    expect(messages.privacy.why.aiPantry).toMatch(/off unless you turn it on/);
+    expect(messages.privacy.why.aiPantry).toMatch(/under 18/);
+    expect(messages.privacy.sharing.processors).toMatch(/Anthropic/);
+  });
+
+  it("does not claim any more that nothing entered is sent anywhere", () => {
+    renderPolicy();
+
+    expect(messages.privacy.why.noProfiling).not.toMatch(/nothing you enter is sent/i);
+  });
+
   /*
     This page went live with "REPLACE-ME@example.com" in it. A placeholder in a
     privacy notice is not a cosmetic problem — it is a published document about

@@ -72,7 +72,7 @@ describe("consent page", () => {
     expect(JSON.parse(String(init.body))).toEqual({
       display_name: "Meera",
       locale: "en",
-      consents: [{ consent_type: "health_data", policy_version: "2026-08-15" }],
+      consents: [{ consent_type: "health_data", policy_version: "2026-10-05" }],
     });
   });
 

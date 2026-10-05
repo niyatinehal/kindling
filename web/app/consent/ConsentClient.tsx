@@ -12,7 +12,7 @@ import { ConsentForm, type ConsentSubmission } from "./ConsentForm";
  * with the consent record so an audit can reproduce exactly what was agreed to,
  * which is why the version submitted must be the one whose copy is rendered.
  */
-const POLICY_VERSION = "2026-08-15";
+const POLICY_VERSION = "2026-10-05";
 
 export function ConsentClient({ isGuest = false }: { isGuest?: boolean }) {
   const router = useRouter();
