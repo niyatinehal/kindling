@@ -33,7 +33,21 @@ export type PantryParse = {
  * all: the feature is switched off, there is no profile yet, or it is a child
  * account.
  */
-export type PantryConsent = { enabled: boolean; available: boolean };
+export type PantryConsent = {
+  enabled: boolean;
+  available: boolean;
+  /** Whether reading a photo is offered too; it needs a job queue as well as the model. */
+  photo: boolean;
+};
+
+/** A "why this dish" sentence, written by the model and checked by the API. */
+export type DishExplanation = { recipe_key: string; text: string };
+
+/** Where a photo job has got to, as `/api/meals/photo/[jobId]` answers it. */
+export type PhotoStatus =
+  | { status: "queued" | "working" }
+  | { status: "done"; recognised: string[]; unrecognised: string[]; parser: string }
+  | { status: "failed"; reason: string };
 
 /**
  * The pantry the intake screen offers, grouped so a list of 38 keys reads as a

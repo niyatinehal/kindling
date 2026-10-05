@@ -7,7 +7,14 @@ import { readJsonBody } from "../../src/api/readJsonBody";
 import { DishArt } from "../../src/art/DishArt";
 import { HeroArt } from "../../src/art/HeroArt";
 import { PANTRY_GROUPS } from "../../src/meals/mealTypes";
-import type { MealSuggestion, PantryConsent, PantryParse } from "../../src/meals/mealTypes";
+import type {
+  DishExplanation,
+  MealSuggestion,
+  PantryConsent,
+  PantryParse,
+  PhotoStatus,
+} from "../../src/meals/mealTypes";
+import { shrinkImage } from "../../src/meals/shrinkImage";
 import { Alert } from "../../src/ui/Alert";
 import { BackLink } from "../../src/ui/BackLink";
 import { Button } from "../../src/ui/Button";
@@ -18,6 +25,15 @@ import { Icon } from "../../src/ui/Icon";
 import { Screen } from "../../src/ui/Screen";
 
 const SLOTS = ["breakfast", "lunch", "dinner", "snack"] as const;
+
+/** How often, and for how long, a photo job is polled before the screen gives up on it. */
+const PHOTO_POLL_MS = 1_500;
+const PHOTO_POLLS = 40;
+
+const pause = (ms: number) =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
 
 /** Today as a UTC calendar day, matching what the tracking API stores. */
 const today = (): string => new Date().toISOString().slice(0, 10);
@@ -55,6 +71,8 @@ export function MealsClient({
   const [parsing, setParsing] = useState(false);
   const [parsed, setParsed] = useState<PantryParse | null>(null);
   const [aiConsent, setAiConsent] = useState(pantryConsent.enabled);
+  const [readingPhoto, setReadingPhoto] = useState(false);
+  const [explanations, setExplanations] = useState<Record<string, string>>({});
   const [slot, setSlot] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<MealSuggestion[] | null>(null);
   const [busy, setBusy] = useState(false);
@@ -85,9 +103,93 @@ export function MealsClient({
       return;
     }
 
-    const result = body as PantryParse;
+    applyParse(body as PantryParse);
+  }
+
+  /** Shows a parse as chips and ticks what it found, whichever way it arrived. */
+  function applyParse(result: PantryParse): void {
     setParsed(result);
     setSelected((current) => [...new Set([...current, ...result.recognised])]);
+  }
+
+  /**
+   * Reads a photo of the fridge, groceries or a receipt. The photo is shrunk
+   * on the phone first, sent once, and read as a background job this polls;
+   * what comes back is the same chips a typed pantry gives, to check before
+   * anything is suggested.
+   */
+  async function readPhoto(file: File): Promise<void> {
+    setReadingPhoto(true);
+    setError(undefined);
+
+    const fail = (code: string) => {
+      setReadingPhoto(false);
+      setError(code);
+    };
+
+    const image = await shrinkImage(file);
+    const queued = await fetch("/api/meals/photo", {
+      method: "POST",
+      headers: { "content-type": image.type || file.type },
+      body: image,
+    });
+    const job = await readJsonBody(queued);
+    const jobId =
+      queued.ok && typeof job === "object" && job !== null && "job_id" in job
+        ? String((job as { job_id: unknown }).job_id)
+        : null;
+    if (jobId === null) {
+      fail("PHOTO_FAILED");
+      return;
+    }
+
+    for (let poll = 0; poll < PHOTO_POLLS; poll++) {
+      const response = await fetch(`/api/meals/photo/${encodeURIComponent(jobId)}`);
+      const status = (await readJsonBody(response)) as PhotoStatus | null;
+      if (!response.ok || status === null) {
+        fail("PHOTO_FAILED");
+        return;
+      }
+      if (status.status === "done") {
+        setReadingPhoto(false);
+        applyParse({
+          recognised: status.recognised,
+          unrecognised: status.unrecognised,
+          source: "llm",
+          degraded: false,
+          parser: status.parser,
+        });
+        return;
+      }
+      if (status.status === "failed") {
+        fail(status.reason === "rate_limited" ? "PHOTO_LIMIT" : "PHOTO_FAILED");
+        return;
+      }
+      await pause(PHOTO_POLL_MS);
+    }
+    fail("PHOTO_FAILED");
+  }
+
+  /**
+   * Asks for a "why this dish" sentence per suggestion, after the dishes are
+   * already showing. Optional all the way down: no consent, a failure or a
+   * sentence the API refused all just mean a card without one.
+   */
+  async function explain(dishes: readonly MealSuggestion[]): Promise<void> {
+    const response = await fetch("/api/meals/explain", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        recipe_keys: dishes.map((dish) => dish.recipe_key),
+        on_hand: selected,
+      }),
+    });
+    const body = await readJsonBody(response);
+    if (!response.ok || typeof body !== "object" || body === null || !("explanations" in body)) {
+      return;
+    }
+    const written = (body as { explanations: DishExplanation[] }).explanations;
+    setExplanations(Object.fromEntries(written.map((entry) => [entry.recipe_key, entry.text])));
   }
 
   /**
@@ -133,6 +235,10 @@ export function MealsClient({
         ? (body as { suggestions: MealSuggestion[] }).suggestions
         : [];
     setSuggestions(parsed);
+    setExplanations({});
+    if (aiConsent && parsed.length > 0) {
+      void explain(parsed);
+    }
   }
 
   /**
@@ -232,6 +338,36 @@ export function MealsClient({
             {parsing ? t("typeReading") : t("typeRead")}
           </Button>
 
+          {/*
+            Photo reading rides on the same consent as typing, so it appears
+            only once smarter reading is on — and only where the deployment
+            has the job queue it needs. The input is a real file input inside
+            its label, so it is keyboard- and screen-reader-reachable.
+          */}
+          {pantryConsent.photo && aiConsent && (
+            <label
+              className={`inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-control border border-line bg-surface px-4 font-medium text-ink transition hover:bg-raised has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
+                readingPhoto ? "pointer-events-none opacity-60" : ""
+              }`}
+            >
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                capture="environment"
+                className="sr-only"
+                disabled={readingPhoto}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (file !== undefined) {
+                    void readPhoto(file);
+                  }
+                }}
+              />
+              {readingPhoto ? t("photoReading") : t("photoTake")}
+            </label>
+          )}
+
           {parsed !== null && parsed.recognised.length > 0 && (
             <ChoiceGroup
               legend={t("typeFound")}
@@ -320,6 +456,19 @@ export function MealsClient({
                 ? tRecipe(suggestion.recipe_key)
                 : suggestion.recipe_key}
             </h3>
+
+            {/*
+              Written by the model about a dish the rules chose, and checked
+              by the API: it names only this dish's ingredients and carries no
+              numbers or health claims. Labelled, because it is the one line
+              on the card the app did not compute itself.
+            */}
+            {explanations[suggestion.recipe_key] !== undefined && (
+              <p className="leading-relaxed text-ink">
+                {explanations[suggestion.recipe_key]}{" "}
+                <span className="text-xs text-muted">{t("aiWritten")}</span>
+              </p>
+            )}
 
             {/* §16.2: nutrition is always labelled an estimate, never a fact. */}
             <p className="text-sm text-muted">

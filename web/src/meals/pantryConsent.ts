@@ -4,7 +4,7 @@ import { callApi } from "../api/upstream";
 import { createSupabaseServerClient } from "../supabase/server";
 import type { PantryConsent } from "./mealTypes";
 
-const OFF: PantryConsent = { enabled: false, available: false };
+const OFF: PantryConsent = { enabled: false, available: false, photo: false };
 
 /**
  * Whether the AI pantry toggle should be shown, and where it stands.
@@ -39,7 +39,8 @@ export async function currentPantryConsent(): Promise<PantryConsent> {
     ) {
       return OFF;
     }
-    return body as PantryConsent;
+    const photo = (body as { photo?: unknown }).photo;
+    return { ...(body as PantryConsent), photo: photo === true };
   } catch (reason) {
     console.error("pantry consent could not be resolved", {
       reason: reason instanceof Error ? reason.message : String(reason),

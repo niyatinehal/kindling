@@ -72,7 +72,7 @@ const flagged: MealSuggestion = {
   protein_target_g: 12,
 };
 
-const NOT_OFFERED: PantryConsent = { enabled: false, available: false };
+const NOT_OFFERED: PantryConsent = { enabled: false, available: false, photo: false };
 
 function renderMeals(hasProfile = true, pantryConsent: PantryConsent = NOT_OFFERED) {
   render(
@@ -470,7 +470,7 @@ describe("meals screen — AI reading consent", () => {
   });
 
   it("is offered off by default, saying what is and is not sent", () => {
-    renderMeals(true, { enabled: false, available: true });
+    renderMeals(true, { enabled: false, available: true, photo: false });
 
     expect(consentToggle()).not.toBeChecked();
     expect(messages.meals.aiConsent).toMatch(/Nothing about your health or family is sent/);
@@ -480,7 +480,7 @@ describe("meals screen — AI reading consent", () => {
     global.fetch = jest.fn(() =>
       Promise.resolve(response(200, { enabled: true, available: true })),
     ) as unknown as typeof fetch;
-    renderMeals(true, { enabled: false, available: true });
+    renderMeals(true, { enabled: false, available: true, photo: false });
 
     fireEvent.click(consentToggle() as HTMLElement);
 
@@ -499,7 +499,7 @@ describe("meals screen — AI reading consent", () => {
     global.fetch = jest.fn(() =>
       Promise.resolve(response(403, { error: { code: "FORBIDDEN_ROLE" } })),
     ) as unknown as typeof fetch;
-    renderMeals(true, { enabled: false, available: true });
+    renderMeals(true, { enabled: false, available: true, photo: false });
 
     fireEvent.click(consentToggle() as HTMLElement);
 
@@ -507,5 +507,126 @@ describe("meals screen — AI reading consent", () => {
       expect(screen.getByText(messages.errors.PANTRY_CONSENT_FAILED)).toBeInTheDocument();
     });
     expect(consentToggle()).not.toBeChecked();
+  });
+});
+
+describe("meals screen — why this dish", () => {
+  /** Suggestions for /api/meals, sentences for /api/meals/explain. */
+  function routeFetch(explanations: unknown) {
+    global.fetch = jest.fn((url: string) =>
+      Promise.resolve(
+        url === "/api/meals/explain"
+          ? response(200, {
+              explanations,
+              source: "llm",
+              degraded: false,
+              generator: "llm-dish@1",
+            })
+          : response(200, { suggestions: [cookable, needsShopping] }),
+      ),
+    ) as unknown as typeof fetch;
+  }
+
+  it("shows a labelled sentence under a dish when smarter reading is on", async () => {
+    routeFetch([{ recipe_key: "dal_chawal", text: "Your dal and rice are all this needs." }]);
+    renderMeals(true, { enabled: true, available: true, photo: false });
+
+    fireEvent.click(screen.getByLabelText(messages.meals.ingredients.rice));
+    fireEvent.click(suggestButton());
+
+    await waitFor(() => {
+      expect(screen.getByText(/Your dal and rice are all this needs\./)).toBeInTheDocument();
+    });
+    expect(screen.getByText(messages.meals.aiWritten)).toBeInTheDocument();
+    const calls = (global.fetch as jest.Mock).mock.calls as [string, { body: string }][];
+    const asked = calls.find(([url]) => url === "/api/meals/explain");
+    expect(JSON.parse(asked?.[1].body ?? "{}")).toEqual({
+      recipe_keys: ["dal_chawal", "palak_paneer"],
+      on_hand: ["rice"],
+    });
+  });
+
+  it("never asks for sentences without consent", async () => {
+    routeFetch([]);
+    renderMeals(true, { enabled: false, available: true, photo: false });
+
+    fireEvent.click(suggestButton());
+
+    await waitFor(() => {
+      expect(screen.getByText(messages.meals.recipes.dal_chawal)).toBeInTheDocument();
+    });
+    const urls = ((global.fetch as jest.Mock).mock.calls as [string][]).map(([url]) => url);
+    expect(urls).not.toContain("/api/meals/explain");
+  });
+});
+
+describe("meals screen — reading a photo", () => {
+  const photoButton = () => screen.queryByLabelText(messages.meals.photoTake);
+  const JOB = "11111111-2222-3333-4444-555555555555";
+
+  function routeFetch(status: unknown) {
+    global.fetch = jest.fn((url: string) =>
+      Promise.resolve(
+        url === "/api/meals/photo"
+          ? response(202, { job_id: JOB, status: "queued" })
+          : url === `/api/meals/photo/${JOB}`
+            ? response(200, status)
+            : response(200, { suggestions: [] }),
+      ),
+    ) as unknown as typeof fetch;
+  }
+
+  const choosePhoto = () => {
+    const file = new File([new Uint8Array([0xff, 0xd8, 0xff])], "fridge.jpg", {
+      type: "image/jpeg",
+    });
+    fireEvent.change(photoButton() as HTMLElement, { target: { files: [file] } });
+  };
+
+  it("is offered only when photos are available and smarter reading is on", () => {
+    renderMeals(true, { enabled: false, available: true, photo: true });
+    expect(photoButton()).not.toBeInTheDocument();
+  });
+
+  it("uploads the photo, then ticks what was read from it for checking", async () => {
+    routeFetch({
+      status: "done",
+      recognised: ["egg", "tomato"],
+      unrecognised: ["bread"],
+      parser: "llm-pantry-photo@1",
+    });
+    renderMeals(true, { enabled: true, available: true, photo: true });
+
+    choosePhoto();
+
+    await waitFor(() => {
+      expect(screen.getByText(messages.meals.typeFound)).toBeInTheDocument();
+    });
+    expect(screen.getByText("Not in our list yet: bread")).toBeInTheDocument();
+    const [url, init] = (global.fetch as jest.Mock).mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/meals/photo");
+    expect(new Headers(init.headers).get("content-type")).toBe("image/jpeg");
+  });
+
+  it("says plainly when today's photo reads are used up", async () => {
+    routeFetch({ status: "failed", reason: "rate_limited" });
+    renderMeals(true, { enabled: true, available: true, photo: true });
+
+    choosePhoto();
+
+    await waitFor(() => {
+      expect(screen.getByText(messages.errors.PHOTO_LIMIT)).toBeInTheDocument();
+    });
+  });
+
+  it("points back to typing when a photo cannot be read", async () => {
+    routeFetch({ status: "failed", reason: "invalid_output" });
+    renderMeals(true, { enabled: true, available: true, photo: true });
+
+    choosePhoto();
+
+    await waitFor(() => {
+      expect(screen.getByText(messages.errors.PHOTO_FAILED)).toBeInTheDocument();
+    });
   });
 });

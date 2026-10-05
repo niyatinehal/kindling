@@ -285,6 +285,8 @@
     "FAMILY_ACTION_FAILED": "That didn't work. Please try again in a moment.",
     "TRACKING_FAILED": "We couldn't save that. Please try again in a moment.",
     "MEAL_SUGGEST_FAILED": "We couldn't put suggestions together. Please try again in a moment.",
+    "PHOTO_FAILED": "We couldn't read that photo. Try another, or type what you have instead.",
+    "PHOTO_LIMIT": "That's all the photos we can read for you today. Type what you have instead.",
     "PANTRY_CONSENT_FAILED": "We couldn't save that setting. Please try again in a moment.",
     "PANTRY_PARSE_FAILED": "We couldn't read that. Tick what you have below, or try again in a moment.",
     "SIGN_OUT_FAILED": "We couldn't sign you out. Please try again in a moment.",
@@ -349,7 +351,10 @@
     "typeNoneFound": "We couldn't match any of that to our list. Tick what you have below instead.",
     "typeUnrecognised": "Not in our list yet: {items}",
     "aiLegend": "Smarter reading (optional)",
-    "aiConsent": "Send what you type about your kitchen to an AI service to read it. Nothing about your health or family is sent.",
+    "aiConsent": "Send what you type or photograph in your kitchen to an AI service to read it, and let it say why each suggested dish fits. Nothing about your health or family is sent.",
+    "photoTake": "Or take a photo of your fridge or a receipt",
+    "photoReading": "Reading your photo…",
+    "aiWritten": "· written by AI",
     "slotLabel": "Which meal? (optional)",
     "suggest": "Show me dishes",
     "suggesting": "Looking…",
@@ -513,19 +518,19 @@
       "activity": "What you log day to day: water, sleep, workouts you complete or skip, and meals — each with the date it was logged for.",
       "family": "If you join a family: which household you belong to, your role in it, and which categories of your data you have chosen to share with the family admin.",
       "consent": "A record of the consent you gave — what you agreed to, when, and which version of this page was in force at the time.",
-      "pantry": "If you turn on smarter reading on the meals screen: whether you turned it on, and when. The words you type are not kept. What is kept is a fingerprint of them (a one-way hash, which cannot be turned back into the words) next to the list of ingredients read from them, shared by everyone who types the same list and not linked to you; and a record of each request — when it happened, how long it took, what it cost and whether it worked — with no copy of the text."
+      "pantry": "If you turn on smarter reading on the meals screen: whether you turned it on, and when. The words you type are not kept. What is kept is a fingerprint of them (a one-way hash, which cannot be turned back into the words) next to the list of ingredients read from them, and the lines written about suggested dishes; both are shared by everyone who asks the same thing and are not linked to you. A photo you send is never written to our database: it waits in our job queue only until it is picked up to be read — normally within seconds — and is removed from the queue at that moment, and one that is not picked up within five minutes is deleted unread. We also keep a record of each request — what kind it was, when it happened, how long it took, what it cost and whether it worked — with no copy of the text or the photo."
     },
     "why": {
       "heading": "Why it is stored",
       "body": "Your health details are used to build a workout plan that leaves out what is not right for you, and to suggest meals that fit what you eat. What you log is used to show you your own progress, and to show a family admin the categories you chose to share. That is the whole list.",
       "noProfiling": "Your workout plan and your meal suggestions are made by fixed rules written into this app, not by a machine-learning model, and nothing about your health, your account or your family is sent to an outside service to be analysed.",
-      "aiPantry": "There is one optional exception, and it is off unless you turn it on. On the meals screen you can choose smarter reading: what you type into the kitchen box — \"thoda atta, 2 aloo\" — is then sent to Anthropic, the company behind the Claude AI model, which turns it into a list of ingredients for you to check. Only those words are sent: not your name, your account, your profile or anything about your family. Child accounts, and anyone whose birth year means they may be under 18, cannot turn it on. You can turn it off at any time, and nothing you type is sent after that."
+      "aiPantry": "There is one optional exception, and it is off unless you turn it on. On the meals screen you can choose smarter reading. Then what you type into the kitchen box — \"thoda atta, 2 aloo\" — or a photo you take of your fridge, your shelves or a shopping receipt, is sent to Anthropic, the company behind the Claude AI model, which turns it into a list of ingredients for you to check. When it is on, the dishes we suggest are also sent, with which of their ingredients you have, so it can write one line about why each one fits; it is never told your diet, your health or anything else from your profile, and it does not choose the dishes. Only those words and that photo are sent: not your name, your account, your profile or anything about your family. Child accounts, and anyone whose birth year means they may be under 18, cannot turn it on. You can turn it off at any time, and nothing is sent after that."
     },
     "sharing": {
       "heading": "Who can see it",
       "body": "You can see everything about yourself. A family admin can see only the categories you have chosen to share, and turning a category off hides it from them — being an admin does not override your choice. Nobody else has access.",
       "noSelling": "Nothing here is sold, rented or shared for advertising, and this app runs no analytics, no advertising tags and no third-party tracking scripts of any kind.",
-      "processors": "Three companies run the infrastructure and therefore store this data on our behalf: Supabase (database and sign-in), Render (the application server) and Vercel (the website). Sign-in emails are delivered by Brevo. If you turn on smarter reading, Anthropic also receives what you type into the kitchen box, through its paid API, whose terms do not allow it to train its models on that text. None of them may use the data for their own purposes."
+      "processors": "Three companies run the infrastructure and therefore store this data on our behalf: Supabase (database and sign-in), Render (the application server) and Vercel (the website). Sign-in emails are delivered by Brevo. If you turn on smarter reading, Anthropic also receives what you type into the kitchen box or photograph, and the dishes it is asked to describe, through its paid API, whose terms do not allow it to train its models on that text. None of them may use the data for their own purposes."
     },
     "where": {
       "heading": "Where it is kept",
@@ -533,7 +538,7 @@
     },
     "keep": {
       "heading": "How long it is kept",
-      "body": "Until you delete it. There is no automatic expiry: what you logged two years ago is still there unless you remove your account. The one exception is the ingredient lists read by smarter reading, which are not linked to anyone and are deleted after 30 days."
+      "body": "Until you delete it. There is no automatic expiry: what you logged two years ago is still there unless you remove your account. The one exception is what smarter reading keeps — the ingredient lists read from typed text and the lines written about dishes — which is not linked to anyone and is deleted after 30 days. Photos are not kept at all."
     },
     "rights": {
       "heading": "What you can do about it",
@@ -544,7 +549,7 @@
     },
     "children": {
       "heading": "Children and teenagers",
-      "body": "A family can include child accounts, and a family admin can see the categories that child has shared. If you are setting up an account for someone under 18, you are responsible for their consent as their parent or guardian. Nothing about a child is used for advertising or behavioural profiling, because nothing about anyone is. Child accounts, and anyone whose birth year means they may be under 18, cannot turn on smarter reading, so nothing they type is ever sent to Anthropic."
+      "body": "A family can include child accounts, and a family admin can see the categories that child has shared. If you are setting up an account for someone under 18, you are responsible for their consent as their parent or guardian. Nothing about a child is used for advertising or behavioural profiling, because nothing about anyone is. Child accounts, and anyone whose birth year means they may be under 18, cannot turn on smarter reading, so nothing they type or photograph is ever sent to Anthropic."
     },
     "guests": {
       "heading": "Guest accounts",

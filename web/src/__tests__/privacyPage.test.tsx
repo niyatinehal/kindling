@@ -67,6 +67,19 @@ describe("the privacy policy", () => {
     expect(messages.privacy.sharing.processors).toMatch(/Anthropic/);
   });
 
+  // Photos are the most personal thing this feature handles: a fridge photo can
+  // show a kitchen, a receipt a name. The page has to say they are not kept.
+  it("says photos are sent only with smarter reading on, and are not kept", () => {
+    renderPolicy();
+
+    expect(messages.privacy.why.aiPantry).toMatch(/photo/);
+    expect(messages.privacy.collect.pantry).toMatch(
+      /photo you send is never written to our database/,
+    );
+    expect(messages.privacy.keep.body).toMatch(/Photos are not kept at all/);
+    expect(screen.getByText(messages.privacy.collect.pantry)).toBeInTheDocument();
+  });
+
   it("does not claim any more that nothing entered is sent anywhere", () => {
     renderPolicy();
 

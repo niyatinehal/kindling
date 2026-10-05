@@ -29,6 +29,20 @@ describe("callApi", () => {
     expect(headers.get("authorization")).toBe("Bearer the-access-token");
   });
 
+  it("sends raw bytes with their own content type, still with the Bearer header", async () => {
+    const bytes = new Uint8Array([0xff, 0xd8, 0xff]).buffer;
+
+    await callApi("/api/v1/meals/parse-photo", "the-access-token", {
+      method: "POST",
+      raw: { bytes, contentType: "image/jpeg" },
+    });
+
+    const headers = new Headers(captured?.init.headers);
+    expect(headers.get("content-type")).toBe("image/jpeg");
+    expect(headers.get("authorization")).toBe("Bearer the-access-token");
+    expect(captured?.init.body).toBe(bytes);
+  });
+
   it("never forwards a cookie header upstream", async () => {
     await callApi("/api/v1/auth/me", "the-access-token");
 

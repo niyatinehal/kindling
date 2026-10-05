@@ -11,7 +11,15 @@ import { webEnv } from "../env";
 export async function callApi(
   path: string,
   accessToken: string,
-  init: { method?: string; body?: unknown } = {},
+  init: {
+    method?: string;
+    body?: unknown;
+    /**
+     * Bytes sent as they are, for the one upload this app has (a pantry
+     * photo). Takes the place of `body`; the type must be one the API accepts.
+     */
+    raw?: { bytes: ArrayBuffer; contentType: string };
+  } = {},
 ): Promise<Response> {
   // Insurance against a caller that interpolates: "@evil.com/x" parses as
   // userinfo and "//evil.com/x" is protocol-relative, so either one would send
@@ -26,13 +34,15 @@ export async function callApi(
   const env = webEnv();
   const headers = new Headers({
     authorization: `Bearer ${accessToken}`,
-    "content-type": "application/json",
+    "content-type": init.raw?.contentType ?? "application/json",
   });
 
   return fetch(`${env.API_BASE_URL.replace(/\/+$/, "")}${path}`, {
     method: init.method ?? "GET",
     headers,
-    ...(init.body !== undefined && { body: JSON.stringify(init.body) }),
+    ...(init.raw !== undefined
+      ? { body: init.raw.bytes }
+      : init.body !== undefined && { body: JSON.stringify(init.body) }),
     // Explicit: never attach ambient credentials to an upstream call.
     credentials: "omit",
     cache: "no-store",
