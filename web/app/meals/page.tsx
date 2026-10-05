@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { currentStep } from "../../src/onboarding/currentStep";
+import { currentPantryConsent } from "../../src/meals/pantryConsent";
 import { hasProfile } from "../../src/onboarding/hasProfile";
 import { MealsClient } from "./MealsClient";
 
@@ -16,5 +17,7 @@ export default async function MealsPage() {
     redirect(step);
   }
 
-  return <MealsClient hasProfile={await hasProfile()} />;
+  const [profile, pantryConsent] = await Promise.all([hasProfile(), currentPantryConsent()]);
+
+  return <MealsClient hasProfile={profile} pantryConsent={pantryConsent} />;
 }

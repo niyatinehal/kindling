@@ -7,7 +7,7 @@ import { readJsonBody } from "../../src/api/readJsonBody";
 import { DishArt } from "../../src/art/DishArt";
 import { HeroArt } from "../../src/art/HeroArt";
 import { PANTRY_GROUPS } from "../../src/meals/mealTypes";
-import type { MealSuggestion, PantryParse } from "../../src/meals/mealTypes";
+import type { MealSuggestion, PantryConsent, PantryParse } from "../../src/meals/mealTypes";
 import { Alert } from "../../src/ui/Alert";
 import { BackLink } from "../../src/ui/BackLink";
 import { Button } from "../../src/ui/Button";
@@ -36,7 +36,13 @@ const today = (): string => new Date().toISOString().slice(0, 10);
  * reads server-side, so a vegetarian cannot be shown chicken by a client that
  * forgot to send a flag.
  */
-export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
+export function MealsClient({
+  hasProfile,
+  pantryConsent,
+}: {
+  hasProfile: boolean;
+  pantryConsent: PantryConsent;
+}) {
   const t = useTranslations("meals");
   const tError = useTranslations("errors");
   const tIngredient = useTranslations("meals.ingredients");
@@ -48,6 +54,7 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
   const [pantryText, setPantryText] = useState("");
   const [parsing, setParsing] = useState(false);
   const [parsed, setParsed] = useState<PantryParse | null>(null);
+  const [aiConsent, setAiConsent] = useState(pantryConsent.enabled);
   const [slot, setSlot] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<MealSuggestion[] | null>(null);
   const [busy, setBusy] = useState(false);
@@ -81,6 +88,27 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
     const result = body as PantryParse;
     setParsed(result);
     setSelected((current) => [...new Set([...current, ...result.recognised])]);
+  }
+
+  /**
+   * Gives or withdraws consent to AI reading. Shown as changed straight away and
+   * put back if the save fails, so the toggle never claims a consent the server
+   * does not hold.
+   */
+  async function setAiReading(enabled: boolean): Promise<void> {
+    setAiConsent(enabled);
+    setError(undefined);
+
+    const response = await fetch("/api/meals/consent", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ enabled }),
+    });
+
+    if (!response.ok) {
+      setAiConsent(!enabled);
+      setError("PANTRY_CONSENT_FAILED");
+    }
   }
 
   async function suggest(): Promise<void> {
@@ -177,6 +205,22 @@ export function MealsClient({ hasProfile }: { hasProfile: boolean }) {
             onChange={setPantryText}
             maxLength={500}
           />
+          {/*
+            Opt-in, off by default, and only offered when it can apply. The
+            label says exactly what is sent and what is not, because this is
+            the one place the app sends anything you type to an outside service.
+          */}
+          {pantryConsent.available && (
+            <ChoiceGroup
+              legend={t("aiLegend")}
+              choices={[{ value: "on", label: t("aiConsent") }]}
+              selected={aiConsent ? ["on"] : []}
+              onChange={(next) => {
+                void setAiReading(next.includes("on"));
+              }}
+              multiple
+            />
+          )}
           <Button
             variant="secondary"
             disabled={pantryText.trim() === "" || parsing}

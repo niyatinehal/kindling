@@ -29,6 +29,13 @@ export type PantryParse = {
 };
 
 /**
+ * The AI pantry toggle. `available` is false when it must not be offered at
+ * all: the feature is switched off, there is no profile yet, or it is a child
+ * account.
+ */
+export type PantryConsent = { enabled: boolean; available: boolean };
+
+/**
  * The pantry the intake screen offers, grouped so a list of 38 keys reads as a
  * kitchen rather than a wall of checkboxes. Grouping is presentation only — the
  * API's vocabulary is the source of truth and is derived from the recipes.

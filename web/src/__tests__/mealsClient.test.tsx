@@ -3,7 +3,7 @@ import { NextIntlClientProvider } from "next-intl";
 
 import messages from "../../messages/en.json";
 import { MealsClient } from "../../app/meals/MealsClient";
-import type { MealSuggestion } from "../meals/mealTypes";
+import type { MealSuggestion, PantryConsent, PantryParse } from "../meals/mealTypes";
 
 const originalFetch = global.fetch;
 
@@ -72,10 +72,12 @@ const flagged: MealSuggestion = {
   protein_target_g: 12,
 };
 
-function renderMeals(hasProfile = true) {
+const NOT_OFFERED: PantryConsent = { enabled: false, available: false };
+
+function renderMeals(hasProfile = true, pantryConsent: PantryConsent = NOT_OFFERED) {
   render(
     <NextIntlClientProvider locale="en" messages={messages}>
-      <MealsClient hasProfile={hasProfile} />
+      <MealsClient hasProfile={hasProfile} pantryConsent={pantryConsent} />
     </NextIntlClientProvider>,
   );
 }
@@ -93,7 +95,7 @@ afterEach(() => {
 });
 
 describe("meals screen — the pantry", () => {
-  it("offers the kitchen as a checklist rather than a text box", () => {
+  it("offers the kitchen as a checklist", () => {
     renderMeals();
 
     expect(screen.getByText(messages.meals.groups.grains)).toBeInTheDocument();
@@ -353,5 +355,157 @@ describe("meals screen — a dish of your own", () => {
       expect(screen.getByRole("alert")).toHaveTextContent(messages.errors.TRACKING_FAILED);
     });
     expect(screen.getByLabelText(messages.meals.customLabel)).toHaveValue("Avial");
+  });
+});
+
+describe("meals screen — typing the pantry", () => {
+  const parsedText: PantryParse = {
+    recognised: ["rice", "toor_dal"],
+    unrecognised: ["maggi"],
+    source: "synonyms",
+    degraded: false,
+    parser: "synonyms@1",
+  };
+
+  /** Answers the parse call with `parse`, and every other call with suggestions. */
+  function routeFetch(parse: Response) {
+    global.fetch = jest.fn((url: string) =>
+      Promise.resolve(
+        url === "/api/meals/parse"
+          ? parse
+          : response(200, { suggestions: [cookable, needsShopping] }),
+      ),
+    ) as unknown as typeof fetch;
+  }
+
+  const typeAndRead = (text: string) => {
+    fireEvent.change(screen.getByLabelText(messages.meals.typeLabel), {
+      target: { value: text },
+    });
+    fireEvent.click(screen.getByRole("button", { name: messages.meals.typeRead }));
+  };
+
+  const suggestBody = () => {
+    const calls = (global.fetch as jest.Mock).mock.calls as [string, { body: string }][];
+    const call = calls.find(([url]) => url === "/api/meals");
+    return JSON.parse(call?.[1].body ?? "{}") as { ingredients: string[] };
+  };
+
+  it("will not read an empty box", () => {
+    renderMeals();
+
+    expect(screen.getByRole("button", { name: messages.meals.typeRead })).toBeDisabled();
+  });
+
+  it("ticks what it read and shows what it could not, before suggesting anything", async () => {
+    routeFetch(response(200, parsedText));
+    renderMeals();
+
+    typeAndRead("chawal, dal, maggi");
+
+    await waitFor(() => {
+      expect(screen.getByText(messages.meals.typeFound)).toBeInTheDocument();
+    });
+    expect(screen.getByText("Not in our list yet: maggi")).toBeInTheDocument();
+    expect((global.fetch as jest.Mock).mock.calls).toHaveLength(1);
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0] as [string, { body: string }];
+    expect(JSON.parse(init.body)).toEqual({ text: "chawal, dal, maggi" });
+
+    fireEvent.click(suggestButton());
+    await waitFor(() => {
+      expect(suggestBody().ingredients).toEqual(["rice", "toor_dal"]);
+    });
+  });
+
+  // A wrong guess costs one tap, never a wrong meal.
+  it("lets a wrong guess be unticked before suggestions run", async () => {
+    routeFetch(response(200, parsedText));
+    renderMeals();
+
+    typeAndRead("chawal, dal");
+    await waitFor(() => {
+      expect(screen.getByText(messages.meals.typeFound)).toBeInTheDocument();
+    });
+    fireEvent.click(
+      screen.getAllByLabelText(messages.meals.ingredients.toor_dal)[0] as HTMLElement,
+    );
+    fireEvent.click(suggestButton());
+
+    await waitFor(() => {
+      expect(suggestBody().ingredients).toEqual(["rice"]);
+    });
+  });
+
+  it("says so when nothing typed matched the list", async () => {
+    routeFetch(response(200, { ...parsedText, recognised: [], unrecognised: [] }));
+    renderMeals();
+
+    typeAndRead("nothing much");
+
+    await waitFor(() => {
+      expect(screen.getByText(messages.meals.typeNoneFound)).toBeInTheDocument();
+    });
+  });
+
+  it("reports a failed read and leaves the checklist usable", async () => {
+    routeFetch(response(502, { error: { code: "UPSTREAM_UNAVAILABLE" } }));
+    renderMeals();
+
+    typeAndRead("chawal");
+
+    await waitFor(() => {
+      expect(screen.getByText(messages.errors.PANTRY_PARSE_FAILED)).toBeInTheDocument();
+    });
+    expect(screen.getByLabelText(messages.meals.ingredients.rice)).toBeInTheDocument();
+  });
+});
+
+describe("meals screen — AI reading consent", () => {
+  const consentToggle = () => screen.queryByLabelText(messages.meals.aiConsent);
+
+  it("is not offered when it cannot apply", () => {
+    renderMeals(true, NOT_OFFERED);
+
+    expect(consentToggle()).not.toBeInTheDocument();
+  });
+
+  it("is offered off by default, saying what is and is not sent", () => {
+    renderMeals(true, { enabled: false, available: true });
+
+    expect(consentToggle()).not.toBeChecked();
+    expect(messages.meals.aiConsent).toMatch(/Nothing about your health or family is sent/);
+  });
+
+  it("saves consent when ticked", async () => {
+    global.fetch = jest.fn(() =>
+      Promise.resolve(response(200, { enabled: true, available: true })),
+    ) as unknown as typeof fetch;
+    renderMeals(true, { enabled: false, available: true });
+
+    fireEvent.click(consentToggle() as HTMLElement);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith("/api/meals/consent", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ enabled: true }),
+      });
+    });
+    expect(consentToggle()).toBeChecked();
+  });
+
+  // The toggle must never claim a consent the server does not hold.
+  it("puts the toggle back when the save fails", async () => {
+    global.fetch = jest.fn(() =>
+      Promise.resolve(response(403, { error: { code: "FORBIDDEN_ROLE" } })),
+    ) as unknown as typeof fetch;
+    renderMeals(true, { enabled: false, available: true });
+
+    fireEvent.click(consentToggle() as HTMLElement);
+
+    await waitFor(() => {
+      expect(screen.getByText(messages.errors.PANTRY_CONSENT_FAILED)).toBeInTheDocument();
+    });
+    expect(consentToggle()).not.toBeChecked();
   });
 });
