@@ -17,6 +17,14 @@ export type ApiErrorCode =
   // rather than a fault: hand admin over, then delete.
   | "FAMILY_NEEDS_ADMIN"
   | "VALIDATION_FAILED"
+  // An AI feature that is not configured on this deployment (no key, or for
+  // photos no job queue). The client hides the control; this is the answer
+  // for one that asked anyway.
+  | "AI_UNAVAILABLE"
+  // The caller has not turned on smarter reading. A step, not a fault: the
+  // client's move is to offer the toggle.
+  | "AI_CONSENT_REQUIRED"
+  | "NOT_FOUND"
   | "INTERNAL";
 
 /**

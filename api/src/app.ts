@@ -3,8 +3,10 @@ import type { Express, NextFunction, Request, Response } from "express";
 
 import type { PrismaClient } from "../generated/prisma/client.js";
 import type { VerifiedToken } from "./auth/verifyToken.js";
+import type { CircuitBreaker } from "./llm/breaker.js";
 import { disabledLlmClient } from "./llm/client.js";
 import type { LlmClient } from "./llm/client.js";
+import type { PhotoQueue } from "./meals/photoQueue.js";
 import type { PlanGenerator } from "./workouts/planGenerator.js";
 import { sendError } from "./http/errors.js";
 import { recordError } from "./observability/recordError.js";
@@ -31,6 +33,13 @@ export type AppDeps = {
    * a deployment with no key configured is a working app, not a broken one.
    */
   llm?: LlmClient;
+  /**
+   * Shared with the photo worker, so a provider outage seen by one path is
+   * seen by both. Optional; the meals router makes its own when absent.
+   */
+  llmBreaker?: CircuitBreaker;
+  /** The photo job queue. Absent without Redis, which turns photo input off. */
+  photoQueue?: PhotoQueue;
   /**
    * Shared secret the web app presents when reporting a failure it handled
    * itself. Optional: with it unset the reporting route is not mounted, so a
@@ -68,6 +77,8 @@ export function createApp(deps: AppDeps): Express {
       prisma: deps.prisma,
       verify: deps.verify,
       llm: deps.llm ?? disabledLlmClient,
+      ...(deps.llmBreaker !== undefined && { breaker: deps.llmBreaker }),
+      ...(deps.photoQueue !== undefined && { photoQueue: deps.photoQueue }),
     }),
   );
   if (deps.internalReportToken !== undefined) {

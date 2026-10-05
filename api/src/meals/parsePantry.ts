@@ -2,6 +2,7 @@ import type { FamilyRole } from "../../generated/prisma/enums.js";
 import type { CircuitBreaker } from "../llm/breaker.js";
 import type { LlmClient, LlmResult } from "../llm/client.js";
 import { costMicroUsd } from "../llm/pricing.js";
+import { withOneRetry } from "../llm/retry.js";
 import { ageFromBirthYear } from "../profile/toProfileView.js";
 import {
   PANTRY_PROMPT_V1,
@@ -12,7 +13,7 @@ import {
   tidyPantryOutput,
 } from "./pantryPrompt.js";
 import type { PantryOutput } from "./pantryPrompt.js";
-import { pantryCacheKey } from "./pantryStore.js";
+import { pantryCacheKey, startOfUtcDay } from "./pantryStore.js";
 import type { LlmCallRecord, PantryStore } from "./pantryStore.js";
 import { ALL_INGREDIENTS } from "./recipeLibrary.js";
 import type { Ingredient } from "./recipeLibrary.js";
@@ -98,24 +99,20 @@ export async function askModel(
   llm: LlmClient,
   onAttempt: (result: Attempt) => Promise<void> | void = () => undefined,
 ): Promise<Attempt> {
-  const attempt = async (timeoutMs: number): Promise<Attempt> => {
-    const result = await llm.extract({
-      system: PANTRY_PROMPT_V1,
-      user: pantryUserMessage(text),
-      schema: PANTRY_TOOL_SCHEMA,
-      validate: (raw) => pantryOutput.parse(raw),
-      timeoutMs,
-    });
-    await onAttempt(result);
-    return result;
-  };
-
-  const first = await attempt(LLM_TIMEOUT_MS);
-  if (first.ok || !first.retryable) {
-    return first;
-  }
-  const remaining = PARSE_BUDGET_MS - first.latencyMs;
-  return remaining >= MIN_RETRY_MS ? attempt(Math.min(LLM_TIMEOUT_MS, remaining)) : first;
+  return withOneRetry(
+    async (timeoutMs) => {
+      const result = await llm.extract({
+        system: PANTRY_PROMPT_V1,
+        user: pantryUserMessage(text),
+        schema: PANTRY_TOOL_SCHEMA,
+        validate: (raw) => pantryOutput.parse(raw),
+        timeoutMs,
+      });
+      await onAttempt(result);
+      return result;
+    },
+    { timeoutMs: LLM_TIMEOUT_MS, totalMs: PARSE_BUDGET_MS, minRetryMs: MIN_RETRY_MS },
+  );
 }
 
 /**
@@ -160,6 +157,7 @@ export async function parsePantry(
   ) =>
     deps.store.recordCall({
       userId: input.userId,
+      feature: "pantry_parse",
       model: deps.llm.model,
       promptVersion: PANTRY_PROMPT_VERSION,
       outcome,
@@ -185,8 +183,12 @@ export async function parsePantry(
     };
   }
 
-  const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  if ((await deps.store.modelParsesSince(input.userId, startOfDay)) >= DAILY_MODEL_PARSES) {
+  const usedToday = await deps.store.modelCallsSince(
+    input.userId,
+    "pantry_parse",
+    startOfUtcDay(now),
+  );
+  if (usedToday >= DAILY_MODEL_PARSES) {
     await record("rate_limited");
     return degradedTo("rate_limited", input);
   }

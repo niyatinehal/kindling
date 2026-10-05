@@ -67,6 +67,30 @@ describe("createAnthropicLlmClient", () => {
     expect(options).toMatchObject({ timeout: 50, maxRetries: 0 });
   });
 
+  it("sends an image before the text, in the same user turn", async () => {
+    const { spy, messages } = stub(() => Promise.resolve(toolAnswer({ recognised: [] })));
+
+    await createAnthropicLlmClient({ apiKey: "unused", messages }).extract({
+      ...args,
+      image: { mediaType: "image/png", base64: "iVBORw0K" },
+    });
+
+    expect(spy.mock.calls[0]?.[0]).toMatchObject({
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: { type: "base64", media_type: "image/png", data: "iVBORw0K" },
+            },
+            { type: "text", text: "<pantry>aloo</pantry>" },
+          ],
+        },
+      ],
+    });
+  });
+
   it("reports invalid output when the model makes no tool call", async () => {
     const { messages } = stub(() =>
       Promise.resolve({ ...toolAnswer(null), content: [{ type: "text", text: "hello" }] }),

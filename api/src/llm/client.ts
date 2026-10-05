@@ -30,9 +30,14 @@ export type LlmResult<T> =
       latencyMs: number;
     };
 
+/** The image formats the provider accepts. */
+export type ImageMediaType = "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+
 export type ExtractArgs<T> = {
   system: string;
   user: string;
+  /** Sent before the text, in the same turn. Never stored by this client. */
+  image?: { mediaType: ImageMediaType; base64: string };
   /** JSON Schema for the tool input the provider is asked to fill. */
   schema: object;
   /** Parses the raw tool input, throwing on anything malformed. */

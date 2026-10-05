@@ -82,6 +82,14 @@ describe("loadEnv", () => {
       ).toBeUndefined();
     });
 
+    it("accepts a redis:// or rediss:// URL for the photo queue, and treats blank as unset", () => {
+      expect(loadEnv({ ...valid, REDIS_URL: "rediss://default:pw@cache:6379" }).REDIS_URL).toBe(
+        "rediss://default:pw@cache:6379",
+      );
+      expect(loadEnv({ ...valid, REDIS_URL: "" }).REDIS_URL).toBeUndefined();
+      expect(() => loadEnv({ ...valid, REDIS_URL: "http://cache" })).toThrow(/REDIS_URL/);
+    });
+
     it("rejects a switch value that is not a boolean word", () => {
       expect(() => loadEnv({ ...valid, LLM_ENABLED: "maybe" })).toThrow(/LLM_ENABLED/);
     });

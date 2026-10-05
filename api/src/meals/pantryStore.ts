@@ -9,8 +9,12 @@ export const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 export type CachedParse = { recognised: string[]; unrecognised: string[] };
 
+/** Each model feature has its own daily limit, so one cannot starve another. */
+export type LlmFeature = "pantry_parse" | "pantry_photo" | "dish_explain";
+
 export type LlmCallRecord = {
   userId: string;
+  feature: LlmFeature;
   model: string;
   promptVersion: string;
   outcome: LlmCallOutcome;
@@ -31,9 +35,15 @@ export type PantryStore = {
     entry: CachedParse & { textHash: string; promptVersion: string },
     now: Date,
   ): Promise<void>;
-  /** Parses that reached the model for this user since `since`. */
-  modelParsesSince(userId: string, since: Date): Promise<number>;
+  /** Calls of one feature that reached the model for this user since `since`. */
+  modelCallsSince(userId: string, feature: LlmFeature, since: Date): Promise<number>;
   recordCall(call: LlmCallRecord): Promise<void>;
+  /** Cached dish sentences for the given keys; unexpired entries only. */
+  readDishCache(cacheKeys: readonly string[], now: Date): Promise<Map<string, string>>;
+  writeDishCache(
+    entries: readonly { cacheKey: string; recipeKey: string; generator: string; text: string }[],
+    now: Date,
+  ): Promise<void>;
 };
 
 /**
@@ -56,6 +66,11 @@ export function pantryCacheKey(text: string, promptVersion: string): string {
   return createHash("sha256")
     .update(`${promptVersion}\n${normalisePantryText(text)}`)
     .digest("hex");
+}
+
+/** Daily limits reset at midnight UTC, the same day boundary tracking uses. */
+export function startOfUtcDay(now: Date): Date {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 }
 
 export function createPrismaPantryStore(prisma: PrismaClient): PantryStore {
@@ -86,14 +101,38 @@ export function createPrismaPantryStore(prisma: PrismaClient): PantryStore {
       await prisma.pantryParseCache.deleteMany({ where: { expiresAt: { lte: now } } });
     },
 
-    modelParsesSince(userId, since) {
+    modelCallsSince(userId, feature, since) {
       return prisma.llmCall.count({
-        where: { userId, createdAt: { gte: since }, outcome: { in: [...COUNTED_OUTCOMES] } },
+        where: {
+          userId,
+          feature,
+          createdAt: { gte: since },
+          outcome: { in: [...COUNTED_OUTCOMES] },
+        },
       });
     },
 
     async recordCall(call) {
-      await prisma.llmCall.create({ data: { ...call, feature: "pantry_parse" } });
+      await prisma.llmCall.create({ data: call });
+    },
+
+    async readDishCache(cacheKeys, now) {
+      const rows = await prisma.dishExplanationCache.findMany({
+        where: { cacheKey: { in: [...cacheKeys] }, expiresAt: { gt: now } },
+      });
+      return new Map(rows.map((row) => [row.cacheKey, row.text]));
+    },
+
+    async writeDishCache(entries, now) {
+      const expiresAt = new Date(now.getTime() + CACHE_TTL_MS);
+      for (const entry of entries) {
+        await prisma.dishExplanationCache.upsert({
+          where: { cacheKey: entry.cacheKey },
+          create: { ...entry, expiresAt },
+          update: { text: entry.text, generator: entry.generator, createdAt: now, expiresAt },
+        });
+      }
+      await prisma.dishExplanationCache.deleteMany({ where: { expiresAt: { lte: now } } });
     },
   };
 }

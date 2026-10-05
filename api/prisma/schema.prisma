@@ -598,3 +598,19 @@ model LlmCall {
   @@index([userId, createdAt])
   @@map("llm_calls")
 }
+
+/// One sentence on why a suggested dish suits a kitchen, as the model wrote it
+/// and as `checkExplanation` let it through. Keyed by a hash of the prompt
+/// version, the recipe and which of its ingredients are on hand — nothing
+/// about who asked — so it is shared across users like the parse cache.
+model DishExplanationCache {
+  cacheKey  String   @id @map("cache_key")
+  generator String
+  recipeKey String   @map("recipe_key")
+  text      String
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+
+  @@index([expiresAt])
+  @@map("dish_explanation_cache")
+}

@@ -35,6 +35,12 @@ const envSchema = z.object({
     (value) => (value === "" ? undefined : value),
     z.string().min(1).optional(),
   ),
+  // Redis for the photo-reading job queue. Optional: unset, photo input is off
+  // and everything else works, including typed pantry parsing.
+  REDIS_URL: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.url({ protocol: /^rediss?$/ }).optional(),
+  ),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -8,7 +8,11 @@ import { createApp } from "../../src/app.js";
 import { createTokenVerifier } from "../../src/auth/verifyToken.js";
 import { createPrismaClient, disconnect } from "../../src/db/prisma.js";
 import type { LlmClient } from "../../src/llm/client.js";
+import { createCircuitBreaker } from "../../src/llm/breaker.js";
 import { FakeLlmClient } from "../../src/llm/fakeClient.js";
+import { createPhotoProcessor } from "../../src/meals/parsePhoto.js";
+import type { PhotoQueue } from "../../src/meals/photoQueue.js";
+import { createMemoryPhotoQueue } from "./memoryPhotoQueue.js";
 import { rulesPlanGenerator } from "../../src/workouts/planGenerator.js";
 
 const ISSUER = "http://127.0.0.1:54321/auth/v1";
@@ -22,13 +26,14 @@ let app: ReturnType<typeof createApp>;
 let verify: Parameters<typeof createApp>[0]["verify"];
 
 /** The same app, with a model client — `app` itself runs with the model switched off. */
-const appWith = (llm: LlmClient) =>
+const appWith = (llm: LlmClient, photoQueue?: PhotoQueue) =>
   createApp({
     checkDatabase: () => Promise.resolve(),
     prisma,
     planGenerator: rulesPlanGenerator,
     verify,
     llm,
+    ...(photoQueue !== undefined && { photoQueue }),
   });
 
 beforeEach(async () => {
@@ -54,6 +59,7 @@ beforeEach(async () => {
   });
 
   await prisma.pantryParseCache.deleteMany();
+  await prisma.dishExplanationCache.deleteMany();
   await prisma.llmCall.deleteMany();
   await prisma.trackingLog.deleteMany();
   await prisma.visibilitySetting.deleteMany();
@@ -413,7 +419,7 @@ describe("/api/v1/meals/pantry-consent", () => {
     const response = await getConsent(appWith(llm), token);
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ enabled: false, available: true });
+    expect(response.body).toEqual({ enabled: false, available: true, photo: false });
   });
 
   it("is not offered while the model is switched off", async () => {
@@ -421,7 +427,7 @@ describe("/api/v1/meals/pantry-consent", () => {
 
     const response = await getConsent(app, token);
 
-    expect(response.body).toEqual({ enabled: false, available: false });
+    expect(response.body).toEqual({ enabled: false, available: false, photo: false });
   });
 
   it("is not offered before a profile exists to hold it", async () => {
@@ -430,6 +436,7 @@ describe("/api/v1/meals/pantry-consent", () => {
     expect((await getConsent(appWith(llm), token)).body).toEqual({
       enabled: false,
       available: false,
+      photo: false,
     });
     const put = await putConsent(appWith(llm), token, { enabled: true });
     expect(put.status).toBe(403);
@@ -444,7 +451,7 @@ describe("/api/v1/meals/pantry-consent", () => {
     const on = await putConsent(server, token, { enabled: true });
     const given = await prisma.profile.findUniqueOrThrow({ where: { userId: user.id } });
 
-    expect(on.body).toEqual({ enabled: true, available: true });
+    expect(on.body).toEqual({ enabled: true, available: true, photo: false });
     expect(given.aiPantryConsent).toBe(true);
     expect(given.aiPantryConsentAt).toBeInstanceOf(Date);
 
@@ -482,7 +489,7 @@ describe("/api/v1/meals/pantry-consent", () => {
     expect(on.status).toBe(403);
     expect((on.body as { error: { code: string } }).error.code).toBe("FORBIDDEN_ROLE");
     expect(off.status).toBe(200);
-    expect(state.body).toEqual({ enabled: false, available: false });
+    expect(state.body).toEqual({ enabled: false, available: false, photo: false });
   });
 
   it("refuses consent from a minor and does not offer it", async () => {
@@ -497,7 +504,7 @@ describe("/api/v1/meals/pantry-consent", () => {
     const state = await getConsent(appWith(llm), token);
 
     expect(on.status).toBe(403);
-    expect(state.body).toEqual({ enabled: false, available: false });
+    expect(state.body).toEqual({ enabled: false, available: false, photo: false });
   });
 
   it.each([
@@ -703,5 +710,240 @@ describe("POST /api/v1/meals/parse-pantry — cache, limit and records", () => {
 
     expect(deleted.status).toBe(204);
     expect(await prisma.llmCall.count({ where: { userId: user.id } })).toBe(0);
+  });
+});
+
+describe("POST /api/v1/meals/explain", () => {
+  const GOOD = {
+    explanations: [
+      { recipe_key: "palak_paneer", text: "Your spinach and paneer are all this one needs." },
+    ],
+  };
+  const newestUser = () => prisma.user.findFirstOrThrow({ orderBy: { createdAt: "desc" } });
+  const explain = (server: ReturnType<typeof createApp>, token: string, body: object) =>
+    request(server).post("/api/v1/meals/explain").set(auth(token)).send(body);
+  const body = { recipe_keys: ["palak_paneer"], on_hand: ["spinach", "paneer"] };
+
+  it("describes a consenting adult's suggestions and caches the sentence", async () => {
+    const llm = new FakeLlmClient([{ output: GOOD }]);
+    const server = appWith(llm);
+    const token = await registered(["vegetarian"]);
+    await request(server)
+      .put("/api/v1/meals/pantry-consent")
+      .set(auth(token))
+      .send({ enabled: true });
+
+    const response = await explain(server, token, body);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      explanations: GOOD.explanations,
+      source: "llm",
+      degraded: false,
+      generator: "llm-dish@1",
+    });
+    const user = await newestUser();
+    expect(
+      await prisma.llmCall.count({ where: { userId: user.id, feature: "dish_explain" } }),
+    ).toBe(1);
+    expect(await prisma.dishExplanationCache.count()).toBe(1);
+  });
+
+  it("returns no sentences without consent, and never calls the model", async () => {
+    const llm = new FakeLlmClient([{ output: GOOD }]);
+    const token = await registered(["vegetarian"]);
+
+    const response = await explain(appWith(llm), token, body);
+
+    expect(response.body).toMatchObject({ explanations: [], source: "none" });
+    expect(llm.calls).toHaveLength(0);
+  });
+
+  it.each([
+    ["no dishes", { recipe_keys: [], on_hand: [] }],
+    ["a dish outside the library", { recipe_keys: ["pizza"], on_hand: [] }],
+    ["more than five dishes", { recipe_keys: Array(6).fill("poha"), on_hand: [] }],
+    ["an ingredient outside the vocabulary", { recipe_keys: ["poha"], on_hand: ["ketchup"] }],
+    ["an extra field", { ...body, diet: "vegan" }],
+  ])("returns 400 for %s", async (_label, invalid) => {
+    const token = await registered();
+
+    expect((await explain(app, token, invalid)).status).toBe(400);
+  });
+});
+
+describe("/api/v1/meals/parse-photo", () => {
+  /** The smallest bytes that sniff as each format; the model never sees real pixels here. */
+  const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0x10]);
+  const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0]);
+  const ANSWER = { recognised: ["egg", "tomato"], unrecognised: ["bread"] };
+  const newestUser = () => prisma.user.findFirstOrThrow({ orderBy: { createdAt: "desc" } });
+
+  /** An app with a model and an in-memory photo queue running the real processor. */
+  const photoApp = (llm: LlmClient) => {
+    const memory = createMemoryPhotoQueue(
+      createPhotoProcessor({ prisma, llm, breaker: createCircuitBreaker() }),
+    );
+    return { server: appWith(llm, memory.queue), inputs: memory.inputs };
+  };
+
+  const consentingAdult = async (server: ReturnType<typeof createApp>) => {
+    const token = await registered(["vegetarian"]);
+    await request(server)
+      .put("/api/v1/meals/pantry-consent")
+      .set(auth(token))
+      .send({ enabled: true });
+    return token;
+  };
+
+  const upload = (
+    server: ReturnType<typeof createApp>,
+    token: string,
+    bytes: Buffer,
+    type = "image/jpeg",
+  ) =>
+    request(server)
+      .post("/api/v1/meals/parse-photo")
+      .set(auth(token))
+      .set("content-type", type)
+      .send(bytes);
+
+  it("queues a photo, then answers the ingredients read from it", async () => {
+    const llm = new FakeLlmClient([{ output: ANSWER }]);
+    const { server, inputs } = photoApp(llm);
+    const token = await consentingAdult(server);
+
+    const queued = await upload(server, token, PNG, "image/png");
+    expect(queued.status).toBe(202);
+    const jobId = (queued.body as { job_id: string }).job_id;
+
+    const polled = await request(server).get(`/api/v1/meals/parse-photo/${jobId}`).set(auth(token));
+
+    expect(polled.status).toBe(200);
+    expect(polled.body).toEqual({
+      status: "done",
+      ...ANSWER,
+      parser: "llm-pantry-photo@1",
+    });
+    expect(inputs[0]).toMatchObject({
+      mediaType: "image/png",
+      imageBase64: PNG.toString("base64"),
+    });
+    expect(llm.calls[0]?.image?.mediaType).toBe("image/png");
+    const user = await newestUser();
+    expect(
+      await prisma.llmCall.count({ where: { userId: user.id, feature: "pantry_photo" } }),
+    ).toBe(1);
+  });
+
+  it("will not show one person's photo job to another", async () => {
+    const llm = new FakeLlmClient([{ output: ANSWER }]);
+    const { server } = photoApp(llm);
+    const owner = await consentingAdult(server);
+    const other = await consentingAdult(server);
+    const queued = await upload(server, owner, JPEG);
+
+    const response = await request(server)
+      .get(`/api/v1/meals/parse-photo/${(queued.body as { job_id: string }).job_id}`)
+      .set(auth(other));
+
+    expect(response.status).toBe(404);
+  });
+
+  it("requires consent before a photo is accepted", async () => {
+    const llm = new FakeLlmClient([{ output: ANSWER }]);
+    const { server, inputs } = photoApp(llm);
+    const token = await registered(["vegetarian"]);
+
+    const response = await upload(server, token, JPEG);
+
+    expect(response.status).toBe(403);
+    expect((response.body as { error: { code: string } }).error.code).toBe("AI_CONSENT_REQUIRED");
+    expect(inputs).toHaveLength(0);
+  });
+
+  it("refuses a minor's photo even with the flag set", async () => {
+    const llm = new FakeLlmClient([{ output: ANSWER }]);
+    const { server, inputs } = photoApp(llm);
+    const token = await registered(["vegetarian"]);
+    const minor = await newestUser();
+    await prisma.profile.update({
+      where: { userId: minor.id },
+      data: {
+        birthYear: new Date().getUTCFullYear() - 15,
+        aiPantryConsent: true,
+        aiPantryConsentAt: new Date(),
+      },
+    });
+
+    const response = await upload(server, token, JPEG);
+
+    expect(response.status).toBe(403);
+    expect(inputs).toHaveLength(0);
+  });
+
+  it("is unavailable without a photo queue, and says so in the consent state", async () => {
+    const llm = new FakeLlmClient([{ output: ANSWER }]);
+    const server = appWith(llm);
+    const token = await consentingAdult(server);
+
+    const response = await upload(server, token, JPEG);
+    const consent = await request(server).get("/api/v1/meals/pantry-consent").set(auth(token));
+
+    expect(response.status).toBe(403);
+    expect((response.body as { error: { code: string } }).error.code).toBe("AI_UNAVAILABLE");
+    expect(consent.body).toMatchObject({ enabled: true, available: true, photo: false });
+    expect(
+      (await request(photoApp(llm).server).get("/api/v1/meals/pantry-consent").set(auth(token)))
+        .body,
+    ).toMatchObject({ photo: true });
+  });
+
+  it("refuses a file that is not the image it claims to be", async () => {
+    const llm = new FakeLlmClient([{ output: ANSWER }]);
+    const { server, inputs } = photoApp(llm);
+    const token = await consentingAdult(server);
+
+    const lying = await upload(server, token, Buffer.from("<svg onload=alert(1)>"), "image/png");
+    const mismatched = await upload(server, token, JPEG, "image/png");
+
+    expect(lying.status).toBe(400);
+    expect(mismatched.status).toBe(400);
+    expect(inputs).toHaveLength(0);
+  });
+
+  it("refuses a photo over 5 MB with a 413 envelope", async () => {
+    const llm = new FakeLlmClient([{ output: ANSWER }]);
+    const { server } = photoApp(llm);
+    const token = await consentingAdult(server);
+    const huge = Buffer.concat([JPEG, Buffer.alloc(5 * 1024 * 1024 + 1)]);
+
+    const response = await upload(server, token, huge);
+
+    expect(response.status).toBe(413);
+    expect((response.body as { error: { code: string } }).error.code).toBe("VALIDATION_FAILED");
+  });
+
+  it("returns 404 for a job id that is not a job id", async () => {
+    const llm = new FakeLlmClient([{ output: ANSWER }]);
+    const { server } = photoApp(llm);
+    const token = await consentingAdult(server);
+
+    const response = await request(server)
+      .get("/api/v1/meals/parse-photo/..%2F..%2Fadmin")
+      .set(auth(token));
+
+    expect(response.status).toBe(404);
+  });
+
+  it("returns 401 without a token", async () => {
+    const llm = new FakeLlmClient([{ output: ANSWER }]);
+
+    const response = await request(photoApp(llm).server)
+      .post("/api/v1/meals/parse-photo")
+      .set("content-type", "image/jpeg")
+      .send(JPEG);
+
+    expect(response.status).toBe(401);
   });
 });

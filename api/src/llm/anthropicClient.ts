@@ -57,7 +57,25 @@ export function createAnthropicLlmClient(deps: {
             model,
             max_tokens: MAX_TOKENS,
             system: args.system,
-            messages: [{ role: "user", content: args.user }],
+            messages: [
+              {
+                role: "user",
+                content:
+                  args.image === undefined
+                    ? args.user
+                    : [
+                        {
+                          type: "image",
+                          source: {
+                            type: "base64",
+                            media_type: args.image.mediaType,
+                            data: args.image.base64,
+                          },
+                        },
+                        { type: "text", text: args.user },
+                      ],
+              },
+            ],
             tools: [
               {
                 name: TOOL_NAME,
