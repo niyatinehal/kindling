@@ -1,8 +1,8 @@
 /**
  * One recipe per entry, described rather than drawn: what it is served in,
  * the colour and texture of the food, and what is scattered on top.
- * `DishArt` turns a description into a top-down illustration, so all twenty
- * dishes share one style. A new recipe needs an entry here; `dishArt.test.tsx`
+ * `DishArt` turns a description into a top-down illustration, so every
+ * dish shares one style. A new recipe needs an entry here; `dishArt.test.tsx`
  * fails until it has one.
  *
  * Food colours are literal on purpose. Dal is yellow in the dark theme too —
@@ -161,6 +161,16 @@ export const DISHES: Record<string, Dish> = {
     bits: [
       { kind: "cube", color: "#e67e22", count: 6 },
       { kind: "dot", color: "#7fb04a", count: 6 },
+    ],
+  },
+  kheer: {
+    layout: "bowl",
+    food: "#f3e7cc",
+    texture: "grain",
+    bits: [
+      // Saffron strands and crushed cardamom.
+      { kind: "slice", color: "#e0901f", count: 5 },
+      { kind: "dot", color: "#8aa05a", count: 5 },
     ],
   },
   curd_rice: {

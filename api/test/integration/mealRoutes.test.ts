@@ -166,6 +166,16 @@ describe("POST /api/v1/meals/suggest", () => {
     expect((response.body as SuggestBody).suggestions?.length).toBeGreaterThan(0);
   });
 
+  // Every item the intake screen offers must be accepted, or ticking it fails
+  // the whole request. Milk once did.
+  it("accepts milk from the intake screen", async () => {
+    const token = await registered();
+
+    const response = await suggest(token, { ingredients: ["milk", "rice"] });
+
+    expect(response.status).toBe(200);
+  });
+
   it("rejects an ingredient outside the known vocabulary", async () => {
     const token = await registered();
 

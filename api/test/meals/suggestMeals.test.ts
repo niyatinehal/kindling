@@ -24,6 +24,15 @@ describe("recipe library", () => {
     }
   });
 
+  // Milk sat in the Ingredient type and on the intake screen with no recipe
+  // using it, so it fell out of the derived vocabulary and ticking it made
+  // /suggest reject the whole request.
+  it("offers milk, and has a dish that needs it", () => {
+    expect(ALL_INGREDIENTS).toContain("milk");
+    const result = suggestMeals({ onHand: ["rice", "milk"], dietary: [], conditions: [] });
+    expect(keys(result)).toContain("kheer");
+  });
+
   // A dish nobody's diet admits is dead weight in the library.
   it("marks every recipe suitable for at least one diet", () => {
     for (const recipe of RECIPES) {

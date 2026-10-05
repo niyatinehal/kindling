@@ -313,6 +313,20 @@ export const RECIPES: readonly Recipe[] = [
     minutes: 15,
   },
   {
+    // Sweetened, so it is cautioned for diabetes like the other rice-heavy
+    // dishes. Nuts are left out of the listed ingredients on purpose: they are
+    // a garnish, not the dish, and listing them would hide kheer from no_nuts.
+    key: "kheer",
+    slots: ["snack"],
+    core: ["rice", "milk"],
+    optional: ["ghee", "spices", "coconut"],
+    suitableFor: ["vegetarian", "eggetarian", "non_vegetarian", "jain", "no_gluten", "no_nuts"],
+    cautionFor: ["type_2_diabetes"],
+    approxKcal: 280,
+    proteinG: 7,
+    minutes: 40,
+  },
+  {
     key: "moong_dal_khichdi",
     slots: ["lunch", "dinner"],
     core: ["moong_dal", "rice"],
