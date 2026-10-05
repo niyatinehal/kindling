@@ -182,3 +182,52 @@ describe("POST /api/v1/meals/suggest", () => {
     expect(response.status).toBe(401);
   });
 });
+
+describe("POST /api/v1/meals/parse-pantry", () => {
+  const parse = (token: string, body: Record<string, unknown>) =>
+    request(app).post("/api/v1/meals/parse-pantry").set(auth(token)).send(body);
+
+  it("reads free text into keys from the vocabulary, with no suggestions attached", async () => {
+    const token = await registered();
+
+    const response = await parse(token, { text: "thoda atta, 2 aloo, dahi bacha hai, maggi" });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      recognised: ["atta", "potato", "curd"],
+      unrecognised: ["maggi"],
+      source: "synonyms",
+      degraded: false,
+      parser: "synonyms@1",
+    });
+  });
+
+  it("returns 401 without a token", async () => {
+    const response = await request(app).post("/api/v1/meals/parse-pantry").send({ text: "aloo" });
+
+    expect(response.status).toBe(401);
+  });
+
+  it.each([
+    ["empty text", { text: "" }],
+    ["text that is only spaces", { text: "   " }],
+    ["text over 500 characters", { text: "a".repeat(501) }],
+    ["a missing text field", {}],
+    ["an extra field", { text: "aloo", userId: "someone-else" }],
+  ])("returns 400 VALIDATION_FAILED for %s", async (_label, body) => {
+    const token = await registered();
+
+    const response = await parse(token, body);
+
+    expect(response.status).toBe(400);
+    expect((response.body as { error?: { code?: string } }).error?.code).toBe("VALIDATION_FAILED");
+  });
+
+  it("accepts exactly 500 characters once surrounding spaces are trimmed", async () => {
+    const token = await registered();
+
+    const response = await parse(token, { text: `  ${"a".repeat(500)}  ` });
+
+    expect(response.status).toBe(200);
+  });
+});
