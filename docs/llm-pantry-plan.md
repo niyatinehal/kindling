@@ -177,15 +177,15 @@ Deduplicate, drop empty strings, cap lengths, and remove any unrecognised item t
 
 The endpoint answers within about 3 seconds in every case, because each LLM step has a budget and a fallback.
 
-| Concern         | Decision                                                                                                                                                                                          | Why                                                                                                                |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Timeout         | 2,500 ms per call via `AbortController`, inside a 3,000 ms budget for the whole parse. One retry only on a 5xx or network error, never on timeout, and only when at least 500 ms of budget remain | The user is waiting on the screen. A second slow call doubles the wait                                             |
-| Fallback        | Synonym table (`src/meals/synonyms.ts`): a map of about 150 phrases (aloo, dahi, jeera, chawal, besan…) to keys, plus a normalising tokeniser                                                     | Works offline, costs nothing, and covers the common cases. Response sets `source: "synonyms"` and `degraded: true` |
-| Circuit breaker | After 5 failures within 60 s, skip the LLM for the next 60 s and go straight to synonyms                                                                                                          | Stops a provider outage from adding 2.5 s to every request. An in-memory counter is enough for one instance        |
-| Cache           | Postgres table keyed by SHA-256 of normalised text plus prompt version, 30-day TTL                                                                                                                | Users repeat the same pantries. A cache hit costs nothing and returns in milliseconds                              |
-| Rate limit      | 30 LLM parses per user per day, counted in Postgres. Over the limit, the synonym table answers with `degraded: true`; no 429                                                                      | Caps cost per user without ever turning a parse into an error                                                      |
-| Cost tracking   | One `LlmCall` row per attempt: feature, model, tokens, latency, outcome, request id                                                                                                               | Lets you report real numbers: p95 latency, cost per 1,000 parses, failure rate                                     |
-| Kill switch     | `LLM_ENABLED` and `LLM_API_KEY` validated in `config/env.ts`. The model is used only when the switch is true and a key is set; anything else means disabled, not a crash                          | Turn the feature off without a deploy-breaking error                                                               |
+| Concern         | Decision                                                                                                                                                                                                                                | Why                                                                                                                |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Timeout         | 2,500 ms per call via `AbortController`, inside a 3,000 ms budget for the whole parse. One retry only on a 5xx or network error, never on timeout, and only when at least 500 ms of budget remain                                       | The user is waiting on the screen. A second slow call doubles the wait                                             |
+| Fallback        | Synonym table (`src/meals/synonyms.ts`): a map of about 150 phrases (aloo, dahi, jeera, chawal, besan…) to keys, plus a normalising tokeniser                                                                                           | Works offline, costs nothing, and covers the common cases. Response sets `source: "synonyms"` and `degraded: true` |
+| Circuit breaker | After 5 failures within 60 s, skip the LLM for the next 60 s and go straight to synonyms                                                                                                                                                | Stops a provider outage from adding 2.5 s to every request. An in-memory counter is enough for one instance        |
+| Cache           | Postgres table keyed by SHA-256 of normalised text plus prompt version, 30-day TTL                                                                                                                                                      | Users repeat the same pantries. A cache hit costs nothing and returns in milliseconds                              |
+| Rate limit      | 30 LLM parses per user per UTC day, counted in Postgres from `LlmCall` outcomes (not request ids, which a caller can set). Cache hits are free and not counted. Over the limit, the synonym table answers with `degraded: true`; no 429 | Caps cost per user without ever turning a parse into an error                                                      |
+| Cost tracking   | One `LlmCall` row per attempt: feature, model, tokens, latency, outcome, request id                                                                                                                                                     | Lets you report real numbers: p95 latency, cost per 1,000 parses, failure rate                                     |
+| Kill switch     | `LLM_ENABLED` and `LLM_API_KEY` validated in `config/env.ts`. The model is used only when the switch is true and a key is set; anything else means disabled, not a crash                                                                | Turn the feature off without a deploy-breaking error                                                               |
 
 Why no queue here: you know BullMQ, and an interviewer may ask why you didn't use it. Parsing is a short request the user is actively waiting for, so a queue adds latency and polling complexity for no benefit. A queue becomes the right choice for Phase 3 photo parsing, which is slower, or for a nightly eval job.
 
@@ -198,7 +198,7 @@ Cost per call is computed from token counts and a price table in code. Check you
 Two migrations, named like your others:
 
 - **`20261005120000_ai_pantry_consent`** (Phase 1): the consent columns on `Profile`, plus a hand-written CHECK that `ai_pantry_consent_at` is set exactly when `ai_pantry_consent` is true.
-- **`2026XXXX_llm_pantry_parsing`** (Phase 2): the cache and `LlmCall` tables. The new tables get row-level security enabled, matching your `enable_row_level_security` migration.
+- **`20261005140000_llm_pantry_parsing`** (Phase 2): the cache and `LlmCall` tables. The new tables get row-level security enabled, matching your `enable_row_level_security` migration.
 
 ```prisma
 model Profile {
@@ -224,7 +224,7 @@ model LlmCall {
   feature       String // "pantry_parse"
   model         String
   promptVersion String
-  outcome       String // ok | timeout | provider_error | invalid_output | cache_hit | breaker_open | rate_limited
+  outcome       LlmCallOutcome // ok | timeout | provider_error | invalid_output | cache_hit | breaker_open | rate_limited
   inputTokens   Int?
   outputTokens  Int?
   latencyMs     Int
@@ -256,26 +256,26 @@ Unit tests (Jest, with a `FakeLlmClient`) for `parsePantry`:
 - [x] Output containing a key outside the vocabulary fails Zod and falls back to synonyms
 - [x] Timeout falls back with `degraded: true`, and no retry happens
 - [x] 5xx retries once, then falls back
-- [ ] Cache hit skips the client entirely (assert the fake was not called)
-- [ ] Breaker opens after 5 failures and closes after 60 s (use Jest fake timers)
+- [x] Cache hit skips the client entirely (assert the fake was not called)
+- [x] Breaker opens after 5 failures and closes after 60 s (use Jest fake timers)
 - [x] No consent, a child account, or a minor means the client is never called
-- [x] Normalisation: "Aloo, Atta" and "atta,aloo" give the same normalised text (the hash test follows with the cache)
+- [x] Normalisation: "Aloo, Atta" and "atta,aloo" give the same hash
 - [x] Synonym table: every value is a real key (a test that loops the map against `ALL_INGREDIENTS`)
 
 Integration tests (Supertest plus the Postgres service already in CI):
 
-- [ ] `POST /meals/parse-pantry` writes an `LlmCall` row and a cache row
-- [ ] The 31st call of the day answers from synonyms with `degraded: true` and never reaches the model
-- [ ] Deleting the account removes that user's `LlmCall` rows
+- [x] `POST /meals/parse-pantry` writes an `LlmCall` row and a cache row
+- [x] The 31st call of the day answers from synonyms with `degraded: true` and never reaches the model
+- [x] Deleting the account removes that user's `LlmCall` rows
 - [x] 400 on empty text, 500+ characters, or extra fields
 - [x] Consent: off by default, refused for a child or a minor, withdrawal takes effect on the next parse
 
 Eval script (`npm run eval:pantry`, real API, run manually or nightly):
 
-1. Build `eval/pantry-golden.json` with 60 to 100 cases. Mix English, Hindi in Latin script, Hinglish, quantities ("2 kg chawal"), negations ("paneer khatam"), typos ("tamatar", "tomatos") and junk ("nothing", "maggi"). The build commits the file with 3 example cases; the rest are written by hand.
+1. Build `api/eval/pantry-golden.json` with 60 to 100 cases. Mix English, Hindi in Latin script, Hinglish, quantities ("2 kg chawal"), negations ("paneer khatam"), typos ("tamatar", "tomatos") and junk ("nothing", "maggi"). The build commits the file with 3 example cases; the rest are written by hand.
 2. Each case lists the expected keys. Write these by hand, not with the model.
 3. The script runs every case through the LLM path and through the synonym fallback, then prints micro precision, recall, p50 and p95 latency, and total cost for each.
-4. Commit the results to `eval/results/` with the prompt version, so prompt changes show their effect.
+4. Commit the results to `api/eval/results/` with the prompt version, so prompt changes show their effect.
 
 When you change the prompt, bump `PANTRY_PROMPT_V1` to V2, rerun the eval, and keep the change only if the numbers improve. That loop is exactly what "evaluating LLM features" means in a job description.
 
@@ -292,7 +292,7 @@ Build the fallback before the LLM, so every phase ends with something working an
    - Prompt V1, tool schema, Zod validation, post-processing
    - Consent flag and toggle, child and minor guard, env config and kill switch
    - Timeout, single retry, fallback
-3. **Phase 2: production readiness**
+3. **Phase 2: production readiness** — built; V1 numbers wait on the golden set
    - Migration: cache and `LlmCall` tables with RLS
    - Cache, rate limit, circuit breaker
    - Integration tests, and the account-deletion check
@@ -336,3 +336,10 @@ Once it's built, write it up as one blog post, for example "Adding an LLM to an 
 - **The tool schema has no `maxItems`/`maxLength`**, which strict tool schemas reject; the caps are enforced in Zod and post-processing.
 - **The retry lives inside a 3-second budget**, so a 5xx followed by a slow retry cannot take 5 seconds.
 - **`milk` had been in the `Ingredient` type and on the checklist with no recipe using it**, so `/meals/suggest` rejected it. A kheer recipe now uses it, and the synonym table maps "doodh" to it.
+- **The daily limit counts `LlmCall` rows with outcome `ok`, `timeout` or `invalid_output`, not distinct request ids.** The request id can be supplied by the caller through `x-request-id`, so a limit keyed on it could be bypassed by sending the same id every time. A retry only follows a `provider_error`, which is not counted, so each parse still counts once.
+- **Cache hits are checked before the daily limit**, so someone over the limit still gets a cached answer, which costs nothing.
+- **Only timeouts and provider errors trip the circuit breaker.** Bad output is the model misbehaving on one input, not the provider being down.
+- **`LlmCall.outcome` is a Postgres enum (`LlmCallOutcome`)** rather than free text, like every other closed set in the schema.
+- **`LlmCall` cascades with the user and is also deleted explicitly in `deleteAccount`**, which lists everything an erasure removes.
+- **The golden set and results live in `api/eval/`**, next to the script that reads them. The three committed cases are different from the prompt's few-shot examples, so the eval does not grade the model on its own prompt.
+- **The privacy page moved to version 2026-10-05**, and new consent records point at it. People who registered earlier are not asked again, because smarter reading changes nothing for anyone who does not turn it on, and turning it on is itself the consent.
